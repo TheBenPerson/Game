@@ -12,7 +12,7 @@ release: game
 	strip --unneeded bin/game lib/*
 
 game: main client util
-	gcc bin/main.o $(LF) -Llib -lclient -lserver -lstdc++ -lutil -o bin/$@
+	gcc bin/main.o $(LF) -Llib -lclient -lstdc++ -lutil -o bin/$@
 
 main: src/Main/main.cpp
 	gcc $(CF) -c $^ -o bin/$@.o

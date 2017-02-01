@@ -14,13 +14,13 @@
 
 struct Packet {
 
-	sockaddr_in Address;
+	sockaddr_in address;
 
 	union {
 
-		char Data[P_MAX_SIZE - 1];
-		unsigned char Id;
-		char Raw[P_MAX_SIZE];
+		char data[P_MAX_SIZE - 1];
+		unsigned char id;
+		char raw[P_MAX_SIZE];
 
 	};
 

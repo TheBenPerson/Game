@@ -13,7 +13,7 @@ class Button {
 		unsigned char state;
 		float values[7];
 
-		Button(Point pos, float Width, void (*Callback)());
+		Button(Point pos, float width, void (*callback)());
 
 		static void cleanup();
 		static void init();

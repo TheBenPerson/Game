@@ -1,14 +1,14 @@
 #ifndef HG_Client_XInput_H
 
-#include "Util/Point/Point.hpp"
+#include "Util/Point/point.hpp"
 
 namespace XInput {
 
-	extern void (* KeyCallbacks[256])();
-	extern bool MousePress;
-	extern Point MousePos;
+	extern void (* keyCallbacks[256])();
+	extern bool mousePress;
+	extern Point mousePos;
 
-	void Init();
+	void init();
 
 }
 

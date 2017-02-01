@@ -1,8 +1,8 @@
 #include <GL/gl.h>
 #include <stdio.h>
-#include "Button.hpp"
+#include "button.hpp"
 #include "Rendering/rendering.hpp"
-#include "Util/Point/point.h"
+#include "Util/Point/point.hpp"
 #include "XClient/xclient.hpp"
 #include "XInput/xinput.hpp"
 
@@ -15,10 +15,10 @@ Button::Button(Point pos, float width, void (*callback)()) {
 
 	float capRatio = 1.0f;
 
-	values[0] = X - deltaX;
-	values[1] = Y - deltaY;
-	values[2] = X + deltaX;
-	values[3] = Y + deltaY;
+	values[0] = pos.x - deltaX;
+	values[1] = pos.y - deltaY;
+	values[2] = pos.x + deltaX;
+	values[3] = pos.y + deltaY;
 	values[4] = values[0] + capRatio;
 	values[5] = values[2] - capRatio;
 	values[6] = (width - 2.0f) / capRatio;
@@ -27,19 +27,19 @@ Button::Button(Point pos, float width, void (*callback)()) {
 
 }
 
-void Button::Cleanup() {
+void Button::cleanup() {
 
-	glDeletetextures(1, &texture);
-
-}
-
-void Button::Init() {
-
-	texture = Rendering::loadtexture("res/button.png");
+	glDeleteTextures(1, &texture);
 
 }
 
-void Button::Tick() {
+void Button::init() {
+
+	texture = Rendering::loadTexture("res/button.png");
+
+}
+
+void Button::tick() {
 
 	if (((XInput::mousePos.x > values[0]) && (XInput::mousePos.y > values[1])) && ((XInput::mousePos.x < values[2]) && (XInput::mousePos.y < values[3]))) {
 
@@ -64,16 +64,16 @@ void Button::Tick() {
 
 }
 
-void Button::Render() {
+void Button::render() {
 
 	glPushMatrix();
 
-		glMatrixMode(GL_texture);
+		glMatrixMode(GL_TEXTURE);
 		glPushMatrix();
 
 			glTranslatef(0.0f, state / 4.0f, 0.0f);
 
-			glBindtexture(GL_texture_2D, texture);
+			glBindTexture(GL_TEXTURE_2D, texture);
 
 			glBegin(GL_QUADS);
 

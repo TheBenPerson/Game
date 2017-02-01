@@ -9,7 +9,7 @@
 #include "XClient/xclient.hpp"
 #include "XInput/xinput.hpp"
 
-GLXcontext XClient::context;
+GLXContext XClient::context;
 GLXWindow XClient::drawable;
 bool XClient::fullscreen = true;
 unsigned int XClient::height;
@@ -25,9 +25,9 @@ Atom XClient::XA_WM_DELETE_WINDOW;
 
 void XClient::cleanup() {
 
-	glXMakecontextCurrent(display, None, None, NULL);
+	glXMakeContextCurrent(display, None, None, NULL);
 
-    glXDestroycontext(display, context);
+    glXDestroyContext(display, context);
     XDestroyWindow(display, hWindow);
 
     XCloseDisplay(display);
@@ -41,7 +41,7 @@ bool XClient::createWindow() {
 
 	if (!display) {
 
-		fprintf(stderr, "Error opening display %s: an unknown error has occurred.\n", DisplayVar);
+		fprintf(stderr, "Error opening display %s: an unknown error has occurred.\n", displayVar);
 		return false;
 
 	}
@@ -68,7 +68,7 @@ bool XClient::createWindow() {
 						 GLX_DEPTH_SIZE, 24,
 						 GLX_DOUBLEBUFFER, 0 };
 
-	XvisualInfo* visualInfo = glXChooseVisual(display, XDefaultScreen(display), attr);
+	XVisualInfo* visualInfo = glXChooseVisual(display, XDefaultScreen(display), attr);
 
 	if (!visualInfo) {
 
@@ -79,19 +79,19 @@ bool XClient::createWindow() {
 
 	}
 
-	rootWindow = XrootWindow(display, visualInfo->screen);
+	rootWindow = XRootWindow(display, visualInfo->screen);
 
 	screenWidth = XDisplayWidth(display, visualInfo->screen);
 	screenHeight = XDisplayHeight(display, visualInfo->screen);
 
-	XSetwinAttr winAttr;
+	XSetWindowAttributes winAttr;
 
 	winAttr.background_pixel = BlackPixel(display, visualInfo->screen);
 	winAttr.border_pixel = BlackPixel(display, visualInfo->screen);
 	winAttr.colormap = XDefaultColormap(display, visualInfo->screen);
 	winAttr.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | KeyPressMask | PointerMotionMask | StructureNotifyMask;
 
-	hWindow = XCreateWindow(display, rootWindow, (screenWidth - screenHeight) / 2, 0, screenHeight, screenHeight, 0, visualInfo->depth, InputOutput, visualInfo->visual, CWBackPixel | CWBorderPixel | CWColormap | CWeventMask, &winAttr);
+	hWindow = XCreateWindow(display, rootWindow, (screenWidth - screenHeight) / 2, 0, screenHeight, screenHeight, 0, visualInfo->depth, InputOutput, visualInfo->visual, CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &winAttr);
 
 	XA_NET_WM_STATE = XInternAtom(display, "_NET_WM_STATE", true);
 
@@ -107,7 +107,7 @@ bool XClient::createWindow() {
 
 	XSetWMProtocols(display, hWindow, &XA_WM_DELETE_WINDOW, 1);
 
-	context = glXCreatecontext(display, visualInfo, NULL, true);
+	context = glXCreateContext(display, visualInfo, NULL, true);
 
 	if (!context) {
 
@@ -128,11 +128,11 @@ bool XClient::createWindow() {
 
 }
 
-bool XClient::finalizecontext() {
+bool XClient::finalizeContext() {
 
 	if (!glXMakeCurrent(display, hWindow, context)) {
 
-		glXDestroycontext(display, context);
+		glXDestroyContext(display, context);
 		XDestroyWindow(display, hWindow);
 
 		XCloseDisplay(display);
@@ -184,11 +184,11 @@ bool XClient::finalizecontext() {
 
 void XClient::messagePump() {
 
-	Xevent event;
+	XEvent event;
 
 	while (!(event.type == ClientMessage && *event.xclient.data.l == XA_WM_DELETE_WINDOW)) {
 
-		XNextevent(XClient::display, &event);
+		XNextEvent(XClient::display, &event);
 
 		switch (event.type) {
 
@@ -211,18 +211,18 @@ void XClient::messagePump() {
 				width = event.xconfigure.width;
 				height = event.xconfigure.height;
 
-				Rendering::Resized = true;
+				Rendering::resized = true;
 
 			break;
 
 			case KeyPress: {
 
-				char KeyCode;
+				char keyCode;
 
-				XLookupString(&event.xkey, &KeyCode, 1, NULL, NULL);
+				XLookupString(&event.xkey, &keyCode, 1, NULL, NULL);
 
-				if (XInput::KeyCallbacks[KeyCode])
-					XInput::KeyCallbacks[KeyCode]();
+				if (XInput::keyCallbacks[keyCode])
+					XInput::keyCallbacks[keyCode]();
 
 			}
 			break;
@@ -261,9 +261,9 @@ void XClient::messagePump() {
 
 void XClient::setFullscreen(bool mode) {
 
-	XClientMessageevent event;
+	XClientMessageEvent event;
 
-	memset(&event, 0, sizeof(XClientMessageevent));
+	memset(&event, 0, sizeof(XClientMessageEvent));
 
 	event.type = ClientMessage;
 	event.window = hWindow;
@@ -277,6 +277,6 @@ void XClient::setFullscreen(bool mode) {
 
 	fullscreen = mode;
 
-	XSendevent(display, rootWindow, false, SubstructureRedirectMask | SubstructureNotifyMask, (Xevent*) &event);
+	XSendEvent(display, rootWindow, false, SubstructureRedirectMask | SubstructureNotifyMask, (XEvent*) &event);
 
 }

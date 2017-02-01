@@ -5,7 +5,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "FileUtils.hpp"
+#include "fileutils.hpp"
 
 int FileUtils::LoadFile(const char * Path, char ** Buffer) {
 

@@ -5,15 +5,15 @@
 
 namespace Networking {
 
-	extern bool Running;
-	extern int Socket;
-	extern pthread_t Thread;
+	extern bool running;
+	extern int socket;
+	extern pthread_t thread;
 
-	void Cleanup();
-	void * PacketHandler(void *);
-	bool Init(uint16_t Port);
-	void Start(char* address);
-	void Stop();
+	void cleanup();
+	void* packetHandler(void*);
+	bool init(uint16_t port);
+	void start(char* address);
+	void stop();
 
 }
 

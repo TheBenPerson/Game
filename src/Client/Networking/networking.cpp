@@ -62,7 +62,7 @@ void* Networking::packetHandler(void*) {
 
 bool Networking::init(uint16_t port) {
 
-	socket = socket(AF_INET, SOCK_DGRAM, 0);
+	socket = ::socket(AF_INET, SOCK_DGRAM, 0);
 
 	if (socket == -1) {
 

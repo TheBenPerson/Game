@@ -1,38 +1,38 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Client/Client/client.hpp"
+#include "Client/client.hpp"
 #include "Client/Networking/networking.hpp"
-#include "Server/Server/server.hpp"
+#include "Server/server.hpp"
 
-int main(int argc, const char ** argv) {
+int main(int argc, const char** argv) {
 
-	bool Error = false;
-	const char * ErrorMsg = NULL;
-	bool Help = false;
-	const char * HelpMsg = "Usage: Game [Options]\n\nOptions:\n\t-h, --help\t\tDisplay this message.\n\t-s, --server <port>\tStart the server on the specified port.\n";
-	bool IsDedicatedServer = false;
-	unsigned short int Port;
+	bool error = false;
+	const char * errorMsg = NULL;
+	bool help = false;
+	const char * helpMsg = "Usage: Game [Options]\n\nOptions:\n\t-h, --help\t\tDisplay this message.\n\t-s, --server <port>\tStart the server on the specified port.\n";
+	bool isDedicatedServer = false;
+	unsigned short int port;
 
 	for (int i = 1; i < argc; i++) {
 
 		if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--server") == 0)) {
 
-			IsDedicatedServer = true;
+			isDedicatedServer = true;
 
 			if (++i == argc) {
 
-				Error = true;
+				error = true;
 				break;
 
 			} else  {
 
-				Port = atoi(argv[i]);
+				port = atoi(argv[i]);
 
-				if (Port < 1) {
+				if (port < 1) {
 
-					Error = true;
-					ErrorMsg = argv[i];
+					error = true;
+					errorMsg = argv[i];
 
 					break;
 
@@ -42,12 +42,12 @@ int main(int argc, const char ** argv) {
 
 		} else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
 
-			Help = true;
+			help = true;
 
 		} else {
 
-			Error = true;
-			ErrorMsg = argv[i];
+			error = true;
+			errorMsg = argv[i];
 
 			break;
 
@@ -55,23 +55,23 @@ int main(int argc, const char ** argv) {
 
 	}
 
-	if (Error) {
+	if (error) {
 
-		if (IsDedicatedServer) {
+		if (isDedicatedServer) {
 
-			if (ErrorMsg) {
+			if (errorMsg) {
 
-				printf("Game: Invalid port number -- '%s'\n%s", ErrorMsg, HelpMsg);
+				printf("Game: Invalid port number -- '%s'\n%s", errorMsg, helpMsg);
 
 			} else {
 
-				printf("Game: No port number given.\n%s", HelpMsg);
+				printf("Game: No port number given.\n%s", helpMsg);
 
 			}
 
 		} else {
 
-			printf("Game: Invalid option -- '%s'\n%s", ErrorMsg, HelpMsg);
+			printf("Game: Invalid option -- '%s'\n%s", errorMsg, helpMsg);
 
 		}
 
@@ -79,22 +79,22 @@ int main(int argc, const char ** argv) {
 
 	}
 
-	if (Help) {
+	if (help) {
 
-		printf(HelpMsg);
+		printf(helpMsg);
 		return 0;
 
 	}
 
-	if (IsDedicatedServer) {
+	if (isDedicatedServer) {
 
-		printf("Starting server on port %i...\n", Port);
-		return Server::Start(false, Port) ? 0 : 1;
+		printf("Starting server on port %i...\n", port);
+		//return Server::start(false, port) ? 0 : 1;
 
 	} else {
 
 		printf("Starting client...\n");
-		return Client::Start() ? 0 : 1;
+		return Client::start() ? 0 : 1;
 
 	}
 

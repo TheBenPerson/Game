@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Util/Config/Config.hpp"
-#include "Util/FileUtils/FileUtils.hpp"
+#include "Util/Config/config.hpp"
+#include "Util/FileUtils/fileutils.hpp"
 
 Config * Config::LoadConfig(const char * Path) {
 

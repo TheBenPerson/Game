@@ -26,8 +26,6 @@ void Menu::init() {
 
 	Button::init();
 
-	Panels[0].pushBack(new Button(0.0f, -5.0f, 9.0f, NULL));
-	Panels[0].pushBack(new Button(0.0f, 0.0f, 9.0f, NULL));
-	Panels[0].pushBack(new Button(0.0f, 5.0f, 9.0f, NULL));
+	panels[0].pushBack(new Button({0.0f, 0.0f}, 9.0f, NULL));
 
 }

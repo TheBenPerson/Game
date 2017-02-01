@@ -5,13 +5,14 @@
 #include <math.h>
 #include <png.h>
 #include <pthread.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
-#include "Client/Client/client.hpp"
+#include "Client/client.hpp"
 #include "Menu/Button/button.hpp"
 #include "Menu/menu.hpp"
 #include "rendering.hpp"
@@ -60,7 +61,7 @@ void Rendering::glInit() {
 
 }
 
-bool Rendering::Init() {
+bool Rendering::init() {
 
 	if (!XClient::createWindow())
 		return false;
@@ -110,17 +111,22 @@ GLuint Rendering::loadTexture(const char* path) {
 
 	}
 
-	png_struct* pngStruct = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-	png_info* pngInfo = png_create_info_struct(pngStruct);
+	png_struct* png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	png_info* info = png_create_info_struct(png);
 
-	png_init_io(pngStruct, file);
-	png_set_sig_bytes(pngStruct, 8);
+	png_init_io(png, file);
+	png_set_sig_bytes(png, 8);
 
-	png_read_info(pngStruct, pngInfo);
-	png_uint_32 width = png_get_image_width(pngStruct, pngInfo);
-	png_uint_32 height = png_get_image_height(pngStruct, pngInfo);
+	png_read_png(png, info, PNG_TRANSFORM_IDENTITY, NULL);
+	png_byte** image = png_get_rows(png, info);
 
-	printf("Loaded texture %s\nWidth: %i, Height: %i\n\n", path, width, height);
+	png_uint_32 width = png_get_image_width(png, info);
+	png_uint_32 height = png_get_image_height(png, info);
+
+	png_byte* buffer = (png_byte*) malloc(width * height * 4);
+
+	for (int i = 0; i < height - 1; i++)
+		memcpy(buffer + (i * width * 4), image[i], width * 4);
 
 	GLuint texture;
 
@@ -130,13 +136,14 @@ GLuint Rendering::loadTexture(const char* path) {
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+	free(buffer);
 
-	//delete[] buffer;
+	printf("Loaded texture %s (%ix%i)\n", path, width, height);
+	png_destroy_read_struct(&png, &info, NULL);
 
 	return texture;
 
@@ -189,7 +196,7 @@ void* Rendering::renderLoop(void* result) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glLoadIdentity();
 
-		//drawText("The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.", {-10.0f, 10.0f}, 10.0f, 1.0f, false);
+		drawText("Hello World!!", {0.0f, 5.0f}, 10.0f, 1.0f, false);
 
 		if (Menu::inGame) {
 

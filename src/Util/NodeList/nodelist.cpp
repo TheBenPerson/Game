@@ -1,5 +1,5 @@
 #include <cstddef>
-#include "NodeList.hpp"
+#include "nodelist.hpp"
 
 NodeList::Node* NodeList::find(unsigned int index) {
 
