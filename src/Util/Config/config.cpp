@@ -1,92 +1,215 @@
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Util/Config/config.hpp"
-#include "Util/FileUtils/fileutils.hpp"
+#include "config.hpp"
+#include "Util/File/file.hpp"
 
-Config * Config::LoadConfig(const char * Path) {
+void Config::add(char *name, void *val) {
 
-	char * Buffer = NULL;
+	Setting* setting = new Setting();
+	setting->name = name;
+	setting->val = val;
 
-	unsigned int Size = FileUtils::LoadFile(Path, &Buffer);
+	setting->freeName = false;
+	setting->freeVal = false;
 
-	Config * tConfig = NULL;
+	settings.add(setting);
 
-	if (Size != -1) {
+}
 
-		tConfig = new Config();
+Config::Setting* Config::get(char* name) {
 
-		tConfig->Values = new Value();
+	for (size_t i = 0; i < settings.len; i++) {
 
-		Value * tValue = tConfig->Values;
+		Setting *setting = (Setting*) settings.get(i);
+		if (!strcmp(setting->name, name)) return setting;
 
-		char * pStart = Buffer;
-		char * pStop = Buffer;
+	}
 
-		bool Commented = false;
-		bool BlockStyle = false;
+	return NULL;
 
-		for (unsigned int i = 0; i < Size; i++) {
+}
 
-			char tChar = Buffer[i];
+bool Config::load(char *path) {
 
-			switch (tChar) {
+	char *file = NULL;
+	size_t size = loadFile(path, &file);
 
-				case '/': {
+	Config *config = NULL;
 
-					char tChar2 = Buffer[i + 1];
+	if (size != -1) {
 
-					if (tChar2 == '/') {
+		char *start = file; //initialize name pointer
+		bool lineStart = true;
 
-						i++;
+		for (size_t i = 0; i < size; i++) {
 
-						while ((++i < Size) && (Buffer[i] != '\n')) {}
+			for (;;) { //cycle until next char != #
 
-						break;
+				if (file[i] == '#') {
 
-					} else if (tChar2 == '*') {
+					char* end = strchr((file + i) + 1, '\n');
+					if (!end) {
 
-						i++;
-
-						while ((++i < Size - 1) && (Buffer[i] != '*') && (Buffer[i + 1] != '/')) {}
-
-						break;
+						fprintf(stderr, "Error parsing %s: no data\n", path);
+						return false;
 
 					}
 
+					i = (end - file) + 1;
+					start = file + i; //skip to next line
+
+				} else break;
+
+			}
+
+			char c = file[i];
+
+			if ((lineStart) && (c == ' ' || c == '\t' || c == '\n')) { //ignore spaces, tabs, and newlines at the beginning of a line
+
+				start++;
+
+			} else { //use '=', ':', ' ', and '\t' as field seperators
+
+				bool sep = false;
+				bool pad = false;
+
+				if (c == '=' || c == ':' || c == '\t') sep = true;
+				else if (c == ' ') {
+
+					sep = true;
+					if (file[i + 1] == '=' || file[i + 1] == ':') pad = true;
+
 				}
 
-				default:
+				if (sep) {
 
-					printf("%c\n", tChar);
+					size_t len = (file + i) - start;
+
+					char *name = (char*) malloc(len + 1);
+					strncpy(name, start, len);
+					name[len] = '\0'; //get val name
+
+					start = (file + i) + 1;
+
+					if (pad) start++;
+					if (*start == ' ') start++;
+
+					char* end = strchr(start, '\n');
+					if (!end) {
+
+						fprintf(stderr, "Error parsing %s: no data\n", path);
+						return false;
+
+					}
+
+					len = (end - start);
+
+					char* val = (char*) malloc(len + 1);
+					strncpy(val, start, len);
+					val[len] = '\0'; //get val string
+
+					bool isNew;
+
+					Setting *setting = get(name);
+					if (setting) {
+
+						free(name);
+						if (setting->freeVal) free(setting->val);
+
+						isNew = false;
+
+					} else {
+
+						setting = new Setting();
+						setting->name = name;
+						setting->freeName = true;
+
+						isNew = true;
+
+					}
+
+					setting->isString = false;
+
+					char* flag;
+					long int nVal = strtol(val, &flag, 10);
+
+					if ((*flag)) {
+
+						if (!strcasecmp(val, "true")) nVal = true;
+						else if (!strcasecmp(val, "false")) nVal = false;
+						else {
+
+							setting->isString = true;
+
+						}
+
+					}
+
+					if (setting->isString) {
+
+						setting->val = val;
+						setting->freeVal = true;
+
+					} else {
+
+						setting->val = (void*) nVal;
+						free(val);
+
+						setting->freeVal = false;
+
+					}
+
+					if (isNew) settings.add(setting);
+
+					i = (end - file);
+					start = end + 1; //skip to next line
+
+					lineStart = true;
+
+				} else {
+
+					lineStart = false;
+
+				}
 
 			}
 
 		}
 
-		return tConfig;
+		free(file);
 
 	}
 
-}
-
-void Config::WriteConfig(Config * PConfig) {
-
-
+	return true;
 
 }
 
-Config::Config() {}
+void Config::save(char *path) {
 
-Config::~Config() {}
 
-Config::Value * Config::Value::GetLast() {
 
-	struct Value * tValue = this;
+}
 
-	while (tValue->NextValue != NULL)
-		tValue = tValue->NextValue;
+void Config::set(char *name, void *val) {
 
-	return tValue;
+	get(name)->val = val;
+
+}
+
+Config::~Config() {
+
+	Setting* setting;
+
+	for (size_t i = 0; i < settings.len; i++) {
+
+		setting = (Setting*) settings.get(i);
+		if (setting->freeName) free(setting->name);
+		if (setting->freeVal) free(setting->val);
+
+		delete setting;
+
+	}
 
 }

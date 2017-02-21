@@ -1,36 +1,33 @@
 #ifndef HG_Util_Config_H
 
+#include "Util/NodeList/nodelist.hpp"
+
 class Config {
 
 	public:
 
-		static Config * LoadConfig(const char * Path);
-		static void WriteConfig(Config * PConfig);
-		
-		void AddValue(const char * Name, int Value);
-		int GetValue(const char * Name);
-		void RemoveValue(const char * Name);
-		void SetValue(const char * Name, int Value);
+		struct Setting {
+
+			char *name;
+			void *val;
+
+			bool freeName;
+			bool freeVal;
+			bool isString;
+
+		};
+
+		void add(char *name, void *val);
+		Setting* get(char *name);
+		bool load(char *path);
+		void save(char* path);
+		void set(char *name, void *val);
+
+		~Config();
 
 	private:
-	
-		struct Value {
-		
-			struct Value * NextValue;
-			struct Value * PrevValue;
-			
-			char * Name;
-			
-			long Value;
-			
-			struct Value * GetLast();
-		
-		};
-		
-		struct Value * Values;
 
-		Config();
-		~Config();
+		NodeList settings;
 
 };
 

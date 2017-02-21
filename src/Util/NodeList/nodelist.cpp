@@ -1,84 +1,68 @@
-#include <cstddef>
+#include <stddef.h>
 #include "nodelist.hpp"
 
-NodeList::Node* NodeList::find(unsigned int index) {
+void* NodeList::add(void* item) {
 
-	Node* pNode = this->index;
+	Node* node = new Node();
 
-	for (unsigned int i = 0; i < index; i++) {
+	if (index) last->next = node;
+	else index = node;
 
-		pNode = pNode->nextNode;
+	node->val = item;
 
-	}
+	node->prev = last;
+	node->next = NULL;
 
-	return pNode;
+	last = node;
 
-}
-
-void* NodeList::get(unsigned int index) {
-
-	return find(index)->value;
+	len++;
 
 }
 
-void* NodeList::pushBack(void* item) {
+NodeList::Node* NodeList::find(size_t index) {
 
-	Node* pNode;
+	Node* node = this->index;
 
-	if (!index) {
+	for (size_t i = 0; i < index; i++)
+		node = node->next;
 
-		pNode = (index = new Node());
-
-	} else {
-
-		pNode = (finalNode->nextNode = new Node());
-
-	}
-
-	pNode->value = item;
-
-	pNode->lastNode = finalNode;
-	pNode->nextNode = NULL;
-
-	finalNode = pNode;
-
-	length++;
+	return node;
 
 }
 
-void NodeList::remove(unsigned int index) {
+void* NodeList::get(size_t index) {
 
-	Node* pNode = find(index);
-
-	if (index) {
-
-		pNode->lastNode->nextNode = pNode->nextNode;
-
-	} else {
-
-		this->index = pNode->nextNode;
-
-	}
-
-	if (pNode->nextNode)
-		pNode->nextNode->lastNode = pNode->lastNode;
-
-	delete pNode;
-
-	length--;
+	return find(index)->val;
 
 }
+
+void NodeList::rem(size_t index) {
+
+	Node* node = find(index);
+
+	if (index) node->prev->next = node->next;
+	else this->index = node->next;
+
+	if (node->next) node->next->prev = node->prev;
+
+	delete node;
+
+	len--;
+
+}
+
+NodeList::NodeList() : len(0), last(NULL), index(NULL) {}
 
 NodeList::~NodeList() {
 
-	Node* pNode;
+	Node* node;
 
-	for (unsigned int i = 0; i < length; i++) {
+	while (index) {
 
-		pNode = index;
-		index = index->nextNode;
+		node = index;
 
-		delete pNode;
+		index = node->next;
+		delete node;
 
 	}
 

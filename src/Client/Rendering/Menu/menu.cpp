@@ -11,9 +11,9 @@ void Menu::cleanup() {
 
 	for (unsigned int i = 0; i < 1; i++) {
 
-		unsigned int length = panels[i].length;
+		unsigned int len = panels[i].len;
 
-		for (unsigned int j = 0; j < length; j++)
+		for (unsigned int j = 0; j < len; j++)
 			delete (Button *) panels[i].get(j);
 
 	}
@@ -26,6 +26,6 @@ void Menu::init() {
 
 	Button::init();
 
-	panels[0].pushBack(new Button({0.0f, 0.0f}, 9.0f, NULL));
+	panels[0].add(new Button({0.0f, 0.0f}, 9.0f, NULL));
 
 }

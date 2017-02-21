@@ -71,38 +71,29 @@ void Button::render() {
 		glMatrixMode(GL_TEXTURE);
 		glPushMatrix();
 
-			glTranslatef(0.0f, state / 4.0f, 0.0f);
+			//glTranslatef(0.0f, state / 4.0f, 0.0f);
 
 			glBindTexture(GL_TEXTURE_2D, texture);
 
 			glBegin(GL_QUADS);
 
-				glTexCoord2f(0.0f, 0.125f);
-				glVertex2f(values[0], values[1]);
-				glTexCoord2f(1.0f, 0.125f);
-				glVertex2f(values[4], values[1]);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex2f(values[4], values[3]);
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex2f(values[0], values[3]);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex2f(-1, 2);
+				glTexCoord2f(0.5f, 1.0f);
+				glVertex2f(1, 2);
+				glTexCoord2f(0.5f, 0.75f);
+				glVertex2f(1, -2);
+				glTexCoord2f(0.0f, 0.75f);
+				glVertex2f(-1, -2);
 
-				glTexCoord2f(0.0f, 0.25f);
-				glVertex2f(values[4], values[1]);
-				glTexCoord2f(values[6], 0.25f);
-				glVertex2f(values[5], values[1]);
-				glTexCoord2f(values[6], 0.125f);
-				glVertex2f(values[5], values[3]);
-				glTexCoord2f(0.0f, 0.125f);
-				glVertex2f(values[4], values[3]);
-
-				glTexCoord2f(1.0f, 0.125f);
-				glVertex2f(values[5], values[1]);
-				glTexCoord2f(0.0f, 0.125f);
-				glVertex2f(values[2], values[1]);
-				glTexCoord2f(0.0f, 0.0f);
-				glVertex2f(values[2], values[3]);
-				glTexCoord2f(1.0f, 0.0f);
-				glVertex2f(values[5], values[3]);
+				glTexCoord2f(0.0f, 1.0f);
+				glVertex2f(-1, 2);
+				glTexCoord2f(0.5f, 1.0f);
+				glVertex2f(1, 2);
+				glTexCoord2f(0.5f, 0.75f);
+				glVertex2f(1, -2);
+				glTexCoord2f(0.0f, 0.75f);
+				glVertex2f(-1, -2);
 
 			glEnd();
 

@@ -16,7 +16,7 @@
 #include "Menu/Button/button.hpp"
 #include "Menu/menu.hpp"
 #include "rendering.hpp"
-#include "Util/FileUtils/fileutils.hpp"
+#include "Util/Interval/interval.hpp"
 #include "Util/Point/point.hpp"
 #include "XClient/xclient.hpp"
 
@@ -29,6 +29,57 @@ void Rendering::cleanup() {
 	pthread_join(thread, NULL);
 
 	XClient::cleanup();
+
+}
+
+void Rendering::draw() {
+
+	if (resized) {
+
+		glViewport(0, 0, XClient::width, XClient::height);
+		double aspect = (double) XClient::width / (double) XClient::height;
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-10 * aspect, 10 * aspect, -10, 10, -10, 10);
+
+		resized = false;
+
+	}
+
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+
+	glMatrixMode(GL_MODELVIEW);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glLoadIdentity();
+
+	char message[100];
+	sprintf(message, "Width: %i\nHeight: %i", XClient::width, XClient::height);
+	drawText(message, {-3.0f, 5.0f}, 10.0f, 1.0f, false);
+
+	drawText("Game\nBuild Version 1.0.0", {((double) XClient::width / (double) XClient::height * -10) + 0.5f, 9.5f}, 10.0f, 1.2f, false);
+	drawText("abcdefghijklmnopqrstuvwxyz", {-8, -8}, 10, 1, false);
+	drawText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", {-8, -6}, 10, 1, false);
+
+	if (Menu::inGame) {
+
+
+
+	} else {
+
+
+
+	}
+
+	if (Menu::active) {
+
+		for (unsigned int i = 0; i < Menu::panels[Menu::mode].len; i++)
+			((Button *) Menu::panels[Menu::mode].get(i))->render();
+
+	}
+
+	glXSwapBuffers(XClient::display, XClient::winID);
 
 }
 
@@ -57,22 +108,17 @@ void Rendering::glInit() {
 
 	Menu::init();
 
-	XMapWindow(XClient::display, XClient::hWindow);
-
 }
 
 bool Rendering::init() {
 
-	if (!XClient::createWindow())
-		return false;
+	if (!XClient::createWindow()) return false;
 
 	pthread_attr_t attrib;
-
 	pthread_attr_init(&attrib);
 
 	volatile char result = -1;
-
-	pthread_create(&thread, &attrib, Rendering::renderLoop, (void *) &result);
+	pthread_create(&thread, &attrib, Rendering::threadMain, (void *) &result);
 
 	pthread_attr_destroy(&attrib);
 
@@ -117,21 +163,19 @@ GLuint Rendering::loadTexture(const char* path) {
 	png_init_io(png, file);
 	png_set_sig_bytes(png, 8);
 
-	png_read_png(png, info, PNG_TRANSFORM_IDENTITY, NULL);
-	png_byte** image = png_get_rows(png, info);
+	png_read_info(png, info);
 
 	png_uint_32 width = png_get_image_width(png, info);
 	png_uint_32 height = png_get_image_height(png, info);
 
-	png_byte* buffer = (png_byte*) malloc(width * height * 4);
+	png_byte* image = (png_byte*) malloc(width * height * 4);
 
-	for (int i = 0; i < height - 1; i++)
-		memcpy(buffer + (i * width * 4), image[i], width * 4);
+	for (int i = height - 1; i > 0; i--)
+		png_read_row(png, image + (i * width * 4), NULL);
 
 	GLuint texture;
 
 	glGenTextures(1, &texture);
-
 	glBindTexture(GL_TEXTURE_2D, texture);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -139,85 +183,33 @@ GLuint Rendering::loadTexture(const char* path) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-	free(buffer);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
+
+	free(image);
+	png_destroy_read_struct(&png, &info, NULL);
+	fclose(file);
 
 	printf("Loaded texture %s (%ix%i)\n", path, width, height);
-	png_destroy_read_struct(&png, &info, NULL);
-
 	return texture;
 
 }
 
-void* Rendering::renderLoop(void* result) {
+void* Rendering::threadMain(void* result) {
 
 	if (!XClient::finalizeContext()) {
 
 		*((char *) result) = 0;
-
 		return NULL;
 
 	}
 
 	glInit();
+	xcb_map_window(XClient::connection, XClient::winID);
 
 	*((unsigned char *) result) = 1;
 
-	while (Client::running) {
-
-		if (resized) {
-
-			if (XClient::width > XClient::height) {
-
-				glViewport((XClient::width - XClient::height) / 2, 0, XClient::height, XClient::height);
-
-			} else {
-
-				if (XClient::width == XClient::height) {
-
-					glViewport(0, 0, XClient::width, XClient::height);
-
-				} else {
-
-					glViewport(0, (XClient::height - XClient::width) / 2, XClient::width, XClient::width);
-
-				}
-
-			}
-
-			resized = false;
-
-		}
-
-		glMatrixMode(GL_TEXTURE);
-		glLoadIdentity();
-
-		glMatrixMode(GL_MODELVIEW);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		glLoadIdentity();
-
-		drawText("Hello World!!", {0.0f, 5.0f}, 10.0f, 1.0f, false);
-
-		if (Menu::inGame) {
-
-
-
-		} else {
-
-
-
-		}
-
-		if (Menu::active) {
-
-			for (unsigned int i = 0; i < Menu::panels[Menu::mode].length; i++)
-				((Button *) Menu::panels[Menu::mode].get(i))->render();
-
-		}
-
-		glXSwapBuffers(XClient::display, XClient::hWindow);
-
-	}
+	if (XClient::vSync) while (Client::running) draw();
+	else doInterval(&draw, 60, false, &Client::running);
 
 	glCleanup();
 
@@ -242,6 +234,14 @@ void Rendering::drawText(const char* text, Point position, float maxWidth, float
 
 		for (unsigned int i = 0; i < strLen; i++) {
 
+			if (text[i] == '\n') {
+
+				y -= charHeight;
+				x = position.x;
+				continue;
+
+			}
+
 			if (x + charWidth > maxWidth) {
 
 				x = position.x;
@@ -251,14 +251,14 @@ void Rendering::drawText(const char* text, Point position, float maxWidth, float
 
 			float offset = 0.009765625f * (text[i] - 32);
 
-			glTexCoord2f(offset, 0.6875f);
-			glVertex2f(x, y);
-			glTexCoord2f(offset + 0.009765625f, 0.6875f);
-			glVertex2f(x + charWidth, y);
-			glTexCoord2f(offset + 0.009765625f, 0.0f);
-			glVertex2f(x + charWidth, y + charHeight);
-			glTexCoord2f(offset, 0.0f);
+			glTexCoord2f(offset, 1.0f);
 			glVertex2f(x, y + charHeight);
+			glTexCoord2f(offset + 0.009765625f, 1.0f);
+			glVertex2f(x + charWidth, y + charHeight);
+			glTexCoord2f(offset + 0.009765625f, 0.3125f);
+			glVertex2f(x + charWidth, y);
+			glTexCoord2f(offset, 0.3125f);
+			glVertex2f(x, y);
 
 			x += charWidth + spaceWidth;
 

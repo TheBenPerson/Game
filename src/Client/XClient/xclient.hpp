@@ -2,23 +2,24 @@
 
 #include <GL/glx.h>
 #include <X11/Xlib.h>
+#include <xcb/xcb.h>
 
 namespace XClient {
 
+	extern xcb_connection_t *connection;
 	extern GLXContext context;
-	extern GLXWindow drawable;
 	extern bool fullscreen;
 	extern unsigned int height;
-	extern Window hWindow;
 	extern Display* display;
 	extern Window rootWindow;
 	extern unsigned int screenHeight;
 	extern unsigned int screenWidth;
-	extern XVisualInfo* visualInfo;
+	extern bool vSync;
 	extern unsigned int width;
+	extern xcb_window_t winID;
 	extern Atom XA_NET_WM_STATE;
 	extern Atom XA_NET_WM_STATE_FULLSCREEN;
-	extern Atom XA_WM_DELETE_WINDOW;
+	extern xcb_intern_atom_cookie_t XA_WM_DELETE_WINDOW;
 
 	void cleanup();
 	bool createWindow();

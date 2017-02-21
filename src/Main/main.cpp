@@ -1,53 +1,75 @@
+#include <dlfcn.h>
+#include <errno.h>
+#include <getopt.h>
+#include <inttypes.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Client/client.hpp"
-#include "Client/Networking/networking.hpp"
-#include "Server/server.hpp"
+#include "Util/Config/config.hpp"
+#include "Util/NodeList/nodelist.hpp"
 
-int main(int argc, const char** argv) {
+void crashHandler(int);
 
-	bool error = false;
-	const char * errorMsg = NULL;
-	bool help = false;
-	const char * helpMsg = "Usage: Game [Options]\n\nOptions:\n\t-h, --help\t\tDisplay this message.\n\t-s, --server <port>\tStart the server on the specified port.\n";
-	bool isDedicatedServer = false;
-	unsigned short int port;
+int main(int argc, char* const argv[]) {
 
-	for (int i = 1; i < argc; i++) {
+	struct sigaction action;
+	memset(&action, 0, sizeof(struct sigaction));
+	action.sa_handler = &crashHandler;
 
-		if ((strcmp(argv[i], "-s") == 0) || (strcmp(argv[i], "--server") == 0)) {
+	sigaction(SIGHUP, &action, NULL);
+	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGSEGV, &action, NULL);
+	sigaction(SIGTERM, &action, NULL);
+	sigaction(SIGQUIT, &action, NULL);
 
-			isDedicatedServer = true;
+	const char* usage = "Usage: game [Options]\n\nOptions:\n\t-h, --help\t\tDisplay this message.\n\t-s, --server <port>\tStart the server on the specified port.";
+	bool isServer = false;
+	uint16_t port;
 
-			if (++i == argc) {
+	char c;
+	option options[] = {
 
-				error = true;
-				break;
+		{"help", no_argument, NULL, 'h'},
+		{"server", required_argument, NULL, 's'},
+		{NULL, NULL, NULL, NULL}
 
-			} else  {
+	};
 
-				port = atoi(argv[i]);
+	int index;
 
-				if (port < 1) {
+	for (;;) {
 
-					error = true;
-					errorMsg = argv[i];
+		c = getopt_long(argc, argv, "hs:", options, &index);
+		if (c == -1) break;
 
-					break;
+		switch (c) {
 
-				}
+			case 'h':
 
-			}
+				puts(usage);
+				return 0;
 
-		} else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "--help") == 0)) {
+			break;
+			case 's':
 
-			help = true;
+				char* flag;
+				port = (uint16_t) strtol(optarg, &flag, 10);
 
-		} else {
+				if (*flag != '\0') {
 
-			error = true;
-			errorMsg = argv[i];
+					fprintf(stderr, "%s: invalid port value -- '%s'\n", argv[0], optarg);
+					puts(usage);
+
+					return 1;
+
+				} else isServer = true;
+
+			break;
+			case '?':
+
+				puts(usage);
+				return 1;
 
 			break;
 
@@ -55,47 +77,78 @@ int main(int argc, const char** argv) {
 
 	}
 
-	if (error) {
+	void* handle;
 
-		if (isDedicatedServer) {
+	if (isServer) {
 
-			if (errorMsg) {
+		handle = dlopen("libserver.so", RTLD_LAZY);
+		if (!handle) {
 
-				printf("Game: Invalid port number -- '%s'\n%s", errorMsg, helpMsg);
-
-			} else {
-
-				printf("Game: No port number given.\n%s", helpMsg);
-
-			}
-
-		} else {
-
-			printf("Game: Invalid option -- '%s'\n%s", errorMsg, helpMsg);
+			fprintf(stderr, "Error loading %s\n", dlerror());
+			return 1;
 
 		}
 
-		return 0;
+		printf("Loaded libserver.so\nStarting server on port %i...\n", port);
 
-	}
-
-	if (help) {
-
-		printf(helpMsg);
-		return 0;
-
-	}
-
-	if (isDedicatedServer) {
-
-		printf("Starting server on port %i...\n", port);
-		//return Server::start(false, port) ? 0 : 1;
+		bool (*serverStart)(bool, uint16_t) = (bool (*)(bool, uint16_t)) dlsym(handle, "_ZN6Server5StartEt");
+		return serverStart(false, port) ? 0 : 1;
 
 	} else {
 
-		printf("Starting client...\n");
-		return Client::start() ? 0 : 1;
+		handle = dlopen("libclient.so", RTLD_LAZY);
+		if (!handle) {
+
+			fprintf(stderr, "Error loading %s\n", dlerror());
+			return 1;
+
+		}
+
+		puts("Loaded libclient.so\nStarting Client...\n");
+
+		bool (*clientStart)() = (bool (*)()) dlsym(handle, "_ZN6Client5startEv");
+		return !clientStart();
 
 	}
+
+}
+
+void crashHandler(int signal) {
+
+	switch (signal) {
+
+		case SIGHUP:
+
+			puts("\nRecieved SIGHUP");
+
+		break;
+
+		case SIGINT:
+
+			puts("\nRecieved SIGINT");
+
+		break;
+
+		case SIGSEGV:
+
+			puts("Recieved SIGSEV");
+
+		break;
+
+		case SIGTERM:
+
+			puts("Recieved SIGTERM");
+
+		break;
+
+		case SIGQUIT:
+
+			puts("Recieved SIGQUIT");
+
+		break;
+
+	}
+
+	exit(signal);
 
 }

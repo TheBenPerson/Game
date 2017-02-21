@@ -6,16 +6,18 @@
 #include "Rendering/Menu/Button/button.hpp"
 #include "Rendering/Menu/menu.hpp"
 #include "Rendering/rendering.hpp"
+#include "Util/Config/config.hpp"
+#include "Util/Interval/interval.hpp"
 #include "XClient/xclient.hpp"
 #include "XInput/xinput.hpp"
 
+Config Client::config;
 bool Client::running = true;
 pthread_t Client::thread;
 
 void Client::cleanup() {
 
 	running = false;
-
 	pthread_join(thread, NULL);
 
 	Rendering::cleanup();
@@ -24,16 +26,18 @@ void Client::cleanup() {
 
 bool Client::init() {
 
+	config.add("vSync", (void*) true);
+	config.load("etc/client.cfg");
+
 	if (!Rendering::init())
 		return false;
 
 	XInput::init();
 
 	pthread_attr_t attrib;
-
 	pthread_attr_init(&attrib);
 
-	pthread_create(&thread, &attrib, tickLoop, NULL);
+	pthread_create(&thread, &attrib, threadMain, NULL);
 
 	pthread_attr_destroy(&attrib);
 
@@ -54,23 +58,16 @@ bool Client::start() {
 
 }
 
-void Client::tick() {
+void* Client::threadMain(void*) {
 
-	for (unsigned int i = 0; i < Menu::panels[Menu::mode].length; i++)
-		((Button *) Menu::panels[Menu::mode].get(i))->tick();
+	doInterval(&tick, 30, false, &running);
+	return NULL;
 
 }
 
-void* Client::tickLoop(void*) {
+void Client::tick() {
 
-	while (running) {
-
-		tick();
-
-		usleep(1000);
-
-	}
-
-	return NULL;
+	for (unsigned int i = 0; i < Menu::panels[Menu::mode].len; i++)
+		((Button *) Menu::panels[Menu::mode].get(i))->tick();
 
 }

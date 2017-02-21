@@ -1,32 +1,35 @@
 #ifndef HG_Util_NodeList_H
 
+#include <stddef.h>
+
 class NodeList {
 
 	public:
 
-		unsigned int length;
+		size_t len;
 
-		void* get(unsigned int index);
-		void* pushBack(void* item);
-		void remove(unsigned int index);
+		void* add(void *item);
+		void* get(size_t index);
+		void rem(size_t index);
 
+		NodeList();
 		~NodeList();
 
 	private:
 
 		struct Node {
 
-			Node* lastNode;
-			Node* nextNode;
+			Node *prev;
+			Node *next;
 
-			void* value;
+			void* val;
 
 		};
 
-		Node* finalNode;
-		Node* index;
+		Node *last;
+		Node *index;
 
-		Node* find(unsigned int index);
+		Node* find(size_t index);
 
 };
 

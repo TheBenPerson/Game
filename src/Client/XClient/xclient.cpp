@@ -5,30 +5,36 @@
 #include <string.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
+#include <X11/Xlib-xcb.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_atom.h>
+#include "client.hpp"
 #include "Rendering/rendering.hpp"
+#include "Util/Config/config.hpp"
 #include "XClient/xclient.hpp"
 #include "XInput/xinput.hpp"
 
+xcb_connection_t *XClient::connection;
 GLXContext XClient::context;
-GLXWindow XClient::drawable;
 bool XClient::fullscreen = true;
 unsigned int XClient::height;
-Window XClient::hWindow;
-Display * XClient::display = NULL;
+Display  *XClient::display;
 Window XClient::rootWindow;
 unsigned int XClient::screenHeight;
 unsigned int XClient::screenWidth;
+bool XClient::vSync;
 unsigned int XClient::width;
+xcb_window_t XClient::winID;
 Atom XClient::XA_NET_WM_STATE;
 Atom XClient::XA_NET_WM_STATE_FULLSCREEN;
-Atom XClient::XA_WM_DELETE_WINDOW;
+xcb_intern_atom_cookie_t XClient::XA_WM_DELETE_WINDOW;
 
 void XClient::cleanup() {
 
 	glXMakeContextCurrent(display, None, None, NULL);
 
     glXDestroyContext(display, context);
-    XDestroyWindow(display, hWindow);
+    XDestroyWindow(display, winID);
 
     XCloseDisplay(display);
 
@@ -36,7 +42,7 @@ void XClient::cleanup() {
 
 bool XClient::createWindow() {
 
-	char* displayVar = getenv("DISPLAY");
+	char *displayVar = getenv("DISPLAY");
 	display = XOpenDisplay(displayVar);
 
 	if (!display) {
@@ -46,8 +52,8 @@ bool XClient::createWindow() {
 
 	}
 
-	int major = 0;
-	int minor = 0;
+	int major;
+	int minor;
 
 	glXQueryVersion(display, &major, &minor);
 
@@ -60,69 +66,76 @@ bool XClient::createWindow() {
 
 	}
 
-	int attr[] = { GLX_RGBA,
-						 GLX_RED_SIZE, 8,
-						 GLX_GREEN_SIZE, 8,
-						 GLX_BLUE_SIZE, 8,
-						 GLX_ALPHA_SIZE, 8,
-						 GLX_DEPTH_SIZE, 24,
-						 GLX_DOUBLEBUFFER, 0 };
+	int attr[] = {
 
-	XVisualInfo* visualInfo = glXChooseVisual(display, XDefaultScreen(display), attr);
+		GLX_RGBA,
+		GLX_RED_SIZE, 8,
+		GLX_GREEN_SIZE, 8,
+		GLX_BLUE_SIZE, 8,
+		GLX_ALPHA_SIZE, 8,
+		GLX_DEPTH_SIZE, 24,
+		GLX_DOUBLEBUFFER, true,
+		None
+
+	};
+
+	XVisualInfo *visualInfo = glXChooseVisual(display, 0/*CHANGE THIS!!!*/, attr);
 
 	if (!visualInfo) {
 
 		XCloseDisplay(display);
-		fprintf(stderr, "Error choosing visual: no visuals exist that match the required criteria.");
+		fprintf(stderr, "Error choosing visual: no visuals exist that match the required criteria.\n");
 
 		return false;
 
 	}
 
-	rootWindow = XRootWindow(display, visualInfo->screen);
+	connection = XGetXCBConnection(display);
+	xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
 
-	screenWidth = XDisplayWidth(display, visualInfo->screen);
-	screenHeight = XDisplayHeight(display, visualInfo->screen);
+	screenWidth = screen->width_in_pixels;
+	screenHeight = screen->height_in_pixels;
 
-	XSetWindowAttributes winAttr;
+	printf("Detected resolution of: %ix%i\n", screenWidth, screenHeight);
 
-	winAttr.background_pixel = BlackPixel(display, visualInfo->screen);
-	winAttr.border_pixel = BlackPixel(display, visualInfo->screen);
-	winAttr.colormap = XDefaultColormap(display, visualInfo->screen);
-	winAttr.event_mask = ButtonPressMask | ButtonReleaseMask | ExposureMask | KeyPressMask | PointerMotionMask | StructureNotifyMask;
+	uint32_t eventMask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE | XCB_EVENT_MASK_POINTER_MOTION;
 
-	hWindow = XCreateWindow(display, rootWindow, (screenWidth - screenHeight) / 2, 0, screenHeight, screenHeight, 0, visualInfo->depth, InputOutput, visualInfo->visual, CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &winAttr);
+	winID = xcb_generate_id(connection);
+	xcb_create_window(connection, visualInfo->depth, winID, screen->root, (screenWidth - screenHeight) / 2, 0, screenHeight, screenHeight, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, visualInfo->visualid, XCB_CW_EVENT_MASK, &eventMask);
 
-	XA_NET_WM_STATE = XInternAtom(display, "_NET_WM_STATE", true);
+	char *title = "Game";
+	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, winID, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(title), title);
 
-	Atom XA_NET_WM_STATE_MAXIMIZED_VERT = XInternAtom(display, "_NET_WM_STATE_MAXIMIZED_VERT", true);
-	XChangeProperty(display, hWindow, XA_NET_WM_STATE, XA_ATOM, 32, PropModeAppend, (const unsigned char*) &XA_NET_WM_STATE_MAXIMIZED_VERT, 1);
+	/*XA_NET_WM_STATE = XInternAtom(display, "_NET_WM_STATE", true);
 
 	XA_NET_WM_STATE_FULLSCREEN = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", true);
-	//XChangeProperty(display, hWindow, XA_NET_WM_STATE, XA_ATOM, 32, PropModeAppend, (const unsigned char*) &XA_NET_WM_STATE_FULLSCREEN, 1);
-
-	XStoreName(display, hWindow, "Game");
+	//XChangeProperty(display, winID, XA_NET_WM_STATE, XA_ATOM, 32, PropModeAppend, (const unsigned char*) &XA_NET_WM_STATE_FULLSCREEN, 1);
 
 	XA_WM_DELETE_WINDOW = XInternAtom(display, "WM_DELETE_WINDOW", true);
+	* XSetWMProtocols(display, winID, &XA_WM_DELETE_WINDOW, 1);*/
 
-	XSetWMProtocols(display, hWindow, &XA_WM_DELETE_WINDOW, 1);
+	char *name = "WM_PROTOCOLS";
+	xcb_intern_atom_cookie_t XA_WM_PROTOCOLS = xcb_intern_atom(connection, true, strlen(name), name);
+
+	name = "WM_DELETE_WINDOW";
+	//XA_WM_DELETE_WINDOW = xcb_intern_atom(connection, true, strlen(name), name);
+	//xcb_change_property(connection, XCB_PROP_MODE_APPEND, winID, XA_WM_PROTOCOLS, XCB_ATOM, 16, 1, XA_WM_DELETE_WINDOW);
+
+	xcb_flush(connection);
 
 	context = glXCreateContext(display, visualInfo, NULL, true);
+	XFree(visualInfo);
 
 	if (!context) {
 
-		XDestroyWindow(display, hWindow);
-		XFree(visualInfo);
-
+		xcb_destroy_window(connection, winID);
 		XCloseDisplay(display);
 
-		printf("Error creating context: an unknown error has occurred.\n");
+		fputs("Error creating context: an unknown error has occurred\n", stderr);
 
 		return false;
 
 	}
-
-	XFree(visualInfo);
 
     return true;
 
@@ -130,47 +143,50 @@ bool XClient::createWindow() {
 
 bool XClient::finalizeContext() {
 
-	if (!glXMakeCurrent(display, hWindow, context)) {
+	if (!glXMakeCurrent(display, winID, context)) {
 
 		glXDestroyContext(display, context);
-		XDestroyWindow(display, hWindow);
+		xcb_destroy_window(connection, winID);
 
 		XCloseDisplay(display);
-		printf("Error initalizing context: an unknown error has occurred.\n");
+		fputs("Error initalizing context: an unknown error has occurred\n", stderr);
 
 		return false;
 
 	}
 
+	vSync = (bool) Client::config.get("vSync")->val;
+
 	PFNGLXSWAPINTERVALEXTPROC glXSwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalEXT");
 
 	if (glXSwapIntervalEXT) {
 
-		glXSwapIntervalEXT(XClient::display, XClient::hWindow, 1);
+		glXSwapIntervalEXT(display, winID, vSync);
 
 	} else {
 
-		printf("Warning: extention glXSwapIntervalEXT not available - trying MESA version instead.\n");
+		puts("Warning: extention glXSwapIntervalEXT not available - trying MESA version instead");
 
 		PFNGLXSWAPINTERVALMESAPROC glXSwapIntervalMESA = (PFNGLXSWAPINTERVALMESAPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalMESA");
 
 		if (glXSwapIntervalMESA) {
 
-			glXSwapIntervalMESA(1);
+			glXSwapIntervalMESA(vSync);
 
 		} else {
 
-			printf("Warning: extention glXSwapIntervalMESA not available - trying SGI version instead.\n");
+			puts("Warning: extention glXSwapIntervalMESA not available - trying SGI version instead");
 
 			PFNGLXSWAPINTERVALSGIPROC glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalSGI");
 
 			if (glXSwapIntervalSGI) {
 
-					glXSwapIntervalSGI(1);
+				glXSwapIntervalSGI(vSync);
 
 			} else {
 
-				printf("Warning: no swap control extentions available.\n");
+				if (vSync) puts("Warning: no swap control extentions available");
+				vSync = false;
 
 			}
 
@@ -178,21 +194,25 @@ bool XClient::finalizeContext() {
 
 	}
 
+	if (!vSync) puts("Warning: VSync disabled");
+
 	return true;
 
 }
 
 void XClient::messagePump() {
 
-	XEvent event;
+	for (;;) xcb_wait_for_event(connection);
+
+	/*xcb_generic_event_t *event;
 
 	while (!(event.type == ClientMessage && *event.xclient.data.l == XA_WM_DELETE_WINDOW)) {
 
-		XNextEvent(XClient::display, &event);
+		event = xcb_wait_for_event(connection);
 
-		switch (event.type) {
+		switch (event->response_type) {
 
-			case ButtonPress:
+			case XCB_BUTTON_PRESS:
 
 				if (event.xbutton.button == 1)
 					XInput::mousePress = true;
@@ -232,22 +252,22 @@ void XClient::messagePump() {
 				if (width > height) {
 
 					float dX = width - height;
-					XInput::mousePos.x = (((event.xmotion.x - (dX / 2)) / (width - dX)) - 0.5f) * 20;
+					XInput::mousePos.x = (((event.xmotion.x - (dX / 2)) / (width - dX)) - 0.5f)  *20;
 
 				} else {
 
-					XInput::mousePos.x = ((event.xmotion.x / (float) width) - 0.5f) * 20;
+					XInput::mousePos.x = ((event.xmotion.x / (float) width) - 0.5f)  *20;
 
 				}
 
 				if (height > width) {
 
 					float dY = height - width;
-					XInput::mousePos.y = ((-((event.xmotion.y - (dY / 2)) / (height - dY))) + 0.5f) * 20;
+					XInput::mousePos.y = ((-((event.xmotion.y - (dY / 2)) / (height - dY))) + 0.5f)  *20;
 
 				} else {
 
-					XInput::mousePos.y = (-((event.xmotion.y / (float) height) - 0.5f)) * 20;
+					XInput::mousePos.y = (-((event.xmotion.y / (float) height) - 0.5f))  *20;
 
 				}
 
@@ -255,7 +275,7 @@ void XClient::messagePump() {
 
 		}
 
-	}
+	}*/
 
 }
 
@@ -266,7 +286,7 @@ void XClient::setFullscreen(bool mode) {
 	memset(&event, 0, sizeof(XClientMessageEvent));
 
 	event.type = ClientMessage;
-	event.window = hWindow;
+	event.window = winID;
 	event.message_type = XA_NET_WM_STATE;
 	event.format = 32;
 	event.data.l[0] = mode;

@@ -11,12 +11,13 @@ namespace Rendering {
 	extern pthread_t thread;
 
 	void cleanup();
+	void draw();
+	void drawText(const char* text, Point position, float maxWidth, float size, bool delayed);
 	void glCleanup();
 	void glInit();
 	bool init();
 	GLuint loadTexture(const char * path);
-	void * renderLoop(void* result);
-	void drawText(const char* text, Point position, float maxWidth, float size, bool delayed);
+	void* threadMain(void* result);
 
 }
 

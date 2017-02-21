@@ -1,3 +1,3 @@
 #!/bin/sh
 
-LD_LIBRARY_PATH=lib bin/game
+LD_LIBRARY_PATH=lib bin/game $@
