@@ -7,19 +7,23 @@ class Button {
 
 	public:
 
-		static GLuint texture;
-
-		void (*callback)();
-		unsigned char state;
-		float values[7];
-
-		Button(Point pos, float width, void (*callback)());
-
 		static void cleanup();
 		static void init();
 
-		void render();
+		Button(Point pos, float width, char *name, void (*callback)());
+
+		void draw();
 		void tick();
+
+	private:
+
+		static GLuint texture;
+
+		void (*callback)();
+		char *name;
+		enum {normal, hover, clicked} state;
+		Point values[2];
+		float width;
 
 };
 

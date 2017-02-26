@@ -6,22 +6,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "Util/Config/config.hpp"
-#include "Util/NodeList/nodelist.hpp"
 
-void crashHandler(int);
+void sigHandler(int signal);
 
 int main(int argc, char* const argv[]) {
 
 	struct sigaction action;
-	memset(&action, 0, sizeof(struct sigaction));
-	action.sa_handler = &crashHandler;
+	memset(&action, NULL, sizeof(struct sigaction));
+	action.sa_handler = &sigHandler;
 
-	sigaction(SIGHUP, &action, NULL);
-	sigaction(SIGINT, &action, NULL);
+	sigaction(SIGINT, &action, NULL); //install signal handlers
 	sigaction(SIGSEGV, &action, NULL);
 	sigaction(SIGTERM, &action, NULL);
-	sigaction(SIGQUIT, &action, NULL);
+	sigaction(SIGHUP, &action, NULL);
+
+	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); //make stdout and stderr line buffered
+	setvbuf(stderr, NULL, _IOLBF, BUFSIZ); //this ensures output is instant
 
 	const char* usage = "Usage: game [Options]\n\nOptions:\n\t-h, --help\t\tDisplay this message.\n\t-s, --server <port>\tStart the server on the specified port.";
 	bool isServer = false;
@@ -113,42 +113,39 @@ int main(int argc, char* const argv[]) {
 
 }
 
-void crashHandler(int signal) {
+void sigHandler(int signal) {
+
+	fputs("\nRecieved ", stdout);
 
 	switch (signal) {
 
-		case SIGHUP:
-
-			puts("\nRecieved SIGHUP");
-
-		break;
-
 		case SIGINT:
 
-			puts("\nRecieved SIGINT");
+			fputs("SIGINT", stdout);
 
 		break;
 
 		case SIGSEGV:
 
-			puts("Recieved SIGSEV");
+			fputs("SIGSEGV", stdout);
 
 		break;
 
 		case SIGTERM:
 
-			puts("Recieved SIGTERM");
+			fputs("SIGINT", stdout);
 
 		break;
 
-		case SIGQUIT:
+		case SIGHUP:
 
-			puts("Recieved SIGQUIT");
+			fputs("SIGHUP", stdout);
 
 		break;
 
 	}
 
+	puts(" - exiting...");
 	exit(signal);
 
 }

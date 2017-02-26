@@ -4,11 +4,22 @@
 
 namespace XInput {
 
-	extern void (* keyCallbacks[256])();
-	extern bool mousePress;
+	struct Key {
+
+		char key;
+		bool state;
+		void (*callback)();
+
+	};
+
+	enum {F11, LMOUSE};
+
+	extern Key* keys[];
 	extern Point mousePos;
 
+	void cleanup();
 	void init();
+	void onF11();
 
 }
 

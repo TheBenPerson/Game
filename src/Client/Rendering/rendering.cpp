@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
@@ -16,9 +17,11 @@
 #include "Menu/Button/button.hpp"
 #include "Menu/menu.hpp"
 #include "rendering.hpp"
+#include "Util/Config/config.hpp"
 #include "Util/Interval/interval.hpp"
 #include "Util/Point/point.hpp"
 #include "XClient/xclient.hpp"
+#include "XInput/xinput.hpp"
 
 GLuint Rendering::font;
 bool Rendering::resized = false;
@@ -54,32 +57,60 @@ void Rendering::draw() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
-	char message[100];
-	sprintf(message, "Width: %i\nHeight: %i", XClient::width, XClient::height);
-	drawText(message, {-3.0f, 5.0f}, 10.0f, 1.0f, false);
-
-	drawText("Game\nBuild Version 1.0.0", {((double) XClient::width / (double) XClient::height * -10) + 0.5f, 9.5f}, 10.0f, 1.2f, false);
-	drawText("abcdefghijklmnopqrstuvwxyz", {-8, -8}, 10, 1, false);
-	drawText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", {-8, -6}, 10, 1, false);
-
-	if (Menu::inGame) {
-
-
-
-	} else {
-
-
-
-	}
-
-	if (Menu::active) {
-
-		for (unsigned int i = 0; i < Menu::panels[Menu::mode].len; i++)
-			((Button *) Menu::panels[Menu::mode].get(i))->render();
-
-	}
+	if (Menu::active) Menu::draw();
+	drawText("Game\nBuild Version 1.0.0", {(XClient::aspect * -10) + 0.5f, 9.5f}, 1.2f, false);
 
 	glXSwapBuffers(XClient::display, XClient::winID);
+
+}
+
+void Rendering::drawText(char* text, Point position, float size, bool centered) {
+
+	float charWidth = 0.454545454545f * size;
+	float charHeight = 1.0f * size;
+	float spaceWidth = 0.05f * size;
+
+	size_t len = strlen(text);
+
+	float x = position.x;
+	float y = position.y - charHeight;
+
+	if (centered) {
+
+		x -= (((charWidth + spaceWidth) * len) + spaceWidth) / 2;
+		y += (charHeight / 4.0f);
+
+	}
+
+	glBindTexture(GL_TEXTURE_2D, font);
+	glBegin(GL_QUADS);
+
+		for (unsigned int i = 0; i < len; i++) {
+
+			if (text[i] == '\n') {
+
+				y -= charHeight;
+				x = position.x;
+				continue;
+
+			}
+
+			float offset = 0.009765625f * (text[i] - 32);
+
+			glTexCoord2f(offset, 1.0f);
+			glVertex2f(x, y + charHeight);
+			glTexCoord2f(offset + 0.009765625f, 1.0f);
+			glVertex2f(x + charWidth, y + charHeight);
+			glTexCoord2f(offset + 0.009765625f, 0.0f);
+			glVertex2f(x + charWidth, y);
+			glTexCoord2f(offset, 0.0f);
+			glVertex2f(x, y);
+
+			x += charWidth + spaceWidth;
+
+		}
+
+	glEnd();
 
 }
 
@@ -170,7 +201,7 @@ GLuint Rendering::loadTexture(const char* path) {
 
 	png_byte* image = (png_byte*) malloc(width * height * 4);
 
-	for (int i = height - 1; i > 0; i--)
+	for (int i = height - 1; i >= 0; i--)
 		png_read_row(png, image + (i * width * 4), NULL);
 
 	GLuint texture;
@@ -209,61 +240,10 @@ void* Rendering::threadMain(void* result) {
 	*((unsigned char *) result) = 1;
 
 	if (XClient::vSync) while (Client::running) draw();
-	else doInterval(&draw, 60, false, &Client::running);
+	else doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &Client::running);
 
 	glCleanup();
 
 	return NULL;
-
-}
-
-void Rendering::drawText(const char* text, Point position, float maxWidth, float size, bool delayed) {
-
-	float charWidth = 0.454545454545f * size;
-	float charHeight = 1.0f * size;
-	float spaceWidth = 0.1f * size;
-
-	unsigned int strLen = strlen(text);
-
-	float x = position.x;
-	float y = position.y - charHeight;
-
-	glBindTexture(GL_TEXTURE_2D, font);
-
-	glBegin(GL_QUADS);
-
-		for (unsigned int i = 0; i < strLen; i++) {
-
-			if (text[i] == '\n') {
-
-				y -= charHeight;
-				x = position.x;
-				continue;
-
-			}
-
-			if (x + charWidth > maxWidth) {
-
-				x = position.x;
-				x -= charHeight;
-
-			}
-
-			float offset = 0.009765625f * (text[i] - 32);
-
-			glTexCoord2f(offset, 1.0f);
-			glVertex2f(x, y + charHeight);
-			glTexCoord2f(offset + 0.009765625f, 1.0f);
-			glVertex2f(x + charWidth, y + charHeight);
-			glTexCoord2f(offset + 0.009765625f, 0.3125f);
-			glVertex2f(x + charWidth, y);
-			glTexCoord2f(offset, 0.3125f);
-			glVertex2f(x, y);
-
-			x += charWidth + spaceWidth;
-
-		}
-
-	glEnd();
 
 }

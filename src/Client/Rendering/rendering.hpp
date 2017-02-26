@@ -12,7 +12,7 @@ namespace Rendering {
 
 	void cleanup();
 	void draw();
-	void drawText(const char* text, Point position, float maxWidth, float size, bool delayed);
+	void drawText(char* text, Point position, float size, bool centered);
 	void glCleanup();
 	void glInit();
 	bool init();

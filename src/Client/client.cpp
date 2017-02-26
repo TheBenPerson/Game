@@ -1,5 +1,6 @@
 #include <pthread.h>
 #include <stdio.h>
+#include <time.h>
 #include <unistd.h>
 #include <X11/Xlib.h>
 #include "client.hpp"
@@ -20,13 +21,17 @@ void Client::cleanup() {
 	running = false;
 	pthread_join(thread, NULL);
 
+	XInput::cleanup();
 	Rendering::cleanup();
 
 }
 
 bool Client::init() {
 
+	config.add("fullscreen", (void*) true);
 	config.add("vSync", (void*) true);
+	config.add("fps", (void*) 60);
+	config.add("tps", (void*) 120);
 	config.load("etc/client.cfg");
 
 	if (!Rendering::init())
@@ -60,14 +65,14 @@ bool Client::start() {
 
 void* Client::threadMain(void*) {
 
-	doInterval(&tick, 30, false, &running);
+	doInterval(&tick, (time_t) config.get("tps")->val, false, &running);
 	return NULL;
 
 }
 
 void Client::tick() {
 
-	for (unsigned int i = 0; i < Menu::panels[Menu::mode].len; i++)
-		((Button *) Menu::panels[Menu::mode].get(i))->tick();
+	for (size_t i = 0; Menu::panel[i]; i++)
+		Menu::panel[i]->tick();
 
 }

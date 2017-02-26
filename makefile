@@ -1,18 +1,19 @@
 CF := -Isrc
 LF :=
 
+#GDB := -g
 #LEAK_DETECTION := -fsanitize=leak
 
 all: debug clean
 
 .PHONY: debug
-debug: LF += -g $(LEAK_DETECTION)
+debug: LF += $(GDB) $(LEAK_DETECTION)
 debug: game
 
 .PHONY: release
 release: LF += -Ofast
 release: game
-	strip --unneeded bin/game lib/*
+	strip --strip-unneeded bin/game lib/*
 
 game: main client util
 	gcc bin/main.o $(LF) -Llib -ldl -lstdc++ -lutil -o bin/$@
