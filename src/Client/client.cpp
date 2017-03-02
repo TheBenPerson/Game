@@ -55,7 +55,7 @@ bool Client::start() {
 	if (!init())
 		return false;
 
-	XClient::messagePump();
+	doInterval(&XClient::tick, (time_t) 120, false, &running);
 
 	cleanup();
 
@@ -72,7 +72,7 @@ void* Client::threadMain(void*) {
 
 void Client::tick() {
 
-	for (size_t i = 0; Menu::panel[i]; i++)
-		Menu::panel[i]->tick();
+	for (size_t i = 0; i < Menu::menuLen; i++)
+		Menu::panel[i].tick();
 
 }

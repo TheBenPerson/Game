@@ -3,54 +3,75 @@
 #include <stdio.h>
 #include <stddef.h>
 #include "Button/button.hpp"
+#include "client.hpp"
 #include "menu.hpp"
 #include "Rendering/rendering.hpp"
 #include "Util/NodeList/nodelist.hpp"
 #include "XClient/xclient.hpp"
 
+#define MAIN_LEN 4
+#define SETTINGS_LEN 2
+
 bool Menu::active = true;
-GLuint Menu::background;
 bool Menu::inGame = false;
 
-void settingss() {
+GLuint Menu::background;
+size_t Menu::menuLen = 4;
+Button* Menu::panel = mainMenu;
 
-	Menu::panel = Menu::settings;
+Button Menu::mainMenu[] = {
 
-}
-
-void back() {
-
-	Menu::panel = Menu::mainMenu;
-
-}
-
-void quit() {
-
-
-}
-
-Button* Menu::mainMenu[] = {
-
-	new Button({0.0f, 2.5f}, 10.0f, "Start", NULL),
-	new Button({0.0f, 0.0f}, 10.0f, "Settings", settingss),
-	new Button({0.0f, -2.5f}, 10.0f, "Quit", NULL), NULL
+	Button({0.0f, 4.5f}, 10.0f, "Single Player", NULL),
+	Button({0.0f, 1.5f}, 10.0f, "Multiplayer", NULL),
+	Button({0.0f, -1.5f}, 10.0f, "Settings", settingsProc),
+	Button({0.0f, -4.5f}, 10.0f, "Quit", quitProc)
 
 };
-Button* Menu::settings[] = {
 
-	new Button({0.0f, -3.0f}, 10.0f, "Back", back),
-	new Button({0.0f, -3.0f}, 10.0f, "Back", back),
-	new Button({0.0f, -3.0f}, 10.0f, "Back", back), NULL
+void Menu::settingsProc() {
+
+	panel = settings;
+	menuLen = SETTINGS_LEN;
+
+}
+
+void Menu::quitProc() {
+
+	Client::running = false;
+
+}
+
+Button Menu::settings[] = {
+
+	Button({0.0f, 0.0f}, 10.0f, "Fullscreen: false", fullscreenProc),
+	Button({0.0f, -3.0f}, 10.0f, "Back", backProc)
 
 };
-Button** Menu::panel = mainMenu;
+
+void Menu::backProc() {
+
+	panel = mainMenu;
+	menuLen = MAIN_LEN;
+
+}
+
+void Menu::fullscreenProc() {
+
+	XClient::setFullscreen(!XClient::fullscreen);
+	settings[0].name = XClient::fullscreen ? (char*) "Fullscreen: true" : (char*) "Fullscreen: false";
+
+}
+
+void Menu::init() {
+
+	Button::init();
+	background = Rendering::loadTexture("res/background.png");
+
+}
 
 void Menu::cleanup() {
 
 	glDeleteTextures(1, &background);
-
-	for (size_t i = 0; mainMenu[i]; i++)
-		delete mainMenu[i];
 
 	Button::cleanup();
 
@@ -65,7 +86,8 @@ void Menu::draw() {
 	glPushMatrix();
 
 	glTranslatef(sinf(i), cosf(i), 0.0f);
-	glRotatef(i * 10, 0.0f, 0.0f, 1.0f);
+	glRotatef(sinf(i) * 10, 0.0f, 0.0f, 1.0f);
+	glScalef(2.0f, 2.0f, 1.0f);
 
 	glBindTexture(GL_TEXTURE_2D, background);
 	glBegin(GL_QUADS);
@@ -84,14 +106,7 @@ void Menu::draw() {
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
-	for (size_t i = 0; panel[i]; i++)
-		panel[i]->draw();
-
-}
-
-void Menu::init() {
-
-	Button::init();
-	background = Rendering::loadTexture("res/background.png");
+	for (size_t i = 0; i < menuLen; i++)
+		panel[i].draw();
 
 }

@@ -12,6 +12,8 @@ class Button {
 
 		Button(Point pos, float width, char *name, void (*callback)());
 
+		char *name;
+
 		void draw();
 		void tick();
 
@@ -20,7 +22,6 @@ class Button {
 		static GLuint texture;
 
 		void (*callback)();
-		char *name;
 		enum {normal, hover, clicked} state;
 		Point values[2];
 		float width;

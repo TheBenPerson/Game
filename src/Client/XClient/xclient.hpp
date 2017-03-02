@@ -25,8 +25,8 @@ namespace XClient {
 	void cleanup();
 	bool createWindow();
 	bool finalizeContext();
-	void messagePump();
 	void setFullscreen(bool mode);
+	void tick();
 
 }
 

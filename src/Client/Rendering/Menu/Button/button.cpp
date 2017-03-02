@@ -74,7 +74,7 @@ void Button::draw() {
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 
-	Rendering::drawText(name, {values[0].x + ((values[1].x - values[0].x) / 2), values[1].y + ((values[0].y - values[1].y) / 2)}, 1.5f, true);
+	Rendering::drawText(name, {values[0].x + ((values[1].x - values[0].x) / 2), values[1].y + ((values[0].y - values[1].y) / 2)}, 1.0f, true);
 
 }
 

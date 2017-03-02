@@ -206,18 +206,42 @@ bool XClient::finalizeContext() {
 
 }
 
-void XClient::messagePump() {
+void XClient::setFullscreen(bool mode) {
 
-	xcb_generic_event_t *event;
+	xcb_client_message_event_t event;
 
-	for (;;) {
+	memset(&event, NULL, sizeof(xcb_configure_notify_event_t));
 
-		event = xcb_wait_for_event(connection);
+	event.response_type = XCB_CLIENT_MESSAGE;
+	event.format = 32;
+	event.window = winID;
+	event.type = NET_WM_STATE;
+	event.data.data32[0] = mode;
+	event.data.data32[1] = NET_WM_STATE_FULLSCREEN;
+	event.data.data32[2] = 0;
+	event.data.data32[3] = 1;
+	event.data.data32[4] = 0;
+
+	xcb_send_event(connection, false, rootWin, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char*) &event);
+
+	fullscreen = mode;
+
+}
+
+void XClient::tick() {
+
+	xcb_generic_event_t *event = xcb_poll_for_event(connection);
+
+	if (event) {
 
 		uint8_t type = event->response_type & ~0x80;
-		if ((type == XCB_CLIENT_MESSAGE) && (((xcb_client_message_event_t*) event)->data.data32[0] == WM_DELETE_WINDOW)) break;
-
 		switch (type) {
+
+			case XCB_CLIENT_MESSAGE:
+
+				if (((xcb_client_message_event_t*) event)->data.data32[0] == WM_DELETE_WINDOW) Client::running = false;
+
+			break;
 
 			case XCB_CONFIGURE_NOTIFY:
 
@@ -369,27 +393,5 @@ void XClient::messagePump() {
 		}
 
 	}*/
-
-}
-
-void XClient::setFullscreen(bool mode) {
-
-	xcb_client_message_event_t event;
-
-	memset(&event, NULL, sizeof(xcb_configure_notify_event_t));
-
-	event.response_type = XCB_CLIENT_MESSAGE;
-	event.format = 32;
-	event.window = winID;
-	event.type = NET_WM_STATE;
-	event.data.data32[0] = mode;
-	event.data.data32[1] = NET_WM_STATE_FULLSCREEN;
-	event.data.data32[2] = 0;
-	event.data.data32[3] = 1;
-	event.data.data32[4] = 0;
-
-	xcb_send_event(connection, false, rootWin, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char*) &event);
-
-	fullscreen = mode;
 
 }
