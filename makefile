@@ -1,4 +1,7 @@
-#Copyright (C) 2016-2017 Ben Stockett
+#Game Development Build
+#https://github.com/TheBenPerson/Game
+
+#Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
 #Permission is hereby granted, free of charge, to any person obtaining a copy
 #of this software and associated documentation files (the "Software"), to deal
@@ -18,16 +21,20 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
+WALL := -Wall
+
+GDB := -g
+LEAK_DETECTION := -fsanitize=leak
+
 CF := -Isrc
 LF :=
 
-#GDB := -g
-#LEAK_DETECTION := -fsanitize=leak
-
-all: debug clean
+all:
+	make -j debug clean
 
 .PHONY: debug
-debug: LF += $(GDB) $(LEAK_DETECTION)
+debug: CF += $(WALL)
+debug: LF +=
 debug: game
 
 .PHONY: release

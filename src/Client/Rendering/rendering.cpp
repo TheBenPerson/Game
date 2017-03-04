@@ -1,6 +1,9 @@
 /*
 
-Copyright (C) 2016-2017 Ben Stockett
+Game Development Build
+https://github.com/TheBenPerson/Game
+
+Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -81,7 +84,7 @@ void Rendering::draw() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glLoadIdentity();
 
-	if (Menu::active) Menu::draw();
+	Menu::draw();
 	drawText("Game\nBuild Version 1.0.0", {(XClient::aspect * -10) + 0.5f, 9.5f}, 1.2f, false);
 
 	glXSwapBuffers(XClient::display, XClient::winID);
@@ -259,6 +262,7 @@ void* Rendering::threadMain(void* result) {
 	}
 
 	glInit();
+
 	xcb_map_window(XClient::connection, XClient::winID);
 
 	*((unsigned char *) result) = 1;

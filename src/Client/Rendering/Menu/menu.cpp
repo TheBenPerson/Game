@@ -1,6 +1,9 @@
 /*
 
-Copyright (C) 2016-2017 Ben Stockett
+Game Development Build
+https://github.com/TheBenPerson/Game
+
+Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,24 +36,38 @@ SOFTWARE.
 #include "Util/NodeList/nodelist.hpp"
 #include "XClient/xclient.hpp"
 
-#define MAIN_LEN 4
+#define ABOUT_LEN 1
+#define MAIN_LEN 5
 #define SETTINGS_LEN 2
 
-bool Menu::active = true;
-bool Menu::inGame = false;
-
 GLuint Menu::background;
-size_t Menu::menuLen = 4;
+size_t Menu::menuLen = MAIN_LEN;
 Button* Menu::panel = mainMenu;
+bool Menu::aboutt = false;
+
+Button Menu::about[] = {
+
+	Button({0.0f, -3.0f}, 10.0f, "Back", backProc)
+
+};
 
 Button Menu::mainMenu[] = {
 
-	Button({0.0f, 4.5f}, 10.0f, "Single Player", NULL),
-	Button({0.0f, 1.5f}, 10.0f, "Multiplayer", NULL),
-	Button({0.0f, -1.5f}, 10.0f, "Settings", settingsProc),
-	Button({0.0f, -4.5f}, 10.0f, "Quit", quitProc)
+	Button({0.0f, 6.0f}, 10.0f, "Single Player", NULL),
+	Button({0.0f, 3.0f}, 10.0f, "Multiplayer", NULL),
+	Button({0.0f, 0.0f}, 10.0f, "Settings", settingsProc),
+	Button({0.0f, -3.0f}, 10.0f, "About", aboutProc),
+	Button({0.0f, -6.0f}, 10.0f, "Quit", quitProc)
 
 };
+
+void Menu::aboutProc() {
+
+	panel = about;
+	menuLen = ABOUT_LEN;
+	aboutt = true;
+
+}
 
 void Menu::settingsProc() {
 
@@ -76,6 +93,7 @@ void Menu::backProc() {
 
 	panel = mainMenu;
 	menuLen = MAIN_LEN;
+	aboutt = false;
 
 }
 
@@ -132,5 +150,7 @@ void Menu::draw() {
 
 	for (size_t i = 0; i < menuLen; i++)
 		panel[i].draw();
+
+	if (aboutt) Rendering::drawText("ABCDEFGHIJKLMNOPQRSTUVWXYZ", {0.0f, 3.0f}, 1.5f, true);
 
 }

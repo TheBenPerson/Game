@@ -1,6 +1,9 @@
 /*
 
-Copyright (C) 2016-2017 Ben Stockett
+Game Development Build
+https://github.com/TheBenPerson/Game
+
+Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,14 +34,15 @@ SOFTWARE.
 
 namespace Menu {
 
-	extern bool active;
-	extern bool inGame;
-
 	extern GLuint background;
 	extern size_t menuLen;
 	extern Button* panel;
+	extern bool aboutt;
+
+	extern Button about[];
 
 	extern Button mainMenu[];
+	void aboutProc();
 	void settingsProc();
 	void quitProc();
 
