@@ -21,42 +21,37 @@
 #OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #SOFTWARE.
 
-WALL := -Wall
+#flags
+CF := -Isrc/client -Isrc/server -Isrc/common -Wall -Wno-conversion-null -Wno-write-strings
+LF := -fsanitize=leak
 
-GDB := -g
-LEAK_DETECTION := -fsanitize=leak
+#build directories
+BIN := bin
+OBJ := $(BIN)/obj
 
-CF := -Isrc
-LF :=
-
-all:
-	make -j debug clean
-
-.PHONY: debug
-debug: CF += $(WALL)
-debug: LF +=
-debug: game
+#default target
+all: $(BIN)/game
 
 .PHONY: release
-release: LF += -Ofast
-release: game
-	strip --strip-unneeded bin/game lib/*
+release: LF := -Ofast
+release: $(BIN)/game
+	strip --strip-unneeded $(addprefix $(BIN)/, libclient.so libcommon.so)
 
-game: main client util
-	gcc bin/main.o $(LF) -Llib -ldl -lstdc++ -lutil -o bin/$@
+$(BIN)/game: $(OBJ)/main.o $(addprefix $(BIN)/, libclient.so libcommon.so)
+	gcc $(OBJ)/main.o $(BIN)/libcommon.so -ldl $(LF) -o $@
 
-main: src/Main/main.cpp
-	gcc $(CF) -c $^ $(LF) -o bin/$@.o
+$(OBJ)/main.o: src/main/main.cpp
+	gcc $(CF) -c $^ $(LF) -o $@
 
-client: $(shell find src/Client -name "*.cpp")
-	gcc $(CF) -Isrc/Client -shared -fpic -lGL -lpng -lX11 -lX11-xcb -lxcb $^ $(LF) -o lib/lib$@.so
+$(BIN)/libclient.so: $(shell find src/client -name "*.cpp")
+	gcc $(CF) -Isrc/client -shared -fpic -lGL -lpng -lX11 -lX11-xcb -lxcb $^ $(LF) -o $@
 
-server: $(shell find src/Server -name "*.cpp")
-	gcc $(CF) -Isrc/Server -shared -fpic $^ -o $(LF) lib/lib$@.so
+$(BIN)/libserver.so: $(shell find src/server -name "*.cpp")
+	gcc $(CF) -Isrc/server -shared -fpic $^ -o $(LF) $@
 
-util: $(shell find src/Util -name "*.cpp")
-	gcc $(CF) -Isrc/Util -shared -fpic $^ $(LF) -o lib/lib$@.so
+$(BIN)/libcommon.so: $(shell find src/common -name "*.cpp")
+	gcc $(CF) -Isrc/util -shared -fpic $^ $(LF) -o $@
 
 .PHONY: clean
 clean:
-	rm bin/*.o
+	-rm $(OBJ)/* $(BIN)/* 2> /dev/null

@@ -1,9 +1,10 @@
 Loaded libclient.so
 Starting Client...
 
-Loaded config file: 'etc/client.cfg'
+Loaded config file: 'cfg/client.cfg'
 Detected resolution of: 1366x768
-Warning: extention glXSwapIntervalEXT not available - trying MESA version instead
+Loaded config file: 'cfg/keymap.cfg'
 Loaded texture res/font.png (512x16)
 Loaded texture res/button.png (16x256)
-Loaded texture res/background.png (700x700)
+Loaded texture res/menu.png (700x700)
+Loaded texture res/loading.png (104x118)
