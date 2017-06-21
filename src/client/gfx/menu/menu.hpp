@@ -31,34 +31,49 @@ SOFTWARE.
 #include <stddef.h>
 
 #include "button/button.hpp"
+#include "timing/timing.hpp"
 
 namespace Menu {
 
 	extern GLuint bg;
-	extern GLuint loading;
-	extern size_t len;
-	extern Button *panel;
-	extern bool aboutt; //delete me plz
+	extern Button** panel;
+	extern Timing::mutex m;
 
 	void init();
 	void cleanup();
 	void tick();
 	void draw();
-	void actnBack();
+	void setPanel(Button* panel[]);
+	bool actnBack();
 
 	//about
-	extern Button about[];
+	extern Button* about[];
 
 	//main menu
-	extern Button main[];
-	void actnStart();
-	void actnAbout();
-	void actnSettings();
-	void actnQuit();
+	extern Button* main[];
+	bool actnStart();
+	bool actnAbout();
+	bool actnSettings();
+	bool actnQuit();
 
 	//settings
-	extern Button settings[];
-	void actnFullscreen();
+	extern Button* settings[];
+	bool actnVideo();
+	bool actnInput();
+
+	extern Button* video[];
+	bool actnFullscreen();
+
+	extern Button* input[];
+	bool actnSetReturn();
+
+	//loading
+	extern GLuint loading;
+	extern Button* bCancel[];
+
+	bool cancel();
+	void tickLoading();
+	void drawLoading();
 
 }
 

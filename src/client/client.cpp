@@ -49,6 +49,7 @@ namespace Client {
 		config.add("fullscreen", (void*) true);
 		config.add("vSync", (void*) true);
 		config.add("fps", (void*) 60);
+		config.add("res", (void*) "default");
 		config.add("tps", (void*) 120);
 		config.load("cfg/client.cfg");
 

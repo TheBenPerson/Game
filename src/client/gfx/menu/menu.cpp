@@ -35,25 +35,21 @@ SOFTWARE.
 #include "data/data.hpp"
 #include "gfx/gfx.hpp"
 #include "menu.hpp"
+#include "timing/timing.hpp"
 #include "win/win.hpp"
-
-#define ABOUT_LEN 1
-#define MAIN_LEN 5
-#define SETTINGS_LEN 3
 
 namespace Menu {
 
 	GLuint bg;
-	GLuint loading;
-	size_t len = MAIN_LEN;
-	Button *panel = main;
-	bool aboutt;
+	Button** panel = main;
+	Timing::mutex m = MTX_DEFAULT;
 
 	void init() {
 
 		Button::init();
-		bg = GFX::loadTexture("res/menu.png");
-		loading = GFX::loadTexture("res/loading.png");
+
+		bg = GFX::loadTexture("menu.png");
+		loading = GFX::loadTexture("loading.png");
 
 	}
 
@@ -69,8 +65,8 @@ namespace Menu {
 
 		if (Client::state == Client::IN_GAME) return;
 
-		for (size_t i = 0; i < len; i++)
-			panel[i].tick();
+		for (size_t i = 1; panel[i]; i++)
+			if (panel[i]->tick()) i = 1; //tick all if something changed
 
 	}
 
@@ -79,125 +75,114 @@ namespace Menu {
 		static float i = 0.0f;
 		i += 0.005f;
 
-		if (Client::state == Client::LOADING) {
+		if (Client::state == Client::LOADING) drawLoading();
+		else {
 
-			glBindTexture(GL_TEXTURE_2D, loading);
+			glMatrixMode(GL_TEXTURE);
+			glPushMatrix();
+
+			glTranslatef(sinf(i), cosf(i), 0.0f);
+			glRotatef(sinf(i) * 10, 0.0f, 0.0f, 1.0f);
+			glScalef(2.0f, 2.0f, 1.0f);
+
+			glBindTexture(GL_TEXTURE_2D, bg);
 			glBegin(GL_QUADS);
 
-				glTexCoord2f(0.0f, 5.0f);
+				glTexCoord2f(0.0f, 1.0f);
 				glVertex2f(WIN::aspect * -10, 10.0f);
-				glTexCoord2f(WIN::aspect * 5, 5.0f);
+				glTexCoord2f(WIN::aspect, 1.0f);
 				glVertex2f(WIN::aspect * 10, 10.0f);
-				glTexCoord2f(WIN::aspect * 5, 0.0f);
+				glTexCoord2f(WIN::aspect, 0.0f);
 				glVertex2f(WIN::aspect * 10, -10.0f);
 				glTexCoord2f(0.0f, 0.0f);
 				glVertex2f(WIN::aspect * -10, -10.0f);
 
 			glEnd();
-			return;
 
-		} else if (Client::state != Client::PAUSED) return;
+			glPopMatrix();
+			glMatrixMode(GL_MODELVIEW);
 
-		glMatrixMode(GL_TEXTURE);
-		glPushMatrix();
+			if (panel == about) GFX::drawText(Data::aboutString, { 0.0f, 3.5f }, 0.7f, true);
 
-		glTranslatef(sinf(i), cosf(i), 0.0f);
-		glRotatef(sinf(i) * 10, 0.0f, 0.0f, 1.0f);
-		glScalef(2.0f, 2.0f, 1.0f);
+			Point p = {(WIN::aspect * -10) + 0.5f, 9.5f};
+			GFX::drawText(Data::versionString, p);
 
-		glBindTexture(GL_TEXTURE_2D, bg);
-		glBegin(GL_QUADS);
+		}
 
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2f(WIN::aspect * -10, 10.0f);
-			glTexCoord2f(WIN::aspect, 1.0f);
-			glVertex2f(WIN::aspect * 10, 10.0f);
-			glTexCoord2f(WIN::aspect, 0.0f);
-			glVertex2f(WIN::aspect * 10, -10.0f);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2f(WIN::aspect * -10, -10.0f);
+		Timing::lock(&m);
 
-		glEnd();
+		for (size_t i = 1; panel[i]; i++)
+			panel[i]->draw();
 
-		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
+		Timing::unlock(&m);
 
-		for (size_t i = 0; i < len; i++)
-			panel[i].draw();
-
-		if (aboutt) GFX::drawText(Data::aboutString, { 0.0f, 3.5f }, 0.7f, true);
-
-		Point p = {(WIN::aspect * -10) + 0.5f, 9.5f};
-		GFX::drawText(Data::versionString, p, 1.0f, false);
 
 	}
 
-	void actnBack() {
+	void setPanel(Button* panel[]) {
 
-		panel = main;
-		len = MAIN_LEN;
-		aboutt = false;
+		Timing::lock(&m);
+		Menu::panel = panel;
+		Timing::unlock(&m);
+
+	}
+
+	bool actnBack() {
+
+		if (panel[0]) setPanel((Button**) panel[0]);
+		return true;
 
 	}
 
 	//about
-	Button about[] = {
+	Button* about[] = {
 
-		Button({0.0f, -3.0f}, 10.0f, "Back", actnBack)
+		(Button*) main,
+		new Button({0.0f, -3.0f}, 10.0f, "Back", actnBack),
+		NULL
 
 	};
 
 	//main menu
-	Button main[] = {
+	Button* main[] = {
 
-		Button({0.0f, 6.0f}, 10.0f, "Single Player", &actnStart),
-		Button({0.0f, 3.0f}, 10.0f, "Multiplayer", &actnStart),
-		Button({0.0f, 0.0f}, 10.0f, "Settings", &actnSettings),
-		Button({0.0f, -3.0f}, 10.0f, "About", &actnAbout),
-		Button({0.0f, -6.0f}, 10.0f, "Quit", &actnQuit)
+		NULL,
+		new Button({0.0f, 6.0f}, 10.0f, "Single Player", &actnStart),
+		new Button({0.0f, 3.0f}, 10.0f, "Multiplayer", &actnStart),
+		new Button({0.0f, 0.0f}, 10.0f, "Settings", &actnSettings),
+		new Button({0.0f, -3.0f}, 10.0f, "About", &actnAbout),
+		new Button({0.0f, -6.0f}, 10.0f, "Quit", &actnQuit),
+		NULL
 
 	};
 
-	void actnStart() {
+	bool actnStart() {
 
 		Client::setState(Client::LOADING);
+		setPanel(bCancel);
+
+		return true;
 
 	}
 
-	void actnSettings() {
+	bool actnSettings() {
 
-		panel = settings;
-		len = SETTINGS_LEN;
-
-	}
-
-	void actnAbout() {
-
-		panel = about;
-		len = ABOUT_LEN;
-		aboutt = true;
+		setPanel(settings);
+		return true;
 
 	}
 
-	void actnQuit() {
+	bool actnAbout() {
+
+		setPanel(about);
+		return true;
+
+	}
+
+	bool actnQuit() {
 
 		Client::running = false;
-
-	}
-
-	//settings
-	Button settings[] = {
-
-		Button({0.0f, 3.0f}, 10.0f, "Video", actnBack),
-		Button({0.0f, 0.0f}, 10.0f, "Input", actnFullscreen),
-		Button({0.0f, -3.0f}, 10.0f, "Back", actnBack)
-
-	};
-
-	void actnFullscreen() {
-
-		WIN::setFullscreen(!WIN::fullscreen);
-		settings[0].name = WIN::fullscreen ? (char*) "Fullscreen: true" : (char*) "Fullscreen: false";
+		return true;
 
 	}
 

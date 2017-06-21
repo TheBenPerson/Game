@@ -30,9 +30,11 @@ SOFTWARE.
 #include <time.h>
 #include <unistd.h>
 
+#include "timing.hpp"
+
 namespace Timing {
 
-	pthread_t createThread(void* (*entry)(void*), void* arg) {
+	thread createThread(void* (*entry)(void*), void* arg) {
 
 		pthread_t thread;
 
@@ -47,9 +49,9 @@ namespace Timing {
 
 	}
 
-	void waitForThread(pthread_t thread) {
+	void waitForThread(thread t) {
 
-		pthread_join(thread, NULL);
+		pthread_join(t, NULL);
 
 	}
 
@@ -72,11 +74,25 @@ namespace Timing {
 			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
 
 			double dTime = (t.tv_nsec / 1000.0d) - startTime;
-			if (smooth) avgTime = ((avgTime * i) + dTime) / ++i;
+
+			if (!(++i)) i = 1;
+			if (smooth) avgTime = ((avgTime * i) + dTime) / i;
 
 			usleep((useconds_t) (frequency - (smooth ? avgTime : dTime)));
 
 		}
+
+	}
+
+	void lock(mutex *m) {
+
+		pthread_mutex_lock(m);
+
+	}
+
+	void unlock(mutex *m) {
+
+		pthread_mutex_unlock(m);
 
 	}
 

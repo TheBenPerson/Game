@@ -31,24 +31,25 @@ SOFTWARE.
 #include <pthread.h>
 
 #include "point/point.hpp"
+#include "timing/timing.hpp"
 
 namespace GFX {
 
 	extern bool resized;
-	extern pthread_t thread;
+	extern Timing::thread t;
 
 	bool init();
 	void cleanup();
 	void draw();
-	void* threadMain(void* result);
+	void* threadMain(void *result);
 
 	//font section
 	extern GLuint font;
-	void drawText(char *text, Point pos, float size, bool centered);
+	void drawText(char *text, Point pos, float size = 1.0f, bool centered = false);
 
 	//GL section
 	void glInit();
-	GLuint loadTexture(const char * path);
+	GLuint loadTexture(const char *path);
 
 }
 

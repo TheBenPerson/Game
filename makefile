@@ -22,8 +22,8 @@
 #SOFTWARE.
 
 #flags
-CF := -Isrc/client -Isrc/server -Isrc/common -Wall -Wno-conversion-null -Wno-write-strings
-LF := -fsanitize=leak
+CF := -Isrc/client -Isrc/server -Isrc/common -Wall -Wextra -Wno-conversion-null -Wno-write-strings
+LF := -fsanitize=leak -g
 
 #build directories
 BIN := bin
@@ -38,7 +38,7 @@ release: $(BIN)/game
 	strip --strip-unneeded $(addprefix $(BIN)/, libclient.so libcommon.so)
 
 $(BIN)/game: $(OBJ)/main.o $(addprefix $(BIN)/, libclient.so libcommon.so)
-	gcc $(OBJ)/main.o $(BIN)/libcommon.so -ldl $(LF) -o $@
+	gcc $(OBJ)/main.o $(BIN)/libcommon.so -ldl -lstdc++ -pthread $(LF) -o $@
 
 $(OBJ)/main.o: src/main/main.cpp
 	gcc $(CF) -c $^ $(LF) -o $@

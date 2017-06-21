@@ -35,7 +35,7 @@ SOFTWARE.
 
 void Button::init() {
 
-	tex = GFX::loadTexture("res/button.png");
+	tex = GFX::loadTexture("button.png");
 
 }
 
@@ -47,7 +47,7 @@ void Button::cleanup() {
 
 char Button::*name;
 
-Button::Button(Point pos, float width, char *name, void (*callback)()) : name(name), callback(callback) {
+Button::Button(Point pos, float width, char *name, bool (*callback)()) : name(name), callback(callback) {
 
 	float dX = width / 2.0f;
 
@@ -61,19 +61,27 @@ Button::Button(Point pos, float width, char *name, void (*callback)()) : name(na
 
 }
 
-void Button::tick() {
+bool Button::tick() {
 
-	if (((WIN::mouse.x > values[0].x) && (WIN::mouse.y > values[0].y)) && ((WIN::mouse.x < values[1].x) && (WIN::mouse.y < values[1].y))) {
+	bool val = false;
+
+	bool xBounds = (WIN::mouse.x > values[0].x) && (WIN::mouse.y > values[0].y);
+	bool yBounds = (WIN::mouse.x < values[1].x) && (WIN::mouse.y < values[1].y);
+
+	if (xBounds && yBounds) {
 
 		if (WIN::keys[WIN::A_ACTION].state) state = CLICKED;
 		else {
 
-			if (state == CLICKED) callback();
+			if (state == CLICKED) val = callback();
+
 			state = HOVER;
 
 		}
 
 	} else  state = NORMAL;
+
+	return val;
 
 }
 
@@ -124,7 +132,8 @@ void Button::draw() {
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
 
-	GFX::drawText(name, {values[0].x + ((values[1].x - values[0].x) / 2), values[1].y + ((values[0].y - values[1].y) / 2)}, 1.0f, true);
+	Point p = { values[0].x + ((values[1].x - values[0].x) / 2), values[1].y + ((values[0].y - values[1].y) / 2) };
+	GFX::drawText(name, p, 1.0f, true);
 
 }
 

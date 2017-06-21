@@ -39,9 +39,9 @@ class Button {
 
 		char *name;
 
-		Button(Point pos, float width, char *name, void (*callback)());
+		Button(Point pos, float width, char *name, bool (*callback)());
 
-		void tick();
+		bool tick();
 		void draw();
 
 	private:
@@ -51,7 +51,7 @@ class Button {
 		Point values[2];
 		float width;
 		enum { NORMAL, HOVER, CLICKED } state;
-		void (*callback)();
+		bool (*callback)();
 
 };
 

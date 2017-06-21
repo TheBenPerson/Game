@@ -31,7 +31,6 @@ SOFTWARE.
 #include <GL/glxext.h>
 #include <math.h>
 #include <png.h>
-#include <pthread.h>
 #include <setjmp.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -54,18 +53,18 @@ SOFTWARE.
 namespace GFX {
 
 	bool resized = false;
-	pthread_t thread;
+	Timing::thread t;
 
 	bool init() {
 
-		volatile int8_t result = -1; //volatile because threads
-		thread = Timing::createThread(threadMain, (void*) &result);
+		volatile int8_t result = -1; //volatile because ts
+		t = Timing::createThread(threadMain, (void*) &result);
 
 		while (result == -1) {}
 
 		if (!result) {
 
-			Timing::waitForThread(thread);
+			Timing::waitForThread(t);
 			return false;
 
 		}
@@ -76,7 +75,7 @@ namespace GFX {
 
 	void cleanup() {
 
-		Timing::waitForThread(thread);
+		Timing::waitForThread(t);
 
 	}
 
@@ -113,18 +112,18 @@ namespace GFX {
 
 		if (!WIN::initContext()) {
 
-			*((int8_t *) result) = 0; //tell main thread init failed
+			*((int8_t *) result) = 0; //tell main t init failed
 			return NULL;
 
 		}
 
-		font = loadTexture("res/font.png");
+		font = loadTexture("font.png");
 		Menu::init();
 
 		glInit(); //initialize OpenGL
 
 		xcb_map_window(WIN::connection, WIN::winID); //display window
-		*((int8_t *) result) = 1; //tell main thread init succeeded
+		*((int8_t *) result) = 1; //tell main t init succeeded
 
 		if (WIN::vSync) while (Client::running) draw();
 		else Timing::doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &Client::running);
@@ -240,13 +239,33 @@ namespace GFX {
 
 	}
 
-	GLuint loadTexture(const char* path) {
+	GLuint loadTexture(const char *name) {
 
-		FILE *file = fopen(path, "r");
+		char *res = (char*) Client::config.get("res")->val;
+		size_t len = strlen(name);
+
+		char *buff = new char[4 + strlen(res) + 1 + len];
+		sprintf(buff, "res/%s/%s", res, name);
+
+		FILE *file = fopen(buff, "r");
+		delete[] buff;
+
 		if (!file) {
 
-			fprintf(stderr, "Error loading texture %s: %s\n", path, strerror(errno));
-			return 0;
+			buff = new char[12 + len];
+			sprintf(buff, "res/default/%s", name);
+
+			file = fopen(buff, "r");
+			if (!file) {
+
+				fprintf(stderr, "Error loading texture %s: %s\n", name, strerror(errno));
+
+				delete[] buff;
+				return 0;
+
+			}
+
+			delete[] buff;
 
 		}
 
@@ -255,7 +274,7 @@ namespace GFX {
 
 		if (png_sig_cmp(sig, 0, 8)) {
 
-			fprintf(stderr, "Error loading texture %s: Invalid PNG file.\n", path);
+			fprintf(stderr, "Error loading texture %s: Invalid PNG file.\n", name);
 			fclose(file);
 
 			return 0;
@@ -294,7 +313,7 @@ namespace GFX {
 		png_destroy_read_struct(&png, &info, NULL);
 		fclose(file);
 
-		printf("Loaded texture %s (%ix%i)\n", path, width, height);
+		printf("Loaded texture %s (%ix%i)\n", name, width, height);
 		return texture;
 
 	}

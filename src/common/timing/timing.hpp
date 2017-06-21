@@ -25,18 +25,27 @@ SOFTWARE.
 
 */
 
-#ifndef GAME_COMMON_INTERVAL
+#ifndef GAME_COMMON_TIMING
 
 #include <pthread.h>
 #include <unistd.h>
 
+#define MTX_DEFAULT PTHREAD_MUTEX_INITIALIZER
+
 namespace Timing {
 
-	pthread_t createThread(void* (*callback)(void*), void* arg);
-	void waitForThread(pthread_t thread);
+	typedef pthread_t thread;
+	typedef pthread_mutex_t mutex;
+
+	thread createThread(void* (*callback)(void*), void* arg);
+	void waitForThread(thread t);
+
 	void doInterval(void (*callback)(), time_t hertz, bool smooth, bool *control);
+
+	void lock(mutex *m);
+	void unlock(mutex *m);
 
 }
 
-#define GAME_COMMON_INTERVAL
+#define GAME_COMMON_TIMING
 #endif
