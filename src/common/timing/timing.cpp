@@ -26,30 +26,27 @@ SOFTWARE.
 */
 
 #include <pthread.h>
-#include <stdio.h>
+#include <signal.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "timing.hpp"
 
 namespace Timing {
 
-	thread createThread(void* (*entry)(void*), void* arg) {
+	thread createThread(void* (*entry)(void*), void *arg) {
 
-		pthread_t thread;
+		pthread_t t;
 
-		pthread_attr_t attrib;
-		pthread_attr_init(&attrib);
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
 
-		pthread_create(&thread, &attrib, entry, arg);
+		pthread_create(&t, &attr, entry, arg);
 
-		pthread_attr_destroy(&attrib);
-
-		return thread;
+		return t;
 
 	}
 
-	void waitForThread(thread t) {
+	void waitFor(thread t) {
 
 		pthread_join(t, NULL);
 
@@ -93,6 +90,25 @@ namespace Timing {
 	void unlock(mutex *m) {
 
 		pthread_mutex_unlock(m);
+
+	}
+
+	bool waitFor(condition *cond, time_t secs) {
+
+		timespec time;
+
+		clock_gettime(CLOCK_REALTIME, &time);
+		time.tv_sec += secs;
+
+		return !pthread_cond_timedwait(&cond->cond, &cond->m, &time);
+
+	}
+
+	void signal(condition *cond) {
+
+		pthread_mutex_lock(&cond->m);
+		pthread_cond_signal(&cond->cond);
+		pthread_mutex_unlock(&cond->m);
 
 	}
 

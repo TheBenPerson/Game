@@ -34,30 +34,49 @@ SOFTWARE.
 #include "client.hpp"
 #include "data/data.hpp"
 #include "gfx/gfx.hpp"
-#include "menu.hpp"
 #include "timing/timing.hpp"
+#include "ui.hpp"
 #include "win/win.hpp"
 
-namespace Menu {
+GLuint bg;
+NodeList *panel = &mmenu;
+Timing::mutex m = MTX_DEFAULT;
 
-	GLuint bg;
-	Button** panel = main;
-	Timing::mutex m = MTX_DEFAULT;
+extern "C" {
 
-	void init() {
+	bool init() {
+
+		mmenu.buttons.add((void*) new Button({0.0f, 6.0f}, 10.0f, "Single Player", &actnStart));
+		mmenu.buttons.add((void*) new Button({0.0f, 3.0f}, 10.0f, "Multiplayer", &actnStart));
+		mmenu.buttons.add((void*) new Button({0.0f, 0.0f}, 10.0f, "Settings", &actnSettings));
+		mmenu.buttons.add((void*) new Button({0.0f, -3.0f}, 10.0f, "About", &actnAbout));
+		mmenu.buttons.add((void*) new Button({0.0f, -6.0f}, 10.0f, "Quit", &actnQuit));
+		mmenu.back = NULL;
+
+		about.buttons.add((void*) new Button({0.0f, -3.0f}, 10.0f, "Back", actnBack));
+		about.back = &mmenu;
+
+	}
+
+	void initGL() {
 
 		Button::init();
 
 		bg = GFX::loadTexture("menu.png");
 		loading = GFX::loadTexture("loading.png");
 
+		puts("Loaded module 'ui.so'");
+		return true;
+
 	}
 
-	void cleanup() {
+	void cleanupGL() {
 
 		glDeleteTextures(1, &bg);
 		glDeleteTextures(1, &loading);
 		Button::cleanup();
+
+		puts("Unloaded module 'ui.so'");
 
 	}
 
@@ -65,12 +84,15 @@ namespace Menu {
 
 		if (Client::state == Client::IN_GAME) return;
 
-		for (size_t i = 1; panel[i]; i++)
-			if (panel[i]->tick()) i = 1; //tick all if something changed
+		for (unsigned int i = 1; panel.buttons.len; i++)
+			if (((Button*) panel.buttons.get(i))->tick()) i = 1; // tick all if something changed
 
 	}
 
 	void draw() {
+
+		if (Client::state == Client::IN_GAME) return;
+		// fix this section w/ better logic
 
 		static float i = 0.0f;
 		i += 0.005f;
@@ -111,79 +133,62 @@ namespace Menu {
 
 		Timing::lock(&m);
 
-		for (size_t i = 1; panel[i]; i++)
-			panel[i]->draw();
+		for (unsigned int i = 1; i < panel.buttons.len; i++)
+			panel.buttons.get(i)->draw();
 
 		Timing::unlock(&m);
 
-
 	}
 
-	void setPanel(Button* panel[]) {
+}
 
-		Timing::lock(&m);
-		Menu::panel = panel;
-		Timing::unlock(&m);
+void setPanel(Button* panel[]) {
 
-	}
+	Timing::lock(&m);
+	::panel = panel;
+	Timing::unlock(&m);
 
-	bool actnBack() {
+}
 
-		if (panel[0]) setPanel((Button**) panel[0]);
-		return true;
+bool actnBack() {
 
-	}
+	setPanel(panel->back);
+	return true;
 
-	//about
-	Button* about[] = {
+}
 
-		(Button*) main,
-		new Button({0.0f, -3.0f}, 10.0f, "Back", actnBack),
-		NULL
+//about
+Nodelist about;
 
-	};
+//mmenu menu
+NodeList mmenu;
 
-	//main menu
-	Button* main[] = {
+bool actnStart() {
 
-		NULL,
-		new Button({0.0f, 6.0f}, 10.0f, "Single Player", &actnStart),
-		new Button({0.0f, 3.0f}, 10.0f, "Multiplayer", &actnStart),
-		new Button({0.0f, 0.0f}, 10.0f, "Settings", &actnSettings),
-		new Button({0.0f, -3.0f}, 10.0f, "About", &actnAbout),
-		new Button({0.0f, -6.0f}, 10.0f, "Quit", &actnQuit),
-		NULL
+	Client::setState(Client::LOADING);
+	setPanel(&bCancel);
 
-	};
+	return true;
 
-	bool actnStart() {
+}
 
-		Client::setState(Client::LOADING);
-		setPanel(bCancel);
+bool actnSettings() {
 
-		return true;
+	setPanel(&settings);
+	return true;
 
-	}
+}
 
-	bool actnSettings() {
+bool actnAbout() {
 
-		setPanel(settings);
-		return true;
+	setPanel(&about);
+	return true;
 
-	}
+}
 
-	bool actnAbout() {
+bool actnQuit() {
 
-		setPanel(about);
-		return true;
-
-	}
-
-	bool actnQuit() {
-
-		Client::running = false;
-		return true;
-
-	}
+	Client::running = false;
+	return true;
 
 }

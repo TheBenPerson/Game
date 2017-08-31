@@ -28,7 +28,7 @@ SOFTWARE.
 #include <stddef.h>
 #include "nodelist.hpp"
 
-void* NodeList::add(void* item) {
+void* NodeList::add(void *item) {
 
 	Node *node = new Node();
 
@@ -48,24 +48,24 @@ void* NodeList::add(void* item) {
 
 }
 
-NodeList::Node* NodeList::find(size_t index) {
+class NodeList::Node* NodeList::find(unsigned int index) {
 
 	Node* node = this->index;
 
-	for (size_t i = 0; i < index; i++)
+	for (unsigned int i = 0; i < index; i++)
 		node = node->next;
 
 	return node;
 
 }
 
-void* NodeList::get(size_t index) {
+void* NodeList::get(unsigned int index) {
 
 	return find(index)->val;
 
 }
 
-void NodeList::rem(size_t index) {
+void NodeList::rem(unsigned int index) {
 
 	Node* node = find(index);
 

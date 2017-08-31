@@ -28,22 +28,33 @@ SOFTWARE.
 #ifndef GAME_COMMON_TIMING
 
 #include <pthread.h>
+#include <time.h>
 #include <unistd.h>
 
 #define MTX_DEFAULT PTHREAD_MUTEX_INITIALIZER
 
 namespace Timing {
 
-	typedef pthread_t thread;
 	typedef pthread_mutex_t mutex;
+	typedef pthread_t thread;
+
+	typedef struct {
+
+		pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+		pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+	} condition;
 
 	thread createThread(void* (*callback)(void*), void* arg);
-	void waitForThread(thread t);
+	void waitFor(thread t);
 
 	void doInterval(void (*callback)(), time_t hertz, bool smooth, bool *control);
 
 	void lock(mutex *m);
 	void unlock(mutex *m);
+
+	bool waitFor(condition *cond, time_t secs);
+	void signal(condition *cond);
 
 }
 

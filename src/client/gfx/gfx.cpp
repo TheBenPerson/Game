@@ -1,7 +1,7 @@
 /*
 
 Game Development Build
-https://github.com/TheBenPerson/Game
+https:// github.com/TheBenPerson/Game
 
 Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
@@ -44,11 +44,10 @@ SOFTWARE.
 #include "client.hpp"
 #include "config/config.hpp"
 #include "gfx.hpp"
-#include "menu/button/button.hpp"
-#include "menu/menu.hpp"
 #include "point/point.hpp"
 #include "timing/timing.hpp"
 #include "win/win.hpp"
+#include "world/world.hpp"
 
 namespace GFX {
 
@@ -57,14 +56,14 @@ namespace GFX {
 
 	bool init() {
 
-		volatile int8_t result = -1; //volatile because ts
+		volatile int8_t result = -1; //  volatile because reasons
 		t = Timing::createThread(threadMain, (void*) &result);
 
 		while (result == -1) {}
 
 		if (!result) {
 
-			Timing::waitForThread(t);
+			Timing::waitFor(t);
 			return false;
 
 		}
@@ -75,7 +74,7 @@ namespace GFX {
 
 	void cleanup() {
 
-		Timing::waitForThread(t);
+		Timing::waitFor(t);
 
 	}
 
@@ -102,7 +101,15 @@ namespace GFX {
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 
-		Menu::draw();
+		World::draw();
+
+		// draw mods
+		for (unsigned int i = 0; i < Client::modules.len; i++) {
+
+			Client::Module *mod = (Client::Module*) Client::modules.get(i);
+			if (mod->draw) mod->draw();
+
+		}
 
 		glXSwapBuffers(WIN::display, WIN::winID);
 
@@ -112,39 +119,54 @@ namespace GFX {
 
 		if (!WIN::initContext()) {
 
-			*((int8_t *) result) = 0; //tell main t init failed
+			*((int8_t *) result) = 0; // tell main t init failed
 			return NULL;
 
 		}
 
 		font = loadTexture("font.png");
-		Menu::init();
 
-		glInit(); //initialize OpenGL
+		// need to be in same thread to load textures
+		for (unsigned int i = 0; i < Client::modules.len; i++) {
 
-		xcb_map_window(WIN::connection, WIN::winID); //display window
-		*((int8_t *) result) = 1; //tell main t init succeeded
+			Client::Module *mod = (Client::Module*) Client::modules.get(i);
+			if (mod->initGL) mod->initGL();
+
+		}
+
+		glInit(); // initialize OpenGL
+
+		xcb_map_window(WIN::connection, WIN::winID); // display window
+		*((int8_t *) result) = 1; // tell main t init succeeded
 
 		if (WIN::vSync) while (Client::running) draw();
 		else Timing::doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &Client::running);
 
-		Menu::cleanup();
-		glDeleteTextures(1, &font);
+		// need to be in same thread to load textures
+		for (unsigned int i = 0; i < Client::modules.len; i++) {
 
+			Client::Module *mod = (Client::Module*) Client::modules.get(i);
+			if (mod->cleanupGL) mod->cleanupGL();
+
+		}
+
+		glDeleteTextures(1, &font);
 		WIN::cleanupContext();
 
 		return NULL;
 
 	}
 
-	//font section
+	// font section
 	GLuint font;
 
 	void drawText(char* text, Point position, float size, bool centered) {
 
-		float charWidth = 0.454545454545f * size;
-		float charHeight = 1.0f * size;
-		float spaceWidth = 0.05f * size;
+		float texWidth = 5.0f / 512.0f;
+
+		float charWidth = (5.0f / 16.0f) * size;
+		float charHeight = size;
+		float spaceWidth = 0.125f * size;
 
 		size_t len = strlen(text);
 
@@ -157,6 +179,7 @@ namespace GFX {
 
 			char *start = text;
 			char *end;
+
 			size_t tLen = 0;
 			size_t best = 0;
 			size_t lines = 0;
@@ -184,7 +207,7 @@ namespace GFX {
 			if (!best) best = tLen;
 
 			dX = -(((charWidth + spaceWidth) * best) / 2);
-			y += ((charHeight * lines) - 0.5) / 2.0f;
+			y += ((charHeight * lines) - (charHeight / 2)) / 2;
 
 			x += dX;
 
@@ -193,36 +216,36 @@ namespace GFX {
 		glBindTexture(GL_TEXTURE_2D, font);
 		glBegin(GL_QUADS);
 
-			for (size_t i = 0; i < len; i++) {
+		for (size_t i = 0; i < len; i++) {
 
-				if (text[i] == '\n') {
+			if (text[i] == '\n') {
 
-					y -= charHeight;
-					x = position.x + dX;
-					continue;
-
-				}
-
-				float offset = 0.009765625f * (text[i] - 32);
-
-				glTexCoord2f(offset, 1.0f);
-				glVertex2f(x, y + charHeight);
-				glTexCoord2f(offset + 0.009765625f, 1.0f);
-				glVertex2f(x + charWidth, y + charHeight);
-				glTexCoord2f(offset + 0.009765625f, 0.0f);
-				glVertex2f(x + charWidth, y);
-				glTexCoord2f(offset, 0.0f);
-				glVertex2f(x, y);
-
-				x += charWidth + spaceWidth;
+				y -= charHeight;
+				x = position.x + dX;
+				continue;
 
 			}
+
+			float offset = (5.0f / 512.0f) * (text[i] - 32);
+
+			glTexCoord2f(offset, 1.0f);
+			glVertex2f(x, y + charHeight);
+			glTexCoord2f(offset + texWidth, 1.0f);
+			glVertex2f(x + charWidth, y + charHeight);
+			glTexCoord2f(offset + texWidth, 0.0f);
+			glVertex2f(x + charWidth, y);
+			glTexCoord2f(offset, 0.0f);
+			glVertex2f(x, y);
+
+			x += charWidth + spaceWidth;
+
+		}
 
 		glEnd();
 
 	}
 
-	//GL section
+	// GL section
 
 	void glInit() {
 
@@ -239,26 +262,26 @@ namespace GFX {
 
 	}
 
-	GLuint loadTexture(const char *name) {
+	GLuint loadTexture(char *name) {
 
 		char *res = (char*) Client::config.get("res")->val;
 		size_t len = strlen(name);
 
-		char *buff = new char[4 + strlen(res) + 1 + len];
-		sprintf(buff, "res/%s/%s", res, name);
+		char *buff = new char[4 + strlen(res) + 9 + len];
+		sprintf(buff, "res/%s/texture/%s", res, name);
 
 		FILE *file = fopen(buff, "r");
 		delete[] buff;
 
 		if (!file) {
 
-			buff = new char[12 + len];
-			sprintf(buff, "res/default/%s", name);
+			buff = new char[20 + len];
+			sprintf(buff, "res/default/texture/%s", name);
 
 			file = fopen(buff, "r");
 			if (!file) {
 
-				fprintf(stderr, "Error loading texture %s: %s\n", name, strerror(errno));
+				fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
 
 				delete[] buff;
 				return 0;
@@ -274,15 +297,15 @@ namespace GFX {
 
 		if (png_sig_cmp(sig, 0, 8)) {
 
-			fprintf(stderr, "Error loading texture %s: Invalid PNG file.\n", name);
+			fprintf(stderr, "Error loading texture: '%s' (Invalid PNG file)\n", name);
 			fclose(file);
 
 			return 0;
 
 		}
 
-		png_struct* png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-		png_info* info = png_create_info_struct(png);
+		png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+		png_info *info = png_create_info_struct(png);
 
 		png_init_io(png, file);
 		png_set_sig_bytes(png, 8);
@@ -294,8 +317,16 @@ namespace GFX {
 
 		png_byte* image = (png_byte*) malloc(width * height * 4);
 
-		for (int i = height - 1; i >= 0; i--)
+		size_t i = height - 1;
+
+		for (;;) {
+
 			png_read_row(png, image + (i * width * 4), NULL);
+			if (!i) break;
+
+			i--;
+
+		}
 
 		GLuint texture;
 
@@ -313,7 +344,7 @@ namespace GFX {
 		png_destroy_read_struct(&png, &info, NULL);
 		fclose(file);
 
-		printf("Loaded texture %s (%ix%i)\n", name, width, height);
+		printf("Loaded texture: '%s' (%ix%i)\n", name, width, height);
 		return texture;
 
 	}

@@ -25,57 +25,28 @@ SOFTWARE.
 
 */
 
-#ifndef GAME_CLIENT_GFX_MENU
+#ifndef GAME_SERVER_NET
 
-#include <GL/gl.h>
+#include <netinet/in.h>
 #include <stddef.h>
+#include <stdint.h>
 
-#include "button/button.hpp"
+#include "packet/packet.hpp"
 #include "timing/timing.hpp"
 
-namespace Menu {
+namespace Net {
 
-	extern GLuint bg;
-	extern Button** panel;
+	extern sockaddr_in sockAddr;
+	extern int sock;
 	extern Timing::mutex m;
 
-	void init();
+	bool init(uint16_t port);
 	void cleanup();
-	void tick();
-	void draw();
-	void setPanel(Button* panel[]);
-	bool actnBack();
-
-	//about
-	extern Button* about[];
-
-	//main menu
-	extern Button* main[];
-	bool actnStart();
-	bool actnAbout();
-	bool actnSettings();
-	bool actnQuit();
-
-	//settings
-	extern Button* settings[];
-	bool actnVideo();
-	bool actnInput();
-
-	extern Button* video[];
-	bool actnFullscreen();
-
-	extern Button* input[];
-	bool actnSetReturn();
-
-	//loading
-	extern GLuint loading;
-	extern Button* bCancel[];
-
-	bool cancel();
-	void tickLoading();
-	void drawLoading();
+	void wait(int timeout = -1);
+	void send(sockaddr_in *addr, Packet *packet);
+	void recv(sockaddr_in *addr, Packet *packet);
 
 }
 
-#define GAME_CLIENT_GFX_MENU
+#define GAME_SERVER_NET
 #endif

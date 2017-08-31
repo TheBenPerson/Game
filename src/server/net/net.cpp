@@ -27,69 +27,87 @@ SOFTWARE.
 
 #include <errno.h>
 #include <fcntl.h>
-#include <stddef.h>
+#include <netinet/in.h>
+#include <poll.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
+#include <sys/socket.h>
 #include <unistd.h>
-#include "file.hpp"
 
-ssize_t loadFile(char *path, char *buffer[]) {
+#include "net.hpp"
+#include "packet/packet.hpp"
 
-	int fd = open(path, O_RDONLY);
-	if (fd == -1) {
+namespace Net {
 
-		fprintf(stderr, "Error opening file '%s': %s\n", path, strerror(errno));
-		return -1;
+	int sock;
+	Timing::mutex m = MTX_DEFAULT;
 
-	}
+	bool init(uint16_t port) {
 
-	struct stat info;
-	fstat(fd, &info);
+		sock = socket(AF_INET, SOCK_DGRAM, 0);
 
-	size_t size = info.st_size;
-	*buffer = (char*) malloc(size);
+		if (sock == -1) {
 
-	ssize_t result = read(fd, *buffer, size);
+			perror("Error creating socket");
+			return false;
 
-	if (result == -1) {
+		}
 
-		fprintf(stderr, "Error reading file '%s': %s\n", path, strerror(errno));
+		sockaddr_in addr;
+		memset(&addr, 0, sizeof(sockaddr_in));
 
-		close(fd);
-		return -1;
+		addr.sin_addr.s_addr = INADDR_ANY;
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(port);
 
-	}
+		if (bind(sock, (sockaddr*) &addr, sizeof(sockaddr_in)) == -1) {
 
-	close(fd);
-	return result;
+			perror("Error binding socket");
+			cleanup();
 
-}
+			return false;
 
-bool writeFile(char *path, char *buffer, ssize_t len) {
+		}
 
-	int fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0x1A4);
-	if (fd == -1) {
+		int flags = fcntl(sock, F_GETFL, NULL);
+		fcntl(sock, F_GETFL, flags | O_NONBLOCK); //set nonblocking
 
-		fprintf(stderr, "Error opening file '%s': %s\n", path, strerror(errno));
-		return false;
-
-	}
-
-	ssize_t result = write(fd, buffer, len);
-
-	if (result == -1) {
-
-		fprintf(stderr, "Error writing file '%s': %s\n", path, strerror(errno));
-
-		close(fd);
-		return false;
+		return true;
 
 	}
 
+	void cleanup() {
 
-	close(fd);
-	return true;
+		close(sock);
+
+	}
+
+	void wait(int timeout) {
+
+		pollfd p;
+		p.fd = sock;
+		p.events = POLLIN;
+		p.revents = NULL;
+
+		poll(&p, 1, timeout);
+
+	}
+
+	void send(sockaddr_in *addr, Packet *packet) {
+
+		sendto(sock, packet->raw, packet->size, NULL, (sockaddr*) addr, sizeof(sockaddr_in));
+
+	}
+
+	void recv(sockaddr_in *addr, Packet *packet) {
+
+		socklen_t len = sizeof(sockaddr_in);
+
+		Timing::lock(&m);
+		packet->size = recvfrom(sock, packet->raw, P_MAX_SIZE, 0, (sockaddr*) addr, &len);
+		Timing::unlock(&m);
+
+	}
 
 }

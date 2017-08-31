@@ -25,80 +25,131 @@ SOFTWARE.
 
 */
 
-#include <stdint.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <stdio.h>
-#include <unistd.h>
-#include "networking/networking.hpp"
+#include <stdlib.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <stddef.h>
+
+#include "config/config.hpp"
+#include "net/net.hpp"
+#include "player/player.hpp"
 #include "server.hpp"
+#include "timing/timing.hpp"
+#include "world/world.hpp"
 
-bool Server::local;
-bool Server::running = false;
-pthread_t Server::thread;
+namespace Server {
 
-void Server::cleanup() {
+	bool fork;
+	bool running;
+	Config config;
+	Timing::thread t;
 
-	Networking::cleanup();
+	void cleanup() {
 
-}
-
-bool Server::init(uint16_t port) {
-
-	if (!Networking::init(port))
-		return false;
-
-	//Game init
-
-	Networking::start();
-
-	return true;
-
-}
-
-bool Server::start(bool local, uint16_t port) {
-
-	Server::local = local;
-
-	if (!Init(port))
-		return false;
-
-	running = true;
-
-	if (local) {
-
-		pthread_attr_t attr;
-		pthread_attr_init(&attr);
-
-		pthread_create(&thread, &attr, tickLoop, NULL);
-
-		pthread_attr_destroy(&attr);
-
-	} else {
-
-		tickLoop(NULL);
+		Net::cleanup();
+		World::cleanup();
 
 	}
 
-	return true;
+	bool init(uint16_t port) {
 
-}
+		config.add("timeout", (void*) 30);
+		config.load("cfg/server.cfg");
 
-void Server::stop() {
+		// long should be uint
+		Player::timeout = (long) config.get("timeout")->val;
 
-	Networking::stop();
+		if (!World::init())
+			return false;
 
-	running = false;
+		if (!Net::init(port))
+			return false;
 
-	if (local)
-		pthread_join(thread, NULL);
+		return true;
 
-}
+	}
 
-void * Server::tickLoop(void *) {
+	bool start(bool fork, uint16_t port) {
 
-	while (running) {
+		Server::fork = fork;
 
-		//printf("tick\n");
-		usleep(10000);
+		if (!init(port)) return false;
+
+		running = true;
+
+		if (fork) t = Timing::createThread(tickLoop, NULL);
+		else tickLoop(NULL);
+
+		return true;
+
+	}
+
+	void stop() {
+
+		running = false;
+		if (fork) Timing::waitFor(t);
+
+		Net::cleanup();
+
+	}
+
+	void* tickLoop(void *) {
+
+		sockaddr_in addr;
+		Packet packet;
+
+		while (running) {
+
+			packet.raw = (uint8_t*) malloc(P_MAX_SIZE);
+
+			Net::wait();
+			Net::recv(&addr, &packet);
+
+			// free extra memory
+			packet.raw = (uint8_t*) realloc((uint8_t*) packet.raw, packet.size + 1);
+
+			Player *player = Player::get(&addr);
+
+			if (player) player->recv(&packet);
+			else {
+
+				char *name = (char*) packet.raw;
+				name[packet.size] = '\0';
+
+				in_addr rAddr;
+				rAddr.s_addr = addr.sin_addr.s_addr;
+				char *ip = inet_ntoa(rAddr);
+
+				if (Player::get(name)) {
+
+					free(packet.raw);
+
+					char msg[] = "%A player with that usename is already connected";
+					msg[0] = P_DENY;
+
+					packet.size = strlen(msg + 1) + 1;
+					packet.raw = (uint8_t*) msg;
+
+					Net::send(&addr, &packet);
+
+					fprintf(stderr, "%s was kicked upon entry: %s\n", ip, msg + 1);
+					continue;
+
+				}
+
+				player = new Player(&addr, name);
+				player->send(P_ACCEPT);
+
+				printf("Player %s (%s) connected.\n", name, ip);
+
+			}
+
+		}
+
+		return NULL;
 
 	}
 

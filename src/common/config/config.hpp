@@ -44,11 +44,11 @@ class Config {
 
 		};
 
-		size_t &len = settings.len;
+		unsigned int &len = settings.len;
 
 		void add(char *name, void *val);
 		Setting* get(char *name);
-		Setting* get(size_t i);
+		Setting* get(unsigned int i);
 		bool load(char *path);
 		void save(char* path);
 		void set(char *name, void *val);

@@ -1,7 +1,7 @@
 /*
 
 Game Development Build
-https://github.com/TheBenPerson/Game
+https:// github.com/TheBenPerson/Game
 
 Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
@@ -40,17 +40,13 @@ void sigHandler(int signal);
 
 int main(int argc, char* const argv[]) {
 
-	struct sigaction action;
-	memset(&action, NULL, sizeof(struct sigaction));
-	action.sa_handler = &sigHandler;
+	signal(SIGINT, &sigHandler); // install signal handlers
+	signal(SIGSEGV, &sigHandler);
+	signal(SIGTERM, &sigHandler);
+	signal(SIGHUP, &sigHandler);
 
-	sigaction(SIGINT, &action, NULL); //install signal handlers
-	sigaction(SIGSEGV, &action, NULL);
-	sigaction(SIGTERM, &action, NULL);
-	sigaction(SIGHUP, &action, NULL);
-
-	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); //make stdout and stderr line buffered
-	setvbuf(stderr, NULL, _IOLBF, BUFSIZ); //this ensures output is instant
+	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); // make stdout and stderr line buffered
+	setvbuf(stderr, NULL, _IOLBF, BUFSIZ); // this ensures output is instant
 
 	const char* usage =
 	"Usage: game [Options]\n\n"
@@ -123,7 +119,7 @@ int main(int argc, char* const argv[]) {
 
 	if (isServer) {
 
-		handle = dlopen("libserver.so", RTLD_LAZY);
+		handle = dlopen("server.so", RTLD_LAZY);
 		if (!handle) {
 
 			fprintf(stderr, "Error loading %s\n", dlerror());
@@ -131,14 +127,14 @@ int main(int argc, char* const argv[]) {
 
 		}
 
-		printf("Loaded libserver.so\nStarting server on port %i...\n", port);
+		printf("Loaded server.so\nStarting server on port %i...\n", port);
 
-		bool (*serverStart)(bool, uint16_t) = (bool (*)(bool, uint16_t)) dlsym(handle, "_ZN6Server5StartEt");
+		bool (*serverStart)(bool, uint16_t) = (bool (*)(bool, uint16_t)) dlsym(handle, "_ZN6Server5startEbt");
 		return serverStart(false, port) ? 0 : 1;
 
 	} else {
 
-		handle = dlopen("libclient.so", RTLD_LAZY);
+		handle = dlopen("client.so", RTLD_LAZY);
 		if (!handle) {
 
 			fprintf(stderr, "Error loading %s\n", dlerror());
@@ -146,7 +142,7 @@ int main(int argc, char* const argv[]) {
 
 		}
 
-		puts("Loaded libclient.so\nStarting Client...\n");
+		puts("Loaded client.so\nStarting Client...\n");
 
 		bool (*clientStart)() = (bool (*)()) dlsym(handle, "_ZN6Client5startEv");
 		return !clientStart();
@@ -157,37 +153,7 @@ int main(int argc, char* const argv[]) {
 
 void sigHandler(int signal) {
 
-	fputs("\nRecieved ", stdout);
-
-	switch (signal) {
-
-		case SIGINT:
-
-			fputs("SIGINT", stdout);
-
-		break;
-
-		case SIGSEGV:
-
-			fputs("SIGSEGV", stdout);
-
-		break;
-
-		case SIGTERM:
-
-			fputs("SIGINT", stdout);
-
-		break;
-
-		case SIGHUP:
-
-			fputs("SIGHUP", stdout);
-
-		break;
-
-	}
-
-	puts(" - exiting...");
+	printf("%s - exiting...\n", strsignal(signal));
 	exit(signal);
 
 }

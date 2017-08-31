@@ -38,7 +38,6 @@ SOFTWARE.
 #include "client.hpp"
 #include "config/config.hpp"
 #include "gfx/gfx.hpp"
-#include "gfx/menu/menu.hpp"
 #include "win/win.hpp"
 
 namespace WIN {
@@ -61,7 +60,7 @@ namespace WIN {
 
 	}
 
-	//screen section
+	// screen section
 	bool fullscreen;
 	unsigned int screenHeight;
 	unsigned int screenWidth;
@@ -87,8 +86,6 @@ namespace WIN {
 		xcb_send_event(connection, false, rootWin, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char*) &event);
 
 		fullscreen = mode;
-		if (fullscreen) Menu::video[1]->name = "Fullscreen: true";
-		else Menu::video[1]->name = "Fullscreen: false";
 
 	}
 
@@ -181,7 +178,7 @@ namespace WIN {
 
 		}
 
-		vSync = (bool) Client::config.get("vSync")->val;
+		vSync = (bool) Client::config.get("vsync")->val;
 		if (!vSync) {
 
 			puts("Warning: VSync is disabled");
@@ -409,8 +406,6 @@ namespace WIN {
 
 		if (Client::state != Client::PAUSED)
 			Client::setState(Client::PAUSED);
-
-		Menu::actnBack();
 
 	}
 

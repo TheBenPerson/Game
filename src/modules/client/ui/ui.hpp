@@ -25,23 +25,56 @@ SOFTWARE.
 
 */
 
-#ifndef HG_Server_Client_H
+#ifndef GAME_CLIENT_GFX_MENU
 
-#include <pthread.h>
+#include <GL/gl.h>
+#include <stddef.h>
 
-class Client {
+#include "button/button.hpp"
+#include "timing/timing.hpp"
 
-	public:
+typedef struct {
 
-		Client(int Socket);
-		static void * HandleClient(void * Client);
+	NodeList buttons;
+	NodeList *back;
 
-	private:
+} Panel;
 
-		int Socket;
-		pthread_t Thread;
+extern GLuint bg;
+extern Panel *panel;
+extern Timing::mutex m;
 
-};
+void setPanel(Panel *panel);
+bool actnBack();
 
-#define HG_Server_Client_H
+//about
+extern Panel about;
+
+//main menu
+extern Panel mmenu;
+bool actnStart();
+bool actnAbout();
+bool actnSettings();
+bool actnQuit();
+
+//settings
+extern Panel settings;
+bool actnVideo();
+bool actnInput();
+
+extern Panel video;
+bool actnFullscreen();
+
+extern Panel input;
+bool actnSetReturn();
+
+//loading
+extern GLuint loading;
+extern Panel bCancel;
+
+bool cancel();
+void tickLoading();
+void drawLoading();
+
+#define GAME_CLIENT_GFX_MENU
 #endif

@@ -25,12 +25,44 @@ SOFTWARE.
 
 */
 
-#ifndef GAME_COMMON_FILE
+#ifndef GAME_SERVER_PLAYER
 
-#include <stddef.h>
+#include <netinet/in.h>
 
-ssize_t loadFile(char *path, char *buffer[]);
-bool writeFile(char *path, char *buffer);
+#include "nodelist/nodelist.hpp"
+#include "packet/packet.hpp"
+#include "timing/timing.hpp"
 
-#define GAME_COMMON_FILE
+class Player {
+
+	public:
+
+		static uint timeout;
+
+		static Player* get(sockaddr_in *addr);
+		static Player* get(char name[]);
+		static void* entry(void*);
+
+		sockaddr_in addr;
+		char *name;
+
+		Player(sockaddr_in *addr, char *name);
+		~Player();
+		void send(uint8_t id);
+		void send(Packet *packet);
+		void recv(Packet *packet);
+
+	private:
+
+		static NodeList players;
+
+		Packet *packet;
+		Timing::thread t;
+		Timing::condition cond;
+
+		Packet* recv();
+
+};
+
+#define GAME_SERVER_PLAYER
 #endif

@@ -28,30 +28,25 @@ SOFTWARE.
 #ifndef GAME_COMMON_PACKET
 
 #include <netinet/in.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#define P_MAX_SIZE 256
+#define P_MAX_SIZE 1024
 
-#define P_INF 0x0
-#define P_REQ 0x80
+#define P_ACK 0x1
+#define P_NACK 0x1
+#define P_ACCEPT 0x2
+#define P_DENY 0x3
 
-#define P_ACK 0x0
-#define P_ACT 0x1
+// requests
+#define P_GMAP 'g'
 
-#define P_CON 0x0
+typedef struct {
 
-struct Packet {
+	size_t size;
+	uint8_t *raw;
 
-	sockaddr_in address;
-
-	union {
-
-		char data[P_MAX_SIZE - 1];
-		unsigned char id;
-		char raw[P_MAX_SIZE];
-
-	};
-
-};
+} Packet;
 
 #define GAME_COMMON_PACKET
 #endif

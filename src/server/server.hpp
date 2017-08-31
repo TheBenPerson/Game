@@ -25,25 +25,29 @@ SOFTWARE.
 
 */
 
-#ifndef HG_Server_H
+#ifndef GAME_SERVER
 
 #include <pthread.h>
 #include <stdint.h>
 #include <sys/socket.h>
 
+#include "config/config.hpp"
+
 namespace Server {
 
-	extern bool local;
+	extern bool fork;
+	extern bool ready;
 	extern bool running;
-	extern pthread_t thread;
+	extern Config config;
+	extern Timing::thread t;
 
-	void cleanup();
-	bool init(uint16_t port);
-	void * tickLoop(void*);
-	bool start(bool local, uint16_t port);
+	bool start(bool fork, uint16_t port);
 	void stop();
+	bool init(uint16_t port);
+	void cleanup();
+	void* tickLoop(void*);
 
 }
 
-#define HG_Server_H
+#define GAME_SERVER
 #endif

@@ -27,17 +27,15 @@ SOFTWARE.
 
 #ifndef GAME_COMMON_NODELIST
 
-#include <stddef.h>
-
 class NodeList {
 
 	public:
 
-		size_t len;
+		unsigned int len;
 
 		void* add(void *item);
-		void* get(size_t index);
-		void rem(size_t index);
+		void* get(unsigned int index);
+		void rem(unsigned int index);
 
 		NodeList();
 		~NodeList();
@@ -49,14 +47,14 @@ class NodeList {
 			Node *prev;
 			Node *next;
 
-			void* val;
+			void *val;
 
 		};
 
 		Node *last;
 		Node *index;
 
-		Node* find(size_t index);
+		Node* find(unsigned int index);
 
 };
 

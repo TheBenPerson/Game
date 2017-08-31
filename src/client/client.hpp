@@ -28,14 +28,30 @@ SOFTWARE.
 #ifndef GAME_CLIENT
 
 #include "config/config.hpp"
+#include "nodelist/nodelist.hpp"
 
 namespace Client {
 
+	typedef struct {
+
+		void *handle;
+
+		void (*cleanup)();
+		void (*initGL)();
+		void (*cleanupGL)();
+		void (*tick)();
+		void (*draw)();
+
+	} Module;
+
 	extern bool running;
 	extern Config config;
+	extern NodeList modules;
 
 	bool init();
+	void initMods();
 	void cleanup();
+
 	bool start();
 	void* threadMain(void*);
 	void tick();

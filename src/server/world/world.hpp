@@ -25,23 +25,29 @@ SOFTWARE.
 
 */
 
-#ifndef HG_Server_Networking_H
+#ifndef GAME_SERVER_WORLD
 
-#include <pthread.h>
+#include <stddef.h>
+#include <stdint.h>
 
-namespace Networking {
+namespace World {
 
-	extern bool Running;
-	extern int Socket;
-	extern pthread_t Thread;
+	typedef struct {
 
-	void Cleanup();
-	void * PacketHandler(void *);
-	bool Init(uint16_t Port);
-	void Start();
-	void Stop();
+		uint8_t val;
+		char *ref;
+
+	} Tile;
+
+	extern Tile *data;
+	extern size_t width;
+	extern size_t height;
+
+	bool init();
+	void cleanup();
+	bool loadMap(char path[]);
 
 }
 
-#define HG_Server_Networking_H
+#define GAME_SERVER_WORLD
 #endif

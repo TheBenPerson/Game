@@ -1,7 +1,7 @@
 /*
 
 Game Development Build
-https://github.com/TheBenPerson/Game
+https:// github.com/TheBenPerson/Game
 
 Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
@@ -31,7 +31,6 @@ SOFTWARE.
 #include <string.h>
 
 #include "config.hpp"
-#include "file/file.hpp"
 
 void Config::add(char *name, void *val) {
 
@@ -48,7 +47,7 @@ void Config::add(char *name, void *val) {
 
 Config::Setting* Config::get(char* name) {
 
-	for (size_t i = 0; i < settings.len; i++) {
+	for (unsigned int i = 0; i < settings.len; i++) {
 
 		Setting *setting = (Setting*) settings.get(i);
 		if (!strcmp(setting->name, name)) return setting;
@@ -59,7 +58,7 @@ Config::Setting* Config::get(char* name) {
 
 }
 
-Config::Setting* Config::get(size_t i) {
+Config::Setting* Config::get(unsigned int i) {
 
 	return (Setting*) settings.get(i);
 
@@ -67,152 +66,110 @@ Config::Setting* Config::get(size_t i) {
 
 bool Config::load(char *path) {
 
-	char *file = NULL;
-	ssize_t size = loadFile(path, &file);
+	FILE *file = fopen(path, "r");
+	if (!file) return false;
 
-	if (size == -1) return false;
+	for (;;) {
 
-	char *start = file; //initialize name pointer
-	bool lineStart = true;
+		char *buf = NULL; // auto allocate
+		char *name;
+		char *val;
 
-	for (ssize_t i = 0; i < size; i++) {
+		size_t len = NULL; // auto allocate
+		ssize_t result = getline(&buf, &len, file);
 
-		for (;;) { //cycle until next char != #
+		// skip line if last, commented, or empty
+		if (result != -1 && buf[0] != '#' && buf[0] != '\n') {
 
-			if (file[i] == '#') {
+			// strip tailing newline
+			if (buf[len] == '\n') buf[len] = '\0';
 
-				char* end = strchr((file + i) + 1, '\n');
-				if (!end) {
+			name = strtok(buf, "=:\t ");
+			if (!name) {
 
-					fprintf(stderr, "Error parsing %s: no data\n", path);
-					return false;
-
-				}
-
-				i = (end - file) + 1;
-				start = file + i; //skip to next line
-
-			} else break;
-
-		}
-
-		char c = file[i];
-
-		if ((lineStart) && (c == ' ' || c == '\t' || c == '\n')) { //ignore spaces, tabs, and newlines at the beginning of a line
-
-			start++;
-
-		} else { //use '=', ':', ' ', and '\t' as field seperators
-
-			bool sep = false;
-			bool pad = false;
-
-			if (c == '=' || c == ':' || c == '\t') sep = true;
-			else if (c == ' ') {
-
-				sep = true;
-				if (file[i + 1] == '=' || file[i + 1] == ':') pad = true;
+				free(buf);
+				fclose(file);
+				return false;
 
 			}
 
-			if (sep) {
+			name = strdup(name);
 
-				size_t len = (file + i) - start;
+			val = strtok(NULL, "=:\t ");
+			if (!val) {
 
-				char *name = (char*) malloc(len + 1);
-				strncpy(name, start, len);
-				name[len] = '\0'; //get val name
+				free(name);
+				free(buf);
+				fclose(file);
+				return false;
 
-				start = (file + i) + 1;
+			}
 
-				if (pad) start++;
-				if (*start == ' ') start++;
+			val = strdup(val);
 
-				char* end = strchr(start, '\n');
-				if (!end) {
+			bool isNew;
 
-					fprintf(stderr, "Error parsing %s: no data\n", path);
-					return false;
+			Setting *setting = get(name);
+			if (setting) {
 
-				}
+				free(name);
+				if (setting->freeVal) free(setting->val);
 
-				len = (end - start);
-
-				char* val = (char*) malloc(len + 1);
-				strncpy(val, start, len);
-				val[len] = '\0'; //get val string
-
-				bool isNew;
-
-				Setting *setting = get(name);
-				if (setting) {
-
-					free(name);
-					if (setting->freeVal) free(setting->val);
-
-					isNew = false;
-
-				} else {
-
-					setting = new Setting();
-					setting->name = name;
-					setting->freeName = true;
-
-					isNew = true;
-
-				}
-
-				setting->isString = false;
-
-				char* flag;
-				long int nVal = strtol(val, &flag, 10);
-
-				if ((*flag)) {
-
-					if (!strcasecmp(val, "true")) nVal = true;
-					else if (!strcasecmp(val, "false")) nVal = false;
-					else {
-
-						setting->isString = true;
-
-					}
-
-				}
-
-				if (setting->isString) {
-
-					setting->val = val;
-					setting->freeVal = true;
-
-				} else {
-
-					setting->val = (void*) nVal;
-					free(val);
-
-					setting->freeVal = false;
-
-				}
-
-				if (isNew) settings.add(setting);
-
-				i = (end - file);
-				start = end + 1; //skip to next line
-
-				lineStart = true;
+				isNew = false;
 
 			} else {
 
-				lineStart = false;
+				setting = new Setting();
+				setting->name = name;
+				setting->freeName = true;
+
+				isNew = true;
 
 			}
 
+			setting->isString = false;
+
+			char* flag;
+			long int nVal = strtol(val, &flag, 10);
+
+			if (*flag) {
+
+				if (!strcasecmp(val, "true")) nVal = true;
+				else if (!strcasecmp(val, "false")) nVal = false;
+				else {
+
+					setting->isString = true;
+
+				}
+
+			}
+
+			if (setting->isString) {
+
+				setting->val = val;
+				setting->freeVal = true;
+
+			} else {
+
+				setting->val = (void*) nVal;
+				free(val);
+
+				setting->freeVal = false;
+
+			}
+
+			if (isNew) settings.add(setting);
+
 		}
+
+		free(buf);
+		if (result == -1) break;
 
 	}
 
-	free(file);
+	fclose(file);
 
-	printf("Loaded config file: '%s'\n", path);
+	printf("Loaded config: '%s'\n", basename(path));
 	return true;
 
 }
@@ -233,7 +190,7 @@ Config::~Config() {
 
 	Setting* setting;
 
-	for (size_t i = 0; i < settings.len; i++) {
+	for (unsigned int i = 0; i < settings.len; i++) {
 
 		setting = (Setting*) settings.get(i);
 		if (setting->freeName) free(setting->name);

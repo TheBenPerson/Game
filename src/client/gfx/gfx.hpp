@@ -1,7 +1,7 @@
 /*
 
 Game Development Build
-https://github.com/TheBenPerson/Game
+https:// github.com/TheBenPerson/Game
 
 Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
 
@@ -43,13 +43,13 @@ namespace GFX {
 	void draw();
 	void* threadMain(void *result);
 
-	//font section
+	// font section
 	extern GLuint font;
 	void drawText(char *text, Point pos, float size = 1.0f, bool centered = false);
 
-	//GL section
+	// GL section
 	void glInit();
-	GLuint loadTexture(const char *path);
+	GLuint loadTexture(char *path);
 
 }
 
