@@ -26,11 +26,14 @@ SOFTWARE.
 */
 
 #include <stddef.h>
+
 #include "nodelist.hpp"
 
 void* NodeList::add(void *item) {
 
 	Node *node = new Node();
+
+	Timing::lock(&m);
 
 	if (index) last->next = node;
 	else index = node;
@@ -44,20 +47,70 @@ void* NodeList::add(void *item) {
 
 	len++;
 
+	Timing::unlock(&m);
 	return item;
 
 }
 
-class NodeList::Node* NodeList::find(unsigned int index) {
+NodeList::Node* NodeList::find(unsigned int index) {
+	Node* node;
 
-	Node* node = this->index;
+	unsigned int i;
 
-	for (unsigned int i = 0; i < index; i++)
-		node = node->next;
+	// find most efficient way to cycle
+	if ((len - 1 - index) >= index) {
+
+		node = this->index;
+
+		for (i = 0; i < index; i++)
+			node = node->next;
+
+	} else {
+
+		node = last;
+
+		for (i = len - 1; i > index; i--)
+			node = node->prev;
+
+	}
 
 	return node;
 
 }
+
+NodeList::Node* NodeList::find(void* item) {
+
+	Node* node = this->index;
+
+	for (;;) {
+
+		if (node->val == item)
+			return node;
+
+		if (!node->next) break;
+		node = node->next;
+
+	}
+
+	return NULL;
+
+}
+
+void NodeList::del(Node* node) {
+
+	Timing::lock(&m);
+
+	if (node->prev) node->prev->next = node->next;
+	else index = node->next;
+
+	if (node->next) node->next->prev = node->prev;
+
+	delete node;
+	len--;
+
+	Timing::unlock(&m);
+
+};
 
 void* NodeList::get(unsigned int index) {
 
@@ -67,16 +120,13 @@ void* NodeList::get(unsigned int index) {
 
 void NodeList::rem(unsigned int index) {
 
-	Node* node = find(index);
+	del(find(index));
 
-	if (index) node->prev->next = node->next;
-	else this->index = node->next;
+}
 
-	if (node->next) node->next->prev = node->prev;
+void NodeList::rem(void* item) {
 
-	delete node;
-
-	len--;
+	del(find(item));
 
 }
 

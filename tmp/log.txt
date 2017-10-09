@@ -1,102 +1,27 @@
-Loaded client.so
-Starting Client...
-
 Loaded config: 'client.cfg'
+[32m[1mLoaded module: 'client.so'[m
 Detected resolution of: 1366x768
 Loaded config: 'keymap.cfg'
+[32m[1mLoaded module: 'win.so'[m
+[32m[1mLoaded module: 'input.so'[m
 Loaded texture: 'font.png' (512x16)
+[32m[1mLoaded module: 'gfx.so'[m
 Loaded texture: 'button.png' (16x256)
 Loaded texture: 'menu.png' (700x700)
 Loaded texture: 'loading.png' (2x16)
-Loaded module 'ui.so'
-Loaded texture: 'world.png' (160x16)
-Unloaded module 'ui.so'
+[32m[1mLoaded module: 'ui.so'[m
+Interrupt - Cleaning up...
+[31m[1mUnoaded module: 'ui.so'[m
+[31m[1mUnloaded module: 'gfx.so'[m
+[31m[1mUnloaded module: 'input.so'[m
+[31m[1mUnloaded module: 'win.so'[m
+[31m[1mUnloaded module: 'client.so'[m
 
 =================================================================
-==13420==ERROR: LeakSanitizer: detected memory leaks
+==30113==ERROR: LeakSanitizer: detected memory leaks
 
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad203  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
+Direct leak of 136 byte(s) in 1 object(s) allocated from:
+    #0 0x7f81e8fd4d9c in __interceptor_calloc /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:76
+    #1 0x7f81e31c3b09  (/usr/lib/xorg/modules/dri/i965_dri.so+0x3efb09)
 
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad25f  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad2b7  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad313  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad36b  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad3c5  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ada90  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7adaec  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7adb48  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7adba0  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7adbfc  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7adc58  (<unknown module>)
-    #2 0x7f116a7add6b  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ae098  (<unknown module>)
-    #2 0x7f116a7ae121  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-Direct leak of 40 byte(s) in 1 object(s) allocated from:
-    #0 0x7f116dece4c5 in operator new(unsigned long) /build/gcc/src/gcc/libsanitizer/lsan/lsan_interceptors.cc:162
-    #1 0x7f116a7ad1ab  (<unknown module>)
-    #2 0x7f116a7ad4f3  (<unknown module>)
-    #3 0x7f116ed73379 in call_init.part.0 (/lib64/ld-linux-x86-64.so.2+0xf379)
-
-SUMMARY: LeakSanitizer: 560 byte(s) leaked in 14 allocation(s).
+SUMMARY: LeakSanitizer: 136 byte(s) leaked in 1 allocation(s).

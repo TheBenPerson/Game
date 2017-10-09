@@ -25,6 +25,7 @@ SOFTWARE.
 
 */
 
+#include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
 #include <getopt.h>
@@ -34,15 +35,18 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
-#include "data/data.cpp"
+#include "data.hpp"
+#include "main.hpp"
 
+NodeList modules;
+
+bool loadMods(char *path);
+void loadMod(char *base, char *path);
 void sigHandler(int signal);
 
-int main(int argc, char* const argv[]) {
+int main(int argc, char* argv[]) {
 
-	signal(SIGINT, &sigHandler); // install signal handlers
 	signal(SIGSEGV, &sigHandler);
-	signal(SIGTERM, &sigHandler);
 	signal(SIGHUP, &sigHandler);
 
 	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); // make stdout and stderr line buffered
@@ -78,16 +82,11 @@ int main(int argc, char* const argv[]) {
 
 		switch (c) {
 
-			case 'h':
+			case 'h': puts(usage);
+			return 0;
 
-				puts(usage);
-				return 0;
-
-			break;
-			case 'v':
-
-				puts(Data::versionString);
-				return 0;
+			case 'v': puts(Data::versionString);
+			return 0;
 
 			case 's':
 
@@ -104,55 +103,116 @@ int main(int argc, char* const argv[]) {
 				} else isServer = true;
 
 			break;
-			case '?':
-
-				puts(usage);
-				return 1;
-
-			break;
+			case '?': puts(usage);
+			return 1;
 
 		}
 
 	}
 
-	void* handle;
+	if (isServer) loadMods("bin/server/");
+	else loadMods("bin/client/");
 
-	if (isServer) {
+	sigset_t sigset;
+	sigemptyset(&sigset);
+	sigaddset(&sigset, SIGINT);
+	sigaddset(&sigset, SIGTERM);
 
-		handle = dlopen("server.so", RTLD_LAZY);
-		if (!handle) {
+	sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-			fprintf(stderr, "Error loading %s\n", dlerror());
-			return 1;
+	int signal;
+	sigwait(&sigset, &signal);
 
-		}
+	printf("%s - Cleaning up...\n", strsignal(signal));
 
-		printf("Loaded server.so\nStarting server on port %i...\n", port);
+	for (int i = modules.len - 1; i >= 0; i--) {
 
-		bool (*serverStart)(bool, uint16_t) = (bool (*)(bool, uint16_t)) dlsym(handle, "_ZN6Server5startEbt");
-		return serverStart(false, port) ? 0 : 1;
+		Module *module = (Module *) modules.get(i);
+		if (module->cleanup) module->cleanup();
 
-	} else {
-
-		handle = dlopen("client.so", RTLD_LAZY);
-		if (!handle) {
-
-			fprintf(stderr, "Error loading %s\n", dlerror());
-			return 1;
-
-		}
-
-		puts("Loaded client.so\nStarting Client...\n");
-
-		bool (*clientStart)() = (bool (*)()) dlsym(handle, "_ZN6Client5startEv");
-		return !clientStart();
+		delete module;
 
 	}
+
+	return 0;
+
+}
+
+void loadMod(char *base, char *path) {
+
+	char *name = new char[strlen(base) + strlen(path)];
+	strcpy(name, base);
+	strcpy(name + strlen(base), path);
+
+	void *handle = dlopen(name, RTLD_LAZY);
+	delete[] name;
+
+	// has the mod been loaded already?
+	for (unsigned int i = 0; i < modules.len; i++)
+		if (((Module*) modules.get(i))->handle == handle) return;
+
+	if (handle) {
+
+		Module *mod = new Module();
+		mod->handle = handle;
+
+		char **depends = (char**) dlsym(handle, "depends");
+		if (depends) {
+
+			// load module dependancies
+			for (; *depends; depends++)
+				loadMod(base, *depends);
+
+		}
+
+		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
+		bool (*init)() = (bool (*)()) dlsym(handle, "init");
+
+		bool result = true;
+		if (init) result = init();
+		// mod prints its own message
+
+		if (result) modules.add((void*) mod);
+		else {
+
+			delete mod;
+			dlclose(handle);
+
+		}
+
+	} else fprintf(stderr, "Error loading module %s\n", dlerror());
+
+}
+
+bool loadMods(char *path) {
+
+	DIR *dir = opendir(path);
+	if (!dir) {
+
+		perror("Error loading modules");
+		return false;
+
+	}
+
+	for (;;) {
+
+		dirent *file = readdir(dir);
+		if (!file) break;
+
+		if (file->d_type != DT_REG) continue;
+
+		loadMod(path, file->d_name);
+
+	}
+
+	closedir(dir);
+	return true;
 
 }
 
 void sigHandler(int signal) {
 
+	// I know it's not reentrant, but it's worked so far.
 	printf("%s - exiting...\n", strsignal(signal));
 	exit(signal);
 

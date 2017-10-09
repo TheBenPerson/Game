@@ -27,37 +27,14 @@ SOFTWARE.
 
 #ifndef GAME_CLIENT
 
-#include "config/config.hpp"
-#include "nodelist/nodelist.hpp"
+#include "config.hpp"
 
 namespace Client {
 
-	typedef struct {
+	typedef enum { LOADING, IN_GAME, PAUSED } State;
 
-		void *handle;
-
-		void (*cleanup)();
-		void (*initGL)();
-		void (*cleanupGL)();
-		void (*tick)();
-		void (*draw)();
-
-	} Module;
-
-	extern bool running;
 	extern Config config;
-	extern NodeList modules;
-
-	bool init();
-	void initMods();
-	void cleanup();
-
-	bool start();
-	void* threadMain(void*);
-	void tick();
-
-	//state section
-	enum State { IN_GAME, PAUSED, LOADING };
+	extern bool running;
 	extern State state;
 
 	void setState(State state);

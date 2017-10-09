@@ -53,6 +53,7 @@ namespace Timing {
 	void lock(mutex *m);
 	void unlock(mutex *m);
 
+	void waitFor(condition *cond);
 	bool waitFor(condition *cond, time_t secs);
 	void signal(condition *cond);
 

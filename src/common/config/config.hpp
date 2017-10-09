@@ -27,7 +27,7 @@ SOFTWARE.
 
 #ifndef GAME_COMMON_CONFIG
 
-#include "nodelist/nodelist.hpp"
+#include "nodelist.hpp"
 
 class Config {
 

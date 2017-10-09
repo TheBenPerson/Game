@@ -93,6 +93,12 @@ namespace Timing {
 
 	}
 
+	void waitFor(condition *cond) {
+
+		pthread_cond_wait(&cond->cond, &cond->m);
+
+	}
+
 	bool waitFor(condition *cond, time_t secs) {
 
 		timespec time;

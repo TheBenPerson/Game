@@ -27,20 +27,11 @@ SOFTWARE.
 
 #ifndef GAME_COMMON_NODELIST
 
+#include "timing.hpp"
+
 class NodeList {
 
 	public:
-
-		unsigned int len;
-
-		void* add(void *item);
-		void* get(unsigned int index);
-		void rem(unsigned int index);
-
-		NodeList();
-		~NodeList();
-
-	private:
 
 		struct Node {
 
@@ -51,10 +42,26 @@ class NodeList {
 
 		};
 
+		unsigned int len;
+
+		void* add(void *item);
+		void* get(unsigned int index);
+		Node* find(void* item);
+		void rem(unsigned int index);
+		void rem(void* item);
+
+		NodeList();
+		~NodeList();
+
+	private:
+
+		Timing::mutex m = MTX_DEFAULT;
+
 		Node *last;
 		Node *index;
 
 		Node* find(unsigned int index);
+		void del(Node* node);
 
 };
 

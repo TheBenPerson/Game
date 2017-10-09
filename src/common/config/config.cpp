@@ -82,7 +82,7 @@ bool Config::load(char *path) {
 		if (result != -1 && buf[0] != '#' && buf[0] != '\n') {
 
 			// strip tailing newline
-			if (buf[len] == '\n') buf[len] = '\0';
+			if (buf[result - 1] == '\n') buf[result - 1] = '\0';
 
 			name = strtok(buf, "=:\t ");
 			if (!name) {

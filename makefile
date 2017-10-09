@@ -22,11 +22,14 @@
 # SOFTWARE.
 
 # flags
-CF := -Isrc/common -Wall -Wextra -Wno-conversion-null -Wno-write-strings
+export CPATH := $(shell find src/common -type d | tr '\n' ':')
+CF := -Wall -Wextra -Wno-conversion-null -Wno-write-strings
 LF := -fsanitize=leak -g
 
 # build directories
 BIN := bin
+CBIN := $(BIN)/client
+SBIN := $(BIN)/server
 OBJ := $(BIN)/obj
 
 # default target
@@ -35,19 +38,53 @@ all: $(BIN)/game
 .PHONY: release
 release: LF := -Ofast
 release: $(BIN)/game
-	strip --strip-unneeded $(addprefix $(BIN)/, client.so common.so)
+	strip --strip-unneeded $(BIN)/common.so $(CBIN)/*
+
+.phony: CMOD
+CMOD:
+	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
+	$(eval export CPATH)
+	@setterm --foreground green
+	@echo Compiling client module...
+	@setterm --default
+
+.phony: SMOD
+SMOD:
+	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
+	$(eval export CPATH)
+	@setterm --foreground green
+	@echo Compiling server module...
+	@setterm --default
 
 # launcher
-$(BIN)/game: $(OBJ)/main.o $(addprefix $(BIN)/, client.so common.so)
-	gcc $(OBJ)/main.o $(BIN)/common.so -ldl -lstdc++ $(LF) -o $@
+$(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
+	gcc $^ -lstdc++ -ldl $(LF) -o $@
 
-$(OBJ)/main.o: src/main/main.cpp
+$(OBJ)/main.o: src/main.cpp
+	$(eval export CPATH)
 	gcc $(CF) -c $^ $(LF) -o $@
 
-# core modules
-client.so: $(BIN)/client.so
-$(BIN)/client.so: $(shell find src/client -name "*.cpp")
-	gcc $(CF) -Isrc/client -shared -fpic -lGL -lpng -lX11 -lX11-xcb -lxcb $^ $(LF) -o $@
+# client modules
+client.so: CMOD $(CBIN)/client.so
+$(CBIN)/client.so: src/client/client.cpp
+	gcc $(CF) -shared -fpic -lGL -lpng -lX11 -lX11-xcb -lxcb $^ $(LF) -o $@
+
+input.so: CMOD $(CBIN)/input.so
+$(CBIN)/input.so: src/client/input/input.cpp
+	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+
+win.so: CMOD $(CBIN)/win.so
+$(CBIN)/win.so: $(CBIN)/client.so $(CBIN)/input.so src/client/win/win.cpp
+	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+
+gfx.so: CMOD $(CBIN)/gfx.so
+$(CBIN)/gfx.so: $(CBIN)/client.so $(CBIN)/win.so src/client/gfx/gfx.cpp
+	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+
+ui.so: CMOD $(CBIN)/ui.so
+$(CBIN)/ui.so: $(CBIN)/client.so $(CBIN)/gfx.so $(CBIN)/input.so $(CBIN)/win.so $(shell find src/client/ui -name "*.cpp")
+	gcc $(CF) $(CBIN)/client.so -shared -fpic $^ $(LF) -o $@
+	# change me 4 formatting plz
 
 server.so: $(BIN)/server.so
 $(BIN)/server.so: $(shell find src/server -name "*.cpp")
@@ -55,13 +92,7 @@ $(BIN)/server.so: $(shell find src/server -name "*.cpp")
 
 common.so: $(BIN)/common.so
 $(BIN)/common.so: $(shell find src/common -name "*.cpp")
-	gcc $(CF) -Isrc/util -shared -fpic -pthread $^ $(LF) -o $@
-
-# client modules
-ui.so: $(BIN)/client.so $(BIN)/client/ui.so
-$(BIN)/client/ui.so: $(shell find src/modules/client/ui -name "*.cpp")
-	gcc $(CF) -Isrc/client $(BIN)/client.so -shared -fpic $^ $(LF) -o $@
-	# change me 4 formatting plz
+	gcc $(CF) -shared -fpic -pthread $^ $(LF) -o $@
 
 .PHONY: clean
 clean:

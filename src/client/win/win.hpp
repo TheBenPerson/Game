@@ -27,70 +27,25 @@ SOFTWARE.
 
 #ifndef GAME_CLIENT_WIN
 
-#include <GL/glx.h>
-#include <X11/Xlib.h>
-#include <xcb/xcb.h>
-
-#include "point/point.hpp"
-
 namespace WIN {
 
-	bool init();
-	void cleanup();
-
-	//screen details
+	// screen details
 	extern bool fullscreen;
 	extern unsigned int screenHeight;
 	extern unsigned int screenWidth;
-	extern float aspect;
 	extern bool vSync;
 
-	void setFullscreen(bool mode);
-
-	//window details
+	// window details
 	extern unsigned int height;
 	extern unsigned int width;
+	extern float aspect;
+	extern bool resized;
 
-	bool createWindow();
+	void showWindow();
+	void setFullscreen(bool mode);
 	bool initContext();
 	void cleanupContext();
-	void tick();
-
-	//input details
-	typedef struct {
-
-		xcb_keycode_t key;
-		bool state;
-		void (*callback)();
-
-	} Key;
-
-	enum Action { A_UP, A_DOWN, A_LEFT, A_RIGHT, A_EXIT, A_ACTION, A_FULLSCREEN, A_NUM_ACTIONS };
-
-	extern Key keys[];
-	extern Point mouse;
-
-	void initInput();
-	void loadKeys();
-	void actnUp();
-	void actnDown();
-	void actnLeft();
-	void actnRight();
-	void actnExit();
-	void actnAction();
-	void actnFullscreen();
-
-	//OS details
-	extern xcb_connection_t *connection;
-	extern GLXContext context;
-	extern Display* display;
-	extern xcb_window_t rootWin;
-	extern xcb_window_t winID;
-	extern xcb_atom_t NET_WM_STATE;
-	extern xcb_atom_t NET_WM_STATE_FULLSCREEN;
-	extern xcb_atom_t WM_DELETE_WINDOW;
-
-	bool initX11();
+	void swapBuffers();
 
 }
 

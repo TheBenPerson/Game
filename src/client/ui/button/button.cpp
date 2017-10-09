@@ -29,9 +29,9 @@ SOFTWARE.
 #include <stdio.h>
 
 #include "button.hpp"
-#include "gfx/gfx.hpp"
-#include "point/point.hpp"
-#include "win/win.hpp"
+#include "gfx.hpp"
+#include "input.hpp"
+#include "point.hpp"
 
 void Button::init() {
 
@@ -65,12 +65,12 @@ bool Button::tick() {
 
 	bool val = false;
 
-	bool xBounds = (WIN::mouse.x > values[0].x) && (WIN::mouse.y > values[0].y);
-	bool yBounds = (WIN::mouse.x < values[1].x) && (WIN::mouse.y < values[1].y);
+	bool xBounds = (Input::mouse.x > values[0].x) && (Input::mouse.y > values[0].y);
+	bool yBounds = (Input::mouse.x < values[1].x) && (Input::mouse.y < values[1].y);
 
 	if (xBounds && yBounds) {
 
-		if (WIN::keys[WIN::A_ACTION].state) state = CLICKED;
+		if (Input::actions[Input::A_ACTION]) state = CLICKED;
 		else {
 
 			if (state == CLICKED) val = callback();

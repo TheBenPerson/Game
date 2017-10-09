@@ -25,153 +25,41 @@ SOFTWARE.
 
 */
 
-#include <dirent.h>
-#include <dlfcn.h>
-#include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
-#include <X11/Xlib.h>
 
 #include "client.hpp"
-#include "gfx/gfx.hpp"
-#include "timing/timing.hpp"
-#include "win/win.hpp"
-#include "world/world.hpp"
+#include "console.hpp"
 
-namespace Client {
-
-	bool running = true;
-	Config config;
-	NodeList modules;
+extern "C" {
 
 	bool init() {
 
 		// default client values
-		config.add("fullscreen", (void*) true);
-		config.add("vsync", (void*) true);
-		config.add("fps", (void*) 60);
-		config.add("res", (void*) "default");
-		config.add("tps", (void*) 120);
-		config.load("cfg/client.cfg");
+		Client::config.add("fullscreen", (void*) true);
+		Client::config.add("vsync", (void*) true);
+		Client::config.add("fps", (void*) 60);
+		Client::config.add("res", (void*) "default");
+		Client::config.add("tps", (void*) 120);
+		Client::config.load("cfg/client.cfg");
 
-		initMods();
-
-		if (!WIN::init()) return false;
-		if (!GFX::init()) return false;
-
-		World::init();
+		cputs("Loaded module: 'client.so'");
 
 		return true;
-
-	}
-
-	void initMods() {
-
-		char path[] = "bin/client/";
-		DIR *dir = opendir(path);
-		if (!dir) {
-
-			perror("Error loading modules");
-			return;
-
-		}
-
-		for (;;) {
-
-			dirent *file = readdir(dir);
-			if (!file) break;
-
-			if (file->d_type != DT_REG) continue;
-
-			char *name = (char*) malloc(strlen(path) + strlen(file->d_name));
-			strcpy(name, path);
-			strcpy(name + strlen(path), file->d_name);
-
-			void *handle = dlopen(name, RTLD_LAZY);
-			free(name);
-
-			if (handle) {
-
-				Module *mod = new Module();
-				mod->handle = handle;
-				mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
-				mod->initGL = (void (*)()) dlsym(handle, "initGL");
-				mod->cleanupGL = (void (*)()) dlsym(handle, "cleanupGL");
-				mod->draw = (void (*)()) dlsym(handle, "draw");
-				mod->tick = (void (*)()) dlsym(handle, "tick");
-
-				bool (*init)() = (bool (*)()) dlsym(handle, "init");
-
-				bool result = true;
-				if (init) result = init();
-				// mod prints its own message
-
-				if (result) modules.add(mod);
-				else {
-
-					delete mod;
-					dlclose(handle);
-
-				}
-
-			} else fprintf(stderr, "Error loading module %s\n", dlerror());
-
-		}
-
-		closedir(dir);
 
 	}
 
 	void cleanup() {
 
-		World::cleanup();
-		GFX::cleanup();
-		WIN::cleanup();
-
-		for (unsigned int i = 0; i < modules.len; i++) {
-
-			Module *mod = (Module*) modules.get(i);
-			if (mod->cleanup) mod->cleanup();
-
-			// might not need this
-			dlclose(mod->handle);
-
-			delete mod;
-
-		}
+		cputs("Unloaded module: 'client.so'", RED);
 
 	}
 
-	bool start() {
+}
 
-		if (!init()) return false;
+namespace Client {
 
-		while (running) tick();
-
-		cleanup();
-		return true;
-
-	}
-
-	void tick() {
-
-		// blocks until next event
-		WIN::tick();
-
-		// tick mods
-		for (unsigned int i = 0; i < modules.len; i++) {
-
-			Module *mod = (Module*) modules.get(i);
-			if (mod->tick) mod->tick();
-
-		}
-
-	}
-
-	// state section
+	Config config;
+	bool running = true;
 	State state = PAUSED;
 
 	void setState(State state) {

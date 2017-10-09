@@ -4,21 +4,13 @@
 #include "win/win.hpp"
 
 GLuint loading;
+Panel cancel;
 
-Button* bCancel[] = {
+static bool actnCancel();
 
-	(Button*) mmenu,
-	new Button({0, -3}, 10.0f, "Cancel", cancel),
-	NULL
+void initLoading() {
 
-};
-
-bool cancel() {
-
-	Client::setState(Client::IN_GAME);
-	actnBack();
-
-	return false;
+	cancel.buttons.add((void*) new Button({0, -3}, 10.0f, "Cancel", actnCancel));
 
 }
 
@@ -77,5 +69,14 @@ void drawLoading() {
 	glMatrixMode(GL_MODELVIEW);
 
 	GFX::drawText("Loading...", {0, 2}, 1, true);
+
+}
+
+bool actnCancel() {
+
+	Client::setState(Client::IN_GAME);
+	actnBack();
+
+	return false;
 
 }

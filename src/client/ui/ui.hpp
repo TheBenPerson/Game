@@ -30,49 +30,35 @@ SOFTWARE.
 #include <GL/gl.h>
 #include <stddef.h>
 
-#include "button/button.hpp"
-#include "timing/timing.hpp"
+#include "button.hpp"
+#include "nodelist.hpp"
+#include "timing.hpp"
 
-typedef struct {
+typedef struct Panel {
 
 	NodeList buttons;
-	NodeList *back;
+	Panel *back;
 
 } Panel;
 
 extern GLuint bg;
 extern Panel *panel;
 extern Timing::mutex m;
-
 void setPanel(Panel *panel);
 bool actnBack();
 
-//about
+extern Panel mmenu;
 extern Panel about;
 
-//main menu
-extern Panel mmenu;
-bool actnStart();
-bool actnAbout();
-bool actnSettings();
-bool actnQuit();
-
-//settings
 extern Panel settings;
-bool actnVideo();
-bool actnInput();
-
 extern Panel video;
-bool actnFullscreen();
-
 extern Panel input;
-bool actnSetReturn();
+extern void initSettings();
+extern void cleanupSettings();
 
-//loading
 extern GLuint loading;
-extern Panel bCancel;
+extern Panel cancel;
 
-bool cancel();
 void tickLoading();
 void drawLoading();
 

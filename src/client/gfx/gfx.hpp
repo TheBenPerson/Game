@@ -28,27 +28,16 @@ SOFTWARE.
 #ifndef GAME_CLIENT_GFX
 
 #include <GL/gl.h>
-#include <pthread.h>
 
-#include "point/point.hpp"
-#include "timing/timing.hpp"
+#include "nodelist.hpp"
+#include "point.hpp"
 
 namespace GFX {
 
-	extern bool resized;
-	extern Timing::thread t;
+	extern NodeList listeners;
 
-	bool init();
-	void cleanup();
-	void draw();
-	void* threadMain(void *result);
-
-	// font section
-	extern GLuint font;
+	void call(void (*function)());
 	void drawText(char *text, Point pos, float size = 1.0f, bool centered = false);
-
-	// GL section
-	void glInit();
 	GLuint loadTexture(char *path);
 
 }

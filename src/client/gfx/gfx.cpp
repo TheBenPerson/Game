@@ -42,17 +42,38 @@ SOFTWARE.
 #include <X11/Xlib.h>
 
 #include "client.hpp"
-#include "config/config.hpp"
+#include "config.hpp"
+#include "console.hpp"
 #include "gfx.hpp"
-#include "point/point.hpp"
-#include "timing/timing.hpp"
-#include "win/win.hpp"
-#include "world/world.hpp"
+#include "point.hpp"
+#include "timing.hpp"
+#include "win.hpp"
 
 namespace GFX {
 
-	bool resized = false;
-	Timing::thread t;
+	NodeList listeners;
+
+}
+
+static 	Timing::thread t;
+static Timing::mutex m = MTX_DEFAULT;
+static void (*callback)() = NULL;
+static bool running = true;
+static GLuint font;
+
+static void* threadMain(void*);
+static void glInit();
+static void draw();
+
+extern "C" {
+
+	char* depends[] = {
+
+		"client.so",
+		"win.so",
+		NULL
+
+	};
 
 	bool init() {
 
@@ -68,99 +89,38 @@ namespace GFX {
 
 		}
 
+		cputs("Loaded module: 'gfx.so'");
 		return true;
 
 	}
 
 	void cleanup() {
 
+		running = false;
 		Timing::waitFor(t);
 
-	}
-
-	void draw() {
-
-		if (resized) {
-
-			glViewport(0, 0, WIN::width, WIN::height);
-			double aspect = (double) WIN::width / (double) WIN::height;
-
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			glOrtho(-10 * aspect, 10 * aspect, -10, 10, -10, 10);
-
-			resized = false;
-
-		}
-
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		glMatrixMode(GL_TEXTURE);
-		glLoadIdentity();
-
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-
-		World::draw();
-
-		// draw mods
-		for (unsigned int i = 0; i < Client::modules.len; i++) {
-
-			Client::Module *mod = (Client::Module*) Client::modules.get(i);
-			if (mod->draw) mod->draw();
-
-		}
-
-		glXSwapBuffers(WIN::display, WIN::winID);
+		cputs("Unloaded module: 'gfx.so'", RED);
 
 	}
 
-	void* threadMain(void* result) {
+}
 
-		if (!WIN::initContext()) {
+// global functions
 
-			*((int8_t *) result) = 0; // tell main t init failed
-			return NULL;
+namespace GFX {
 
-		}
+	void call(void (*function)()) {
 
-		font = loadTexture("font.png");
+		Timing::lock(&m);
 
-		// need to be in same thread to load textures
-		for (unsigned int i = 0; i < Client::modules.len; i++) {
+		callback = function;
+		while (callback) {}
 
-			Client::Module *mod = (Client::Module*) Client::modules.get(i);
-			if (mod->initGL) mod->initGL();
-
-		}
-
-		glInit(); // initialize OpenGL
-
-		xcb_map_window(WIN::connection, WIN::winID); // display window
-		*((int8_t *) result) = 1; // tell main t init succeeded
-
-		if (WIN::vSync) while (Client::running) draw();
-		else Timing::doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &Client::running);
-
-		// need to be in same thread to load textures
-		for (unsigned int i = 0; i < Client::modules.len; i++) {
-
-			Client::Module *mod = (Client::Module*) Client::modules.get(i);
-			if (mod->cleanupGL) mod->cleanupGL();
-
-		}
-
-		glDeleteTextures(1, &font);
-		WIN::cleanupContext();
-
-		return NULL;
+		Timing::unlock(&m);
 
 	}
 
-	// font section
-	GLuint font;
-
-	void drawText(char* text, Point position, float size, bool centered) {
+	void drawText(char *text, Point position, float size, bool centered) {
 
 		float texWidth = 5.0f / 512.0f;
 
@@ -245,50 +205,33 @@ namespace GFX {
 
 	}
 
-	// GL section
-
-	void glInit() {
-
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-
-		glOrtho(-10, 10, -10, 10, -10, 10);
-
-		glMatrixMode(GL_MODELVIEW);
-		glEnable(GL_TEXTURE_2D);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-	}
-
 	GLuint loadTexture(char *name) {
 
 		char *res = (char*) Client::config.get("res")->val;
 		size_t len = strlen(name);
 
-		char *buff = new char[4 + strlen(res) + 9 + len];
-		sprintf(buff, "res/%s/texture/%s", res, name);
+		char *buf = new char[4 + strlen(res) + 9 + len];
+		sprintf(buf, "res/%s/texture/%s", res, name);
 
-		FILE *file = fopen(buff, "r");
-		delete[] buff;
+		FILE *file = fopen(buf, "r");
+		delete[] buf;
 
 		if (!file) {
 
-			buff = new char[20 + len];
-			sprintf(buff, "res/default/texture/%s", name);
+			buf = new char[20 + len];
+			sprintf(buf, "res/default/texture/%s", name);
 
-			file = fopen(buff, "r");
+			file = fopen(buf, "r");
 			if (!file) {
 
 				fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
 
-				delete[] buff;
+				delete[] buf;
 				return 0;
 
 			}
 
-			delete[] buff;
+			delete[] buf;
 
 		}
 
@@ -348,5 +291,85 @@ namespace GFX {
 		return texture;
 
 	}
+
+}
+
+// static functions
+
+void* threadMain(void* result) {
+
+	if (!WIN::initContext()) {
+
+		*((int8_t *) result) = 0; // tell main t init failed
+		return NULL;
+
+	}
+
+	font = GFX::loadTexture("font.png");
+	glInit(); // initialize OpenGL
+
+	WIN::showWindow(); // display window
+	*((int8_t *) result) = 1; // tell main t init succeeded
+
+	if (WIN::vSync) while (running) draw();
+	else Timing::doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &running);
+
+	glDeleteTextures(1, &font);
+	WIN::cleanupContext();
+
+	return NULL;
+
+}
+
+
+void glInit() {
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+
+	glOrtho(-10, 10, -10, 10, -10, 10);
+
+	glMatrixMode(GL_MODELVIEW);
+	glEnable(GL_TEXTURE_2D);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+}
+
+void draw() {
+
+	if (callback) {
+
+		callback();
+		callback = NULL;
+
+	}
+
+	if (WIN::resized) {
+
+		glViewport(0, 0, WIN::width, WIN::height);
+		double aspect = (double) WIN::width / (double) WIN::height;
+
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glOrtho(-10 * aspect, 10 * aspect, -10, 10, -10, 10);
+
+		WIN::resized = false;
+
+	}
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	for (unsigned int i = 0; i < GFX::listeners.len; i++)
+		((void (*)()) GFX::listeners.get(i))();
+
+	WIN::swapBuffers();
 
 }
