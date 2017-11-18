@@ -1,18 +1,18 @@
 # Game Development Build
 # https://github.com/TheBenPerson/Game
-
+#
 # Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
-
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,9 +21,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# flags
+# always include files in src/common
 export CPATH := $(shell find src/common -type d | tr '\n' ':')
+
+# compiler flags
 CF := -Wall -Wextra -Wno-conversion-null -Wno-write-strings
+
+# linker flags
 LF := -fsanitize=leak -g
 
 # build directories
@@ -32,68 +36,86 @@ CBIN := $(BIN)/client
 SBIN := $(BIN)/server
 OBJ := $(BIN)/obj
 
-# default target
-all: $(BIN)/game
-
-.PHONY: release
-release: LF := -Ofast
-release: $(BIN)/game
-	strip --strip-unneeded $(BIN)/common.so $(CBIN)/*
-
-.phony: CMOD
-CMOD:
-	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
-	$(eval export CPATH)
+all:
 	@setterm --foreground green
-	@echo Compiling client module...
+	# Starting make with parallel jobs enabled...
+	# To disable, run 'make _all'
 	@setterm --default
+	make -j $(shell nproc) _all
 
-.phony: SMOD
-SMOD:
-	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
-	$(eval export CPATH)
+_all: game client
 	@setterm --foreground green
-	@echo Compiling server module...
+	# Done
 	@setterm --default
 
 # launcher
+
+.PHONY: game
+game: $(BIN)/game
 $(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
-	gcc $^ -lstdc++ -ldl $(LF) -o $@
+	@setterm --foreground green
+	# Compiling launcher: 'game'...
+	@setterm --default
+	gcc $(CF) $^ $(LF) -o $@
 
 $(OBJ)/main.o: src/main.cpp
-	$(eval export CPATH)
-	gcc $(CF) -c $^ $(LF) -o $@
+	@setterm --foreground green
+	# Compiling launcher: 'main.o'...
+	@setterm --default
+	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+
+# common.so
+
+.PHONY: common.so
+common.so: $(BIN)/common.so
+$(BIN)/common.so: $(shell find src/common -type f)
+	@setterm --foreground green
+	# Compiling library: 'common.so'...
+	@setterm --default
+	gcc $(CF) -shared -fpic $^ $(LF) -o $@
 
 # client modules
-client.so: CMOD $(CBIN)/client.so
+
+.PHONY: client
+client: client.so input.so win.so gfx.so ui.so
+
+.PHONY: client.so
+client.so: $(CBIN)/client.so
+$(CBIN)/client.so: LFA := -lGL -lpng -lX11 -lX11-xcb -lxcb
 $(CBIN)/client.so: src/client/client.cpp
-	gcc $(CF) -shared -fpic -lGL -lpng -lX11 -lX11-xcb -lxcb $^ $(LF) -o $@
 
-input.so: CMOD $(CBIN)/input.so
+.PHONY: input.so
+input.so: $(CBIN)/input.so
 $(CBIN)/input.so: src/client/input/input.cpp
-	gcc $(CF) -shared -fpic $^ $(LF) -o $@
 
-win.so: CMOD $(CBIN)/win.so
-$(CBIN)/win.so: $(CBIN)/client.so $(CBIN)/input.so src/client/win/win.cpp
-	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+.PHONY: win.so
+win.so: $(CBIN)/win.so
+$(CBIN)/win.so: $(addprefix $(CBIN)/, client.so input.so)
+$(CBIN)/win.so: src/client/win/win.cpp
 
-gfx.so: CMOD $(CBIN)/gfx.so
-$(CBIN)/gfx.so: $(CBIN)/client.so $(CBIN)/win.so src/client/gfx/gfx.cpp
-	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+.PHONY: gfx.so
+gfx.so: $(CBIN)/gfx.so
+$(CBIN)/gfx.so: $(addprefix $(CBIN)/, client.so win.so)
+$(CBIN)/gfx.so: src/client/gfx/gfx.cpp
 
-ui.so: CMOD $(CBIN)/ui.so
-$(CBIN)/ui.so: $(CBIN)/client.so $(CBIN)/gfx.so $(CBIN)/input.so $(CBIN)/win.so $(shell find src/client/ui -name "*.cpp")
-	gcc $(CF) $(CBIN)/client.so -shared -fpic $^ $(LF) -o $@
-	# change me 4 formatting plz
+.PHONY: ui.so
+ui.so: $(CBIN)/ui.so
+$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so)
+$(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cpp")
 
-server.so: $(BIN)/server.so
-$(BIN)/server.so: $(shell find src/server -name "*.cpp")
-	gcc $(CF) -Isrc/server -shared -fpic $^ $(LF) -o $@
+$(CBIN)/%.so:
+	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
+	$(eval export CPATH)
+	@setterm --foreground green
+	# Compiling client module: '$(shell basename $@)'...
+	@setterm --default
 
-common.so: $(BIN)/common.so
-$(BIN)/common.so: $(shell find src/common -name "*.cpp")
-	gcc $(CF) -shared -fpic -pthread $^ $(LF) -o $@
+	gcc $(CF) -Isrc/client $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
 
-.PHONY: clean
+.PHONY:clean
 clean:
-	-rm $(OBJ)/* $(BIN)/* 2> /dev/null
+	-rm $(CBIN)/*.so 2> /dev/null
+	-rm $(SBIN)/*.so 2> /dev/null
+	-rm $(BIN)/common.so 2> /dev/null
+	-rm $(BIN)/game 2> /dev/null
+	-rm $(OBJ)/*.o 2> /dev/null
