@@ -8,7 +8,7 @@ Because it is module oriented, so adding mods is as easy as dragging and droppin
 
 *** Game is a work in progress. Don't expect it to work. ***
 
-![thumbnail.png](https://github.com/thebenperson/game/blob/doc/res/thumbnail.png)
+[![thumbnail.png](https://github.com/thebenperson/game/blob/doc/res/thumbnail.png)](https://github.com/thebenperson/game/blob/doc/res/video.mp4)
 
 ### Dependancies:
 
