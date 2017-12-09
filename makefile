@@ -22,10 +22,10 @@
 # SOFTWARE.
 
 # always include files in src/common
-export CPATH := $(shell find src/common -type d | tr '\n' ':')
+export CPATH := src/:$(shell find src/common -type d | tr '\n' ':')
 
 # compiler flags
-CF := -Wall -Wextra -Wno-conversion-null -Wno-write-strings
+CF := -Wall -Wextra -Wno-conversion-null -Wno-write-strings -fpermissive # REMOVE ME!!!!!
 
 # linker flags
 LF := -fsanitize=leak -g
@@ -43,26 +43,29 @@ all:
 	@setterm --default
 	make -j $(shell nproc) _all
 
-_all: game client
+_all: launcher client server
 	@setterm --foreground green
 	# Done
 	@setterm --default
 
+release: LF := -Os -s
+release: all
+
 # launcher
 
-.PHONY: game
-game: $(BIN)/game
+.PHONY: launcher
+launcher: $(BIN)/game
 $(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
 	@setterm --foreground green
 	# Compiling launcher: 'game'...
 	@setterm --default
-	gcc $(CF) $^ $(LF) -o $@
+	gcc $(CF) $^ $(LF) -ldl -lstdc++ -o $@
 
 $(OBJ)/main.o: src/main.cpp
 	@setterm --foreground green
 	# Compiling launcher: 'main.o'...
 	@setterm --default
-	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+	gcc $(CF) -c $^ $(LF) -o $@
 
 # common.so
 
@@ -98,8 +101,12 @@ gfx.so: $(CBIN)/gfx.so
 $(CBIN)/gfx.so: $(addprefix $(CBIN)/, client.so win.so)
 $(CBIN)/gfx.so: src/client/gfx/gfx.cpp
 
+#.PHONY: audio.so
+#$(CBIN)/audio.so: src/client/audio/audio.cpp
+
 .PHONY: ui.so
 ui.so: $(CBIN)/ui.so
+#$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so audio.so)
 $(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so)
 $(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cpp")
 
@@ -111,6 +118,37 @@ $(CBIN)/%.so:
 	@setterm --default
 
 	gcc $(CF) -Isrc/client $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
+
+.PHONY: server
+server: client.so server.so
+
+.PHONY: sclient.so
+sclient.so: $(SBIN)/sclient.so
+$(SBIN)/sclient.so: $(addprefix $(SBIN)/, server.so net.so world.so)
+$(SBIN)/sclient.so: src/server/client/client.cpp
+
+.PHONY: world.so
+world.so: $(SBIN)/world.so
+$(SBIN)/world.so: $(SBIN)/server.so
+$(SBIN)/world.so: src/server/world/world.cpp
+
+.PHONY: server.so
+server.so: $(SBIN)/server.so
+$(SBIN)/server.so: src/server/server.cpp
+
+.PHONY: net.so
+net.so: $(SBIN)/net.so
+$(SBIN)/net.so: $(SBIN)/server.so
+$(SBIN)/net.so: src/server/net/net.cpp
+
+$(SBIN)/%.so:
+	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
+	$(eval export CPATH)
+	@setterm --foreground green
+	# Compiling server module: '$(shell basename $@)'...
+	@setterm --default
+
+	gcc $(CF) -Isrc/server $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
 
 .PHONY:clean
 clean:

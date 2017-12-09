@@ -1,29 +1,29 @@
 /*
-
-Game Development Build
-https://github.com/TheBenPerson/Game
-
-Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+ *
+ * Game Development Build
+ * https://github.com/TheBenPerson/Game
+ *
+ * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
 
 #include <GL/glx.h>
 #include <GL/glxext.h>
@@ -74,7 +74,7 @@ static xcb_atom_t NET_WM_STATE;
 static xcb_atom_t NET_WM_STATE_FULLSCREEN;
 static xcb_atom_t WM_DELETE_WINDOW;
 
-static xcb_keysym_t keys[Input::A_NUM_ACTIONS];
+static xcb_keysym_t* keys[Input::A_NUM_ACTIONS];
 
 // static functions
 
@@ -83,6 +83,7 @@ static bool createWindow();
 static bool createContext();
 static void* threadMain(void*);
 static void loadKeys();
+static void fullscreenHandler();
 
 // global functions
 extern "C" {
@@ -101,14 +102,17 @@ extern "C" {
 		loadKeys();
 
 		t = Timing::createThread(threadMain, NULL);
+		Input::listeners.add((void*) &fullscreenHandler);
 
-		cputs("Loaded module: 'win.so'");
+		cputs(GREEN, "Loaded module: 'win.so'");
 
 		return true;
 
 	}
 
 	void cleanup() {
+
+		Input::listeners.rem((void*) &fullscreenHandler);
 
 		running = false;
 		xcb_destroy_window(connection, winID);
@@ -117,7 +121,10 @@ extern "C" {
 
 		Timing::waitFor(t);
 
-		cputs("Unloaded module: 'win.so'", RED);
+		for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++)
+			delete[] keys[i];
+
+		cputs(YELLOW, "Unloaded module: 'win.so'");
 
 	}
 
@@ -128,6 +135,7 @@ namespace WIN {
 	void showWindow() {
 
 		xcb_map_window(connection, winID);
+		if (fullscreen) setFullscreen(true);
 
 	}
 
@@ -161,7 +169,7 @@ namespace WIN {
 			xcb_destroy_window(connection, winID);
 
 			XCloseDisplay(display);
-			fputs("Error initalizing context: an unknown error has occurred\n", stderr);
+			ceputs(RED, "Error initalizing context: an unknown error has occurred");
 
 			return false;
 
@@ -231,7 +239,7 @@ bool initX11() {
 
 	if (!display) {
 
-		fprintf(stderr, "Error opening display '%s': an unknown error has occurred.\n", displayVar);
+		ceprintf(RED, "Error opening display '%s': an unknown error has occurred\n", displayVar);
 		return false;
 
 	}
@@ -244,7 +252,7 @@ bool initX11() {
 	if (major == 1 && minor < 2) {
 
 		XCloseDisplay(display);
-		fprintf(stderr, "Error creating visual: glx version 1.2 or greater is required.\n");
+		ceputs(RED, "Error creating visual: glx version 1.2 or greater is required");
 
 		return false;
 
@@ -309,7 +317,7 @@ bool createWindow() {
 	if (!visualInfo) {
 
 		XCloseDisplay(display);
-		fprintf(stderr, "Error choosing visual: no visuals exist that match the required criteria.\n");
+		ceputs(RED, "Error choosing visual: no visuals exist that match the required criteria");
 
 		return false;
 
@@ -341,7 +349,8 @@ bool createWindow() {
 	xcb_change_property(connection, XCB_PROP_MODE_APPEND, winID, WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, (void*) &WM_DELETE_WINDOW);
 
 	WIN::fullscreen = (bool) Client::config.get("fullscreen")->val;
-	if (WIN::fullscreen) WIN::setFullscreen(true);
+	// set fullscreen after window is mapped
+	// some window managers like i3 don't set it fullscreen otherwise
 
 	context = glXCreateContext(display, visualInfo, NULL, true);
 	XFree(visualInfo);
@@ -351,7 +360,7 @@ bool createWindow() {
 		xcb_destroy_window(connection, winID);
 		XCloseDisplay(display);
 
-		fputs("Error creating context: an unknown error has occurred\n", stderr);
+		ceputs(RED, "Error creating context: an unknown error has occurred");
 		return false;
 
 	}
@@ -392,14 +401,20 @@ void* threadMain(void*) {
 					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
 					for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++) {
 
-						if (keys[i] == key) {
+						for (unsigned int n = 0; keys[i][n]; n++) {
 
-							Input::actions[i] = true;
-							break;
+							if (keys[i][n] == key) {
+
+								Input::actions[i] = true;
+								break;
+
+							}
 
 						}
 
 					}
+
+					Input::wasCursor = false;
 
 				} break;
 
@@ -409,14 +424,20 @@ void* threadMain(void*) {
 					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
 					for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++) {
 
-						if (keys[i] == key) {
+						for (unsigned int n = 0; keys[i][n]; n++) {
 
-							Input::actions[i] = false;
-							break;
+							if (keys[i][n] == key) {
+
+								Input::actions[i] = false;
+								break;
+
+							}
 
 						}
 
 					}
+
+					Input::wasCursor = false;
 
 				} break;
 
@@ -428,24 +449,18 @@ void* threadMain(void*) {
 					if (WIN::width > WIN::height) {
 
 						float dX = WIN::width - WIN::height;
-						Input::mouse.x = (((x - (dX / 2)) / (WIN::width - dX)) - 0.5f) * 20;
+						Input::cursor.x = (((x - (dX / 2)) / (WIN::width - dX)) - 0.5f) * 20;
 
-					} else {
-
-						Input::mouse.x = ((x / (float) WIN::width) - 0.5f) * 20;
-
-					}
+					} else Input::cursor.x = ((x / (float) WIN::width) - 0.5f) * 20;
 
 					if (WIN::height > WIN::width) {
 
 						float dY = WIN::height - WIN::width;
-						Input::mouse.y = ((-((y - (dY / 2)) / (WIN::height - dY))) + 0.5f) * 20;
+						Input::cursor.y = ((-((y - (dY / 2)) / (WIN::height - dY))) + 0.5f) * 20;
 
-					} else {
+					} else Input::cursor.y = (-((y / (float) WIN::height) - 0.5f)) * 20;
 
-						Input::mouse.y = (-((y / (float) WIN::height) - 0.5f)) * 20;
-
-					}
+					Input::wasCursor = true;
 
 				break;
 
@@ -468,31 +483,61 @@ void loadKeys() {
 	Config config;
 
 	// default values
-	config.add("up", (void*) "W");
-	config.add("down", (void*) "S");
-	config.add("left", (void*) "A");
-	config.add("right", (void*) "D");
+	config.add("up", (void*) "W, Up");
+	config.add("down", (void*) "S, Down");
+	config.add("left", (void*) "A, Left");
+	config.add("right", (void*) "D, Right");
 
 	config.add("exit", (void*) "Escape");
-	config.add("action", (void*) "Left_Click");
+	config.add("action", (void*) "Left_Click, Return");
 	config.add("fullscreen", (void*) "F11");
 
 	config.load("cfg/keymap.cfg");
 
-	KeySym ks;
-	char *string;
-
 	for (unsigned int i = 0; i < config.len; i++) {
 
-		string = (char*) config.get(i)->val;
-		ks = XStringToKeysym(string);
+		char *string = strdup((char*) config.get(i)->val);
+		// don't need to if only one binding: might want to redesign this
 
-		if (ks) keys[i] = (xcb_keycode_t) XKeysymToKeycode(display, ks);
-		else {
+		char *c = string;
+		unsigned int n = 1;
+		// at least 1 binding /w null terminator
 
-			if (!strcmp(string, "Left_Click")) keys[i] = 1;
+		for (; c - 1; n++)
+			c = index(c, ',') + 1;
+
+		keys[i] = new xcb_keysym_t[n];
+
+		c = strtok(string, ", ");
+
+		n = 0;
+		while (c) {
+
+			KeySym ks = XStringToKeysym(c);
+
+			if (ks) keys[i][n] = (xcb_keycode_t) XKeysymToKeycode(display, ks);
+			else if (!strcmp(string, "Left_Click")) keys[i][n] = 1;
+			// find the official key code for left click
+
+			n++;
+
+			c = strtok(NULL, ", ");
 
 		}
+
+		keys[i][++n] = NULL;
+		free(string);
+
+	}
+
+}
+
+void fullscreenHandler() {
+
+	if (Input::actions[Input::A_FULLSCREEN]) {
+
+		WIN::fullscreen = !WIN::fullscreen;
+		WIN::setFullscreen(WIN::fullscreen);
 
 	}
 

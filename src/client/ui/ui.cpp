@@ -1,29 +1,29 @@
 /*
-
-Game Development Build
-https://github.com/TheBenPerson/Game
-
-Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+ *
+ * Game Development Build
+ * https://github.com/TheBenPerson/Game
+ *
+ * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
 
 #include <GL/gl.h>
 #include <math.h>
@@ -87,7 +87,7 @@ extern "C" {
 		GFX::call(&initGL);
 		GFX::listeners.add((void*) &draw);
 
-		cputs("Loaded module: 'ui.so'");
+		cputs(GREEN, "Loaded module: 'ui.so'");
 
 		return true;
 
@@ -110,7 +110,7 @@ extern "C" {
 		for (i = 0; i < about.buttons.len; i++)
 			delete ((Button*) about.buttons.get(i));
 
-		cputs("Unoaded module: 'ui.so'", RED);
+		cputs(YELLOW, "Unloaded module: 'ui.so'");
 
 	}
 
@@ -141,8 +141,55 @@ void tick() {
 	if (Input::actions[Input::A_EXIT])
 		if (panel->back) setPanel(panel->back);
 
-	for (unsigned int i = 0; i < panel->buttons.len; i++)
-		if (((Button*) panel->buttons.get(i))->tick()) i = 0; // tick all if something changed
+	int pos = -1;
+	for (unsigned int i = 0; i < panel->buttons.len; i++) {
+
+		Button::State state = ((Button*) panel->buttons.get(i))->tick(&panel->selected);
+
+		if (state == Button::HOVER || state == Button::CLICKED) pos = i;
+		else if (state == Button::CHANGE) i = ~0; // will wrap around to zero
+
+	}
+
+	if (pos != -1) {
+
+		if (Input::actions[Input::A_UP]) {
+
+			pos = panel->buttons.len - 1 - pos;
+			pos = (pos + 1) % panel->buttons.len;
+			pos = panel->buttons.len - 1 - pos;
+
+			Button *button = (Button*) panel->buttons.get(pos);
+			button->state = Button::HOVER;
+
+			panel->selected->state = Button::NORMAL;
+			panel->selected = button;
+
+		} else if (Input::actions[Input::A_DOWN]) {
+
+			Button *button = (Button*) panel->buttons.get((pos + 1) % panel->buttons.len);
+			button->state = Button::HOVER;
+
+			panel->selected->state = Button::NORMAL;
+			panel->selected = button;
+
+		}
+
+	} else {
+
+		if (Input::actions[Input::A_DOWN] || Input::actions[Input::A_ACTION]) {
+
+			panel->selected = (Button*) panel->buttons.get(0);
+			panel->selected->state = Button::HOVER;
+
+		} else if (Input::actions[Input::A_UP]) {
+
+			panel->selected = (Button*) panel->buttons.get(panel->buttons.len - 1);
+			panel->selected->state = Button::HOVER;
+
+		}
+
+	}
 
 }
 
@@ -201,9 +248,14 @@ void draw() {
 
 void setPanel(Panel* panel) {
 
+	if (::panel->selected) ::panel->selected->state = Button::NORMAL;
+	// consider changing (flickering)
+
 	Timing::lock(&m);
 	::panel = panel;
 	Timing::unlock(&m);
+
+	Input::wasCursor = true;
 
 }
 

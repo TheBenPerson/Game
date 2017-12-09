@@ -9,14 +9,14 @@ extern "C" {
 
 	bool init() {
 
-		cputs("Loaded module: 'input.so'");
+		cputs(GREEN, "Loaded module: 'input.so'");
 		return true;
 
 	}
 
 	void cleanup() {
 
-		cputs("Unloaded module: 'input.so'", RED);
+		cputs(YELLOW, "Unloaded module: 'input.so'");
 
 	}
 
@@ -25,7 +25,8 @@ extern "C" {
 namespace Input {
 
 	bool actions[A_NUM_ACTIONS];
-	Point mouse;
+	Point cursor;
+	bool wasCursor;
 	NodeList listeners;
 
 	void notify() {

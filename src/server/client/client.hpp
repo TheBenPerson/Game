@@ -25,21 +25,44 @@
  *
  */
 
-#ifndef GAME_SERVER_NET
+#ifndef GAME_SERVER_PLAYER
 
 #include <netinet/in.h>
-#include <stddef.h>
-#include <stdint.h>
 
-#include "packet.hpp"
+#include "nodelist/nodelist.hpp"
+#include "packet/packet.hpp"
+#include "timing/timing.hpp"
 
-namespace Net {
+class Client {
 
-	void wait(int timeout = -1);
-	void send(sockaddr_in *addr, Packet *packet);
-	void recv(sockaddr_in *addr, Packet *packet);
+	public:
 
-}
+		static uint timeout;
 
-#define GAME_SERVER_NET
+		static Client* get(sockaddr_in *addr);
+		static Client* get(char *name);
+		static void* entry(void*);
+
+		sockaddr_in addr;
+		char *name;
+
+		Client(sockaddr_in *addr, char *name);
+		~Client();
+		void send(uint8_t id);
+		void send(Packet *packet);
+		void recv(Packet *packet);
+
+	private:
+
+		static NodeList clients;
+
+		Packet *packet;
+		Timing::thread t;
+		Timing::condition cond;
+
+		Packet* recv();
+
+};
+
+#define GAME_SERVER_PLAYER
 #endif

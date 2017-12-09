@@ -1,29 +1,29 @@
 /*
-
-Game Development Build
-https:// github.com/TheBenPerson/Game
-
-Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+ *
+ * Game Development Build
+ * https://github.com/TheBenPerson/Game
+ *
+ * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ */
 
 #include <dirent.h>
 #include <dlfcn.h>
@@ -35,13 +35,19 @@ SOFTWARE.
 #include <stdlib.h>
 #include <string.h>
 
+#include "console.hpp"
 #include "data.hpp"
 #include "main.hpp"
 
-NodeList modules;
+namespace Game {
+
+	NodeList modules;
+	uint16_t port;
+
+}
 
 bool loadMods(char *path);
-void loadMod(char *base, char *path);
+bool loadMod(char *base, char *path);
 void sigHandler(int signal);
 
 int main(int argc, char* argv[]) {
@@ -58,10 +64,9 @@ int main(int argc, char* argv[]) {
 	"Options:\n\t"
 		"-h, --help\t\t"			"display this message and exit\n\t"
 		"-v, --version\t\t"			"display version info and exit\n\t"
-		"-s, --server <port>\t" 	"dtart the server on the specified port";
+		"-s, --server <port>\t" 	"start the server on the specified port";
 
 	bool isServer = false;
-	uint16_t port;
 
 	char c;
 	option options[] = {
@@ -91,7 +96,7 @@ int main(int argc, char* argv[]) {
 			case 's':
 
 				char* flag;
-				port = (uint16_t) strtol(optarg, &flag, 10);
+				Game::port = (uint16_t) strtol(optarg, &flag, 10);
 
 				if (*flag != '\0') {
 
@@ -110,24 +115,30 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	if (isServer) loadMods("bin/server/");
-	else loadMods("bin/client/");
+	char *path;
 
-	sigset_t sigset;
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGINT);
-	sigaddset(&sigset, SIGTERM);
+	if (isServer) path = "bin/server/";
+	else path = "bin/client/";
 
-	sigprocmask(SIG_BLOCK, &sigset, NULL);
+	if (loadMods(path)) {
 
-	int signal;
-	sigwait(&sigset, &signal);
+		sigset_t sigset;
+		sigemptyset(&sigset);
+		sigaddset(&sigset, SIGINT);
+		sigaddset(&sigset, SIGTERM);
 
-	printf("%s - Cleaning up...\n", strsignal(signal));
+		sigprocmask(SIG_BLOCK, &sigset, NULL);
 
-	for (int i = modules.len - 1; i >= 0; i--) {
+		int signal;
+		sigwait(&sigset, &signal);
 
-		Module *module = (Module *) modules.get(i);
+		cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
+
+	}
+
+	for (int i = Game::modules.len - 1; i >= 0; i--) {
+
+		Module *module = (Module *) Game::modules.get(i);
 		if (module->cleanup) module->cleanup();
 
 		delete module;
@@ -138,49 +149,82 @@ int main(int argc, char* argv[]) {
 
 }
 
-void loadMod(char *base, char *path) {
+bool loadMod(char *base, char *path) {
 
 	char *name = new char[strlen(base) + strlen(path)];
 	strcpy(name, base);
 	strcpy(name + strlen(base), path);
 
 	void *handle = dlopen(name, RTLD_LAZY);
-	delete[] name;
 
-	// has the mod been loaded already?
-	for (unsigned int i = 0; i < modules.len; i++)
-		if (((Module*) modules.get(i))->handle == handle) return;
+	if (!handle) {
 
-	if (handle) {
+		delete[] name;
 
-		Module *mod = new Module();
-		mod->handle = handle;
+		ceprintf(RED, "Error loading module: '%s' - exiting...\n", dlerror());
+		return false;
 
-		char **depends = (char**) dlsym(handle, "depends");
-		if (depends) {
+	}
 
-			// load module dependancies
-			for (; *depends; depends++)
-				loadMod(base, *depends);
+	// has the module been loaded already?
+	for (unsigned int i = 0; i < Game::modules.len; i++) {
 
-		}
+		if (((Module*) Game::modules.get(i))->handle == handle) {
 
-		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
-		bool (*init)() = (bool (*)()) dlsym(handle, "init");
-
-		bool result = true;
-		if (init) result = init();
-		// mod prints its own message
-
-		if (result) modules.add((void*) mod);
-		else {
-
-			delete mod;
+			delete[] name;
 			dlclose(handle);
+			return true;
 
 		}
 
-	} else fprintf(stderr, "Error loading module %s\n", dlerror());
+	}
+
+	Module *mod = new Module();
+	mod->handle = handle;
+
+	char **depends = (char**) dlsym(handle, "depends");
+	if (depends) {
+
+		// load module dependancies
+		for (; *depends; depends++) {
+
+			if (!loadMod(base, *depends)) {
+
+				delete mod;
+
+				ceprintf(RED, "Error loading module '%s': error loading dependency '%s' - exiting...\n", path, *depends);
+				dlclose(handle);
+
+				delete[] name;
+				return false;
+
+			}
+
+		}
+
+	}
+
+	bool (*init)() = (bool (*)()) dlsym(handle, "init");
+
+	bool result = true;
+	if (init) result = init();
+	// mod prints its own message for success and error
+
+	if (!result) {
+
+		delete mod;
+		dlclose(handle);
+
+		delete[] name;
+		return false;
+
+	}
+
+	delete[] name;
+	mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
+	Game::modules.add((void*) mod);
+
+	return true;
 
 }
 
@@ -189,10 +233,12 @@ bool loadMods(char *path) {
 	DIR *dir = opendir(path);
 	if (!dir) {
 
-		perror("Error loading modules");
+		ceprintf(RED, "Error loading modules in '%s': %s - exiting...\n", path, strerror(errno));
 		return false;
 
 	}
+
+	bool empty = true;
 
 	for (;;) {
 
@@ -201,11 +247,27 @@ bool loadMods(char *path) {
 
 		if (file->d_type != DT_REG) continue;
 
-		loadMod(path, file->d_name);
+		bool result = loadMod(path, file->d_name);
+		if (!result) {
+
+			closedir(dir);
+			return false;
+
+		}
+
+		empty = false;
 
 	}
 
 	closedir(dir);
+
+	if (empty) {
+
+		cprintf(RED, "Error: no modules in '%s' - exiting...\n", path);
+		return false;
+
+	}
+
 	return true;
 
 }

@@ -19,7 +19,8 @@ namespace Input {
 	};
 
 	extern bool actions[A_NUM_ACTIONS];
-	extern Point mouse;
+	extern Point cursor;
+	extern bool wasCursor;
 	extern NodeList listeners;
 
 	extern void notify();
