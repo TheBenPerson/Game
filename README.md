@@ -4,7 +4,7 @@
 
 I'm making a game called Game.
 Game is built with mods in mind.
-Because it is module oriented, so adding mods is as easy as dragging and dropping files.
+Because it is module oriented, adding mods is as easy as dragging and dropping files.
 
 *** Game is a work in progress. Don't expect it to work. ***
 
