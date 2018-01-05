@@ -25,45 +25,22 @@
  *
  */
 
-#ifndef GAME_COMMON_NODELIST
+#include "point.hpp"
 
-#include "timing.hpp"
+bool Point::operator<(Point &point) {
 
-class NodeList {
+	if (x >= point.x) return false;
+	if (y >= point.y) return false;
 
-	public:
+	return true;
 
-		typedef struct Node {
+}
 
-			Node *prev;
-			Node *next;
+bool Point::operator>(Point &point) {
 
-			void *val;
+	if (x <= point.x) return false;
+	if (y <= point.y) return false;
 
-		} Node;
+	return true;
 
-		unsigned int len;
-
-		void* add(void *item);
-		void* get(unsigned int index);
-		Node* find(void* item); // inspect me
-		void rem(unsigned int index);
-		void rem(void* item);
-
-		NodeList();
-		~NodeList();
-
-	private:
-
-		Timing::mutex m = MTX_DEFAULT;
-
-		Node *last;
-		Node *index;
-
-		Node* find(unsigned int index);
-		void del(Node* node);
-
-};
-
-#define GAME_COMMON_NODELIST
-#endif
+}

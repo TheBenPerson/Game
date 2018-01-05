@@ -38,11 +38,20 @@
 #include "console.hpp"
 #include "data.hpp"
 #include "main.hpp"
+#include "timing.hpp"
+
+static Timing::condition cond;
 
 namespace Game {
 
 	NodeList modules;
 	uint16_t port;
+
+	void stop() {
+
+		Timing::signal(&cond);
+
+	}
 
 }
 
@@ -54,6 +63,7 @@ int main(int argc, char* argv[]) {
 
 	signal(SIGSEGV, &sigHandler);
 	signal(SIGHUP, &sigHandler);
+	signal(SIGINT, &sigHandler);
 
 	setvbuf(stdout, NULL, _IOLBF, BUFSIZ); // make stdout and stderr line buffered
 	setvbuf(stderr, NULL, _IOLBF, BUFSIZ); // this ensures output is instant
@@ -120,21 +130,7 @@ int main(int argc, char* argv[]) {
 	if (isServer) path = "bin/server/";
 	else path = "bin/client/";
 
-	if (loadMods(path)) {
-
-		sigset_t sigset;
-		sigemptyset(&sigset);
-		sigaddset(&sigset, SIGINT);
-		sigaddset(&sigset, SIGTERM);
-
-		sigprocmask(SIG_BLOCK, &sigset, NULL);
-
-		int signal;
-		sigwait(&sigset, &signal);
-
-		cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
-
-	}
+	if (loadMods(path))	Timing::waitFor(&cond);
 
 	for (int i = Game::modules.len - 1; i >= 0; i--) {
 
@@ -151,9 +147,9 @@ int main(int argc, char* argv[]) {
 
 bool loadMod(char *base, char *path) {
 
-	char *name = new char[strlen(base) + strlen(path)];
+	char *name = new char[strlen(base) + strlen(path) + 1];
 	strcpy(name, base);
-	strcpy(name + strlen(base), path);
+	strcpy(name + strlen(base), path); // rewrite w/ less strlen()'s
 
 	void *handle = dlopen(name, RTLD_LAZY);
 
@@ -275,7 +271,7 @@ bool loadMods(char *path) {
 void sigHandler(int signal) {
 
 	// I know it's not reentrant, but it's worked so far.
-	printf("%s - exiting...\n", strsignal(signal));
-	exit(signal);
+	cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
+	Game::stop();
 
 }

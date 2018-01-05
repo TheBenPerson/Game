@@ -53,6 +53,7 @@ void* NodeList::add(void *item) {
 }
 
 NodeList::Node* NodeList::find(unsigned int index) {
+
 	Node* node;
 
 	unsigned int i;
@@ -110,7 +111,7 @@ void NodeList::del(Node* node) {
 
 	Timing::unlock(&m);
 
-};
+}
 
 void* NodeList::get(unsigned int index) {
 

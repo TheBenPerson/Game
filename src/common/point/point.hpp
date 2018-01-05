@@ -27,10 +27,13 @@
 
 #ifndef GAME_COMMON_POINT
 
-typedef struct {
+typedef struct Point {
 
 	float x;
 	float y;
+
+	bool operator<(Point &point);
+	bool operator>(Point &point);
 
 } Point;
 

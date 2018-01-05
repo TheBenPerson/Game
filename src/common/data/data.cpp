@@ -27,11 +27,11 @@
 
 namespace Data {
 
-	char *versionString =
+	const char *versionString =
 	"Game\n"
 	"Build Version 1.0.0";
 
-	char *aboutString =
+	const char *aboutString =
 	"Game Development Build\n"
 	"https://github.com/TheBenPerson/Game\n\n"
 

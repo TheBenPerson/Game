@@ -27,7 +27,6 @@
 
 #include <GL/glx.h>
 #include <GL/glxext.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +41,7 @@
 #include "input.hpp"
 #include "config.hpp"
 #include "gfx.hpp"
+#include "main.hpp"
 #include "timing.hpp"
 #include "win.hpp"
 
@@ -80,7 +80,6 @@ static xcb_keysym_t* keys[Input::A_NUM_ACTIONS];
 
 static bool initX11();
 static bool createWindow();
-static bool createContext();
 static void* threadMain(void*);
 static void loadKeys();
 static void fullscreenHandler();
@@ -88,17 +87,25 @@ static void fullscreenHandler();
 // global functions
 extern "C" {
 
-	char* depends[] = {
-
-		"client.so",
-		NULL
-
-	};
-
 	bool init() {
 
+		// doesn't require configs and could fail
 		if (!initX11()) return false;
+
+		Client::config.set("win.fullscreen", (void*) true);
+		Client::config.set("win.vsync", (void*) true);
+
+		Client::config.set("win.kbd.left", (void*) "A");
+		Client::config.set("win.kbd.right", (void*) "D");
+		Client::config.set("win.kbd.up", (void*) "W");
+		Client::config.set("win.kbd.down", (void*) "S");
+		Client::config.set("win.kbd.exit", (void*) "Escape");
+		Client::config.set("win.kbd.action", (void*) "Left_Click");
+		Client::config.set("win.kbd.fullscreen", (void*) "F11");
+
+		Client::config.load("win.conf");
 		if (!createWindow()) return false;
+
 		loadKeys();
 
 		t = Timing::createThread(threadMain, NULL);
@@ -123,6 +130,8 @@ extern "C" {
 
 		for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++)
 			delete[] keys[i];
+
+		Client::config.del("win");
 
 		cputs(YELLOW, "Unloaded module: 'win.so'");
 
@@ -175,7 +184,7 @@ namespace WIN {
 
 		}
 
-		vSync = (bool) Client::config.get("vsync")->val;
+		vSync = (bool) Client::config.get("win.vsync")->val;
 		if (!vSync) {
 
 			puts("Warning: VSync is disabled");
@@ -348,7 +357,7 @@ bool createWindow() {
 
 	xcb_change_property(connection, XCB_PROP_MODE_APPEND, winID, WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, (void*) &WM_DELETE_WINDOW);
 
-	WIN::fullscreen = (bool) Client::config.get("fullscreen")->val;
+	WIN::fullscreen = (bool) Client::config.get("win.fullscreen")->val;
 	// set fullscreen after window is mapped
 	// some window managers like i3 don't set it fullscreen otherwise
 
@@ -389,7 +398,7 @@ void* threadMain(void*) {
 		} else if (type == XCB_CLIENT_MESSAGE) {
 
 			if (((xcb_client_message_event_t*) event)->data.data32[0] == WM_DELETE_WINDOW)
-				killpg(NULL, SIGINT);
+				Game::stop();
 
 		} else {
 
@@ -443,22 +452,12 @@ void* threadMain(void*) {
 
 				case XCB_MOTION_NOTIFY:
 
-					uint16_t x = ((xcb_motion_notify_event_t*) event)->event_x;
-					uint16_t y = ((xcb_motion_notify_event_t*) event)->event_y;
+					float x = (float) ((xcb_motion_notify_event_t*) event)->event_x;
+					float y = (float) ((xcb_motion_notify_event_t*) event)->event_y;
+					y = WIN::height - y;
 
-					if (WIN::width > WIN::height) {
-
-						float dX = WIN::width - WIN::height;
-						Input::cursor.x = (((x - (dX / 2)) / (WIN::width - dX)) - 0.5f) * 20;
-
-					} else Input::cursor.x = ((x / (float) WIN::width) - 0.5f) * 20;
-
-					if (WIN::height > WIN::width) {
-
-						float dY = WIN::height - WIN::width;
-						Input::cursor.y = ((-((y - (dY / 2)) / (WIN::height - dY))) + 0.5f) * 20;
-
-					} else Input::cursor.y = (-((y / (float) WIN::height) - 0.5f)) * 20;
+					Input::cursor.x = (((x / WIN::width) * 20) - 10) * WIN::aspect;
+					Input::cursor.y = ((y / WIN::height) * 20) - 10;
 
 					Input::wasCursor = true;
 
@@ -478,57 +477,48 @@ void* threadMain(void*) {
 
 }
 
-void loadKeys() {
+static void loadKey(Input::Action action, char *key) {
 
-	Config config;
+	char *string = strdup((char*) Client::config.get(key)->val);
+	// don't need to if only one binding: might want to redesign this
 
-	// default values
-	config.add("up", (void*) "W, Up");
-	config.add("down", (void*) "S, Down");
-	config.add("left", (void*) "A, Left");
-	config.add("right", (void*) "D, Right");
+	char *c = string;
+	unsigned int n = 1;
+	// at least 1 binding /w null terminator
 
-	config.add("exit", (void*) "Escape");
-	config.add("action", (void*) "Left_Click, Return");
-	config.add("fullscreen", (void*) "F11");
+	for (; c - 1; n++)
+		c = strchr(c, ',') + 1;
 
-	config.load("cfg/keymap.cfg");
+	keys[action] = new xcb_keysym_t[n];
 
-	for (unsigned int i = 0; i < config.len; i++) {
+	c = strtok(string, ", ");
 
-		char *string = strdup((char*) config.get(i)->val);
-		// don't need to if only one binding: might want to redesign this
+	for (n = 0; c; n++) {
 
-		char *c = string;
-		unsigned int n = 1;
-		// at least 1 binding /w null terminator
+		KeySym ks = XStringToKeysym(c);
 
-		for (; c - 1; n++)
-			c = index(c, ',') + 1;
+		if (ks) keys[action][n] = (xcb_keycode_t) XKeysymToKeycode(display, ks);
+		else if (!strcmp(string, "Left_Click")) keys[action][n] = 1;
+		// find the official key code for left click
 
-		keys[i] = new xcb_keysym_t[n];
-
-		c = strtok(string, ", ");
-
-		n = 0;
-		while (c) {
-
-			KeySym ks = XStringToKeysym(c);
-
-			if (ks) keys[i][n] = (xcb_keycode_t) XKeysymToKeycode(display, ks);
-			else if (!strcmp(string, "Left_Click")) keys[i][n] = 1;
-			// find the official key code for left click
-
-			n++;
-
-			c = strtok(NULL, ", ");
-
-		}
-
-		keys[i][++n] = NULL;
-		free(string);
+		c = strtok(NULL, ", ");
 
 	}
+
+	keys[action][n] = NULL;
+	free(string);
+
+}
+
+void loadKeys() {
+
+	loadKey(Input::A_LEFT, "win.kbd.left");
+	loadKey(Input::A_RIGHT, "win.kbd.right");
+	loadKey(Input::A_UP, "win.kbd.up");
+	loadKey(Input::A_DOWN, "win.kbd.down");
+	loadKey(Input::A_EXIT, "win.kbd.exit");
+	loadKey(Input::A_ACTION, "win.kbd.action");
+	loadKey(Input::A_FULLSCREEN, "win.kbd.fullscreen");
 
 }
 

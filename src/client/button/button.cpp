@@ -25,45 +25,79 @@
  *
  */
 
-#ifndef GAME_COMMON_NODELIST
+#include "button.hpp"
+#include "console.hpp"
+#include "win.hpp"
 
-#include "timing.hpp"
+Button::Menu *Button::root;
 
-class NodeList {
+static void del(Button::Menu *menu) {
 
-	public:
+	for (unsigned int m = 0; m < 2; m++) {
 
-		typedef struct Node {
+		for (unsigned int i = 0; i < menu->lists[m].len; i++) {
 
-			Node *prev;
-			Node *next;
+			Button *button = (Button*) menu->lists[m].get(i);
+			delete button;
 
-			void *val;
+		}
 
-		} Node;
+	}
 
-		unsigned int len;
+	delete menu;
 
-		void* add(void *item);
-		void* get(unsigned int index);
-		Node* find(void* item); // inspect me
-		void rem(unsigned int index);
-		void rem(void* item);
+}
 
-		NodeList();
-		~NodeList();
+extern "C" {
 
-	private:
+	bool init() {
 
-		Timing::mutex m = MTX_DEFAULT;
+		Button::root = new Button::Menu;
+		Button::root->parent = NULL;
 
-		Node *last;
-		Node *index;
+		cputs(GREEN, "Loaded module 'button.so'");
 
-		Node* find(unsigned int index);
-		void del(Node* node);
+		return true;
 
-};
+	}
 
-#define GAME_COMMON_NODELIST
-#endif
+	void cleanup() {
+
+		del(Button::root);
+		cputs(YELLOW, "Unloaded module 'button.so'");
+
+	}
+
+}
+
+Button::Button(char *name, Action *action, Menu *parent, Point *pos): name(name) {
+
+	this->action = *action;
+
+	if (this->action.isMenu && !this->action.menu) {
+
+		this->action.menu = new Menu;
+		this->action.menu->parent = parent;
+
+	}
+
+	if (pos) {
+
+		this->pos = new Point(*pos);
+		parent->lists[1].add((void*) this);
+
+	} else {
+
+		this->pos = NULL;
+		parent->lists[0].add((void*) this);
+
+	}
+
+}
+
+Button::~Button() {
+
+	if (pos) delete pos;
+	if (action.isMenu && action.menu != root) del(action.menu);
+
+}

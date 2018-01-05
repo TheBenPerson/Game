@@ -25,10 +25,11 @@
 export CPATH := src/:$(shell find src/common -type d | tr '\n' ':')
 
 # compiler flags
-CF := -Wall -Wextra -Wno-conversion-null -Wno-write-strings -fpermissive # REMOVE ME!!!!!
+CF := -Wall -Wextra -Wpedantic
+#~ CF := -Wall -Wextra -Wpedantic -Wno-conversion-null -Wno-write-strings -fpermissive # REMOVE ME!!!!!
 
 # linker flags
-LF := -fsanitize=leak -g
+LF := -fsanitize=address -g
 
 # build directories
 BIN := bin
@@ -75,7 +76,7 @@ $(BIN)/common.so: $(shell find src/common -type f)
 	@setterm --foreground green
 	# Compiling library: 'common.so'...
 	@setterm --default
-	gcc $(CF) -shared -fpic $^ $(LF) -o $@
+	gcc $(CF) -shared -fpic $^ $(LF) -lpthread -o $@
 
 # client modules
 
@@ -85,6 +86,7 @@ client: client.so input.so win.so gfx.so ui.so
 .PHONY: client.so
 client.so: $(CBIN)/client.so
 $(CBIN)/client.so: LFA := -lGL -lpng -lX11 -lX11-xcb -lxcb
+$(CBIN)/client.so: $(addprefix $(CBIN)/, button.so)
 $(CBIN)/client.so: src/client/client.cpp
 
 .PHONY: input.so
@@ -101,13 +103,19 @@ gfx.so: $(CBIN)/gfx.so
 $(CBIN)/gfx.so: $(addprefix $(CBIN)/, client.so win.so)
 $(CBIN)/gfx.so: src/client/gfx/gfx.cpp
 
-#.PHONY: audio.so
-#$(CBIN)/audio.so: src/client/audio/audio.cpp
+.PHONY: audio.so
+audio.so: $(CBIN)/audio.so
+$(CBIN)/audio.so: LFA := -lvorbisfile -lasound
+$(CBIN)/audio.so: $(addprefix $(CBIN)/, client.so button.so)
+$(CBIN)/audio.so: src/client/audio/audio.cpp
+
+.PHONY: button.so
+button.so: $(CBIN)/button.so
+$(CBIN)/button.so: $(shell find src/client/button/ -name "*.cpp")
 
 .PHONY: ui.so
 ui.so: $(CBIN)/ui.so
-#$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so audio.so)
-$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so)
+$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so button.so audio.so)
 $(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cpp")
 
 $(CBIN)/%.so:
@@ -149,6 +157,12 @@ $(SBIN)/%.so:
 	@setterm --default
 
 	gcc $(CF) -Isrc/server $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
+
+tmp/client.cpp.tags: DIRS := $(shell find src/common src/client -type d)
+tmp/client.cpp.tags: FILES := $(shell find src/common src/client -type f)
+tmp/client.cpp.tags: CFLAGS := "-Isrc/ $(shell echo $(DIRS) | sed 's/src/-Isrc/g')"
+tmp/client.cpp.tags:
+	CFLAGS=$(CFLAGS) geany -g $@ $(FILES)
 
 .PHONY:clean
 clean:

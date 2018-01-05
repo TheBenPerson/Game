@@ -27,21 +27,59 @@
 
 #include <stdio.h>
 
+#include "button.hpp"
 #include "client.hpp"
 #include "console.hpp"
+#include "timing.hpp"
+
+static Timing::condition cond;
+
+static bool quit() {
+
+	Timing::signal(&cond);
+
+}
 
 extern "C" {
 
+	char* depends[] = {
+
+		"button.so",
+		NULL
+
+	};
+
 	bool init() {
 
-		// default client values
-		Client::config.add("fullscreen", (void*) true);
-		Client::config.add("vsync", (void*) true);
-		Client::config.add("fps", (void*) 60);
-		Client::config.add("res", (void*) "default");
-		Client::config.add("tps", (void*) 120);
-		Client::config.load("cfg/client.cfg");
+		Button::Action action;
+		action.isMenu = true;
+		action.callback = NULL;
 
+		new Button("Single Player", &action);
+		new Button("Multiplayer", &action);
+
+		/*action.isMenu = true;
+		action.menu = NULL;
+		new Button("Settings", &action);
+
+		action.isMenu = true;
+		action.menu = NULL;
+		Button *button = new Button("About", &action);
+
+		action.isMenu = true;
+		action.menu = Button::root;
+		Point point = {0, -3};
+		new Button("Back", &action, button->action.menu, &point);
+
+		action.isMenu = true;
+		action.menu = NULL;
+		new Button("Settings", &action);
+
+		action.isMenu = false;
+		action.callback = &quit;
+		new Button("Quit", &action);*/
+
+		// default client values
 		cputs(GREEN, "Loaded module: 'client.so'");
 
 		return true;
@@ -58,7 +96,7 @@ extern "C" {
 
 namespace Client {
 
-	Config config;
+	Config config("cfg/client/");
 	bool running = true;
 	State state = PAUSED;
 

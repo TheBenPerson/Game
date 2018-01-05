@@ -25,45 +25,47 @@
  *
  */
 
-#ifndef GAME_COMMON_NODELIST
+#ifndef GAME_CLIENT_BUTTON
 
-#include "timing.hpp"
+#include <GL/gl.h>
 
-class NodeList {
+#include "nodelist.hpp"
+#include "point.hpp"
+
+class Button {
 
 	public:
 
-		typedef struct Node {
+		typedef struct Menu {
 
-			Node *prev;
-			Node *next;
+			NodeList lists[2];
+			Menu *parent;
 
-			void *val;
+		} Menu;
 
-		} Node;
+		typedef struct {
 
-		unsigned int len;
+			union {
 
-		void* add(void *item);
-		void* get(unsigned int index);
-		Node* find(void* item); // inspect me
-		void rem(unsigned int index);
-		void rem(void* item);
+				Menu *menu;
+				bool (*callback)();
 
-		NodeList();
-		~NodeList();
+			};
 
-	private:
+			bool isMenu;
 
-		Timing::mutex m = MTX_DEFAULT;
+		} Action;
 
-		Node *last;
-		Node *index;
+		static Menu *root;
 
-		Node* find(unsigned int index);
-		void del(Node* node);
+		Point *pos;
+		char *name;
+		Action action;
+
+		Button(char *name, Action *action, Menu *parent = root, Point *pos = NULL);
+		~Button();
 
 };
 
-#define GAME_COMMON_NODELIST
+#define GAME_CLIENT_BUTTON
 #endif

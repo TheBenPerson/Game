@@ -28,6 +28,7 @@
 #include <GL/gl.h>
 #include <stdio.h>
 
+#include "audio.hpp"
 #include "button.hpp"
 #include "gfx.hpp"
 #include "input.hpp"
@@ -77,8 +78,14 @@ Button::State Button::tick(Button **selected) {
 		if (Input::actions[Input::A_ACTION]) state = CLICKED;
 		else {
 
-			if (*selected && *selected != this) (*selected)->state = NORMAL;
-				*selected = this;
+			if (*selected && *selected != this) {
+
+				(*selected)->state = NORMAL;
+				Audio::play("res/audio/tick.ogg");
+
+			}
+
+			*selected = this;
 
 		}
 
@@ -87,6 +94,7 @@ Button::State Button::tick(Button **selected) {
 	else if (state == CLICKED) {
 
 		bool val = callback();
+		Audio::play("res/audio/click.ogg");
 
 		state = val ? NORMAL : HOVER;
 		return val ? CHANGE : HOVER;
@@ -135,7 +143,6 @@ void Button::draw() {
 				glVertex2f(values[1].x, values[0].y);
 				glTexCoord2f(1, 4.0f / 8.0f);
 				glVertex2f(values[1].x - 1, values[0].y);
-
 
 			glEnd();
 

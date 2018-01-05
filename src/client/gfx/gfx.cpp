@@ -69,13 +69,16 @@ extern "C" {
 
 	char* depends[] = {
 
-		"client.so",
 		"win.so",
 		NULL
 
 	};
 
 	bool init() {
+
+		Client::config.set("gfx.fps", (void*) 60);
+		Client::config.set("gfx.res", (void*) "default");
+		Client::config.load("gfx.conf");
 
 		volatile int8_t result = -1; //  volatile because reasons
 		t = Timing::createThread(threadMain, (void*) &result);
@@ -205,20 +208,20 @@ namespace GFX {
 
 	}
 
-	GLuint loadTexture(char *name) {
+	GLuint loadTexture(char *name) { // consider strlen instead of constants
 
-		char *res = (char*) Client::config.get("res")->val;
+		char *res = (char*) Client::config.get("gfx.res")->val;
 		size_t len = strlen(name);
 
-		char *buf = new char[4 + strlen(res) + 9 + len];
-		sprintf(buf, "res/texture/%s/%s", res, name);
+		char *buf = new char[12 + strlen(res) + 1 + len + 1];
+		sprintf(buf, "res/texture/%s/%s", res, name); // strcpy might be faster
 
 		FILE *file = fopen(buf, "r");
 		delete[] buf;
 
 		if (!file) {
 
-			buf = new char[20 + len];
+			buf = new char[20 + len + 1];
 			sprintf(buf, "res/texture/default/%s", name);
 
 			file = fopen(buf, "r");
@@ -312,7 +315,7 @@ void* threadMain(void* result) {
 	*((int8_t *) result) = 1; // tell main thread init succeeded
 
 	if (WIN::vSync) while (running) draw();
-	else Timing::doInterval(&draw, (time_t) Client::config.get("fps")->val, false, &running);
+	else Timing::doInterval(&draw, (time_t) Client::config.get("gfx.fps")->val, false, &running);
 
 	glDeleteTextures(1, &font);
 	WIN::cleanupContext();

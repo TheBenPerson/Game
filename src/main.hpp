@@ -43,6 +43,8 @@ namespace Game {
 	extern NodeList modules;
 	extern uint16_t port;
 
+	void stop();
+
 }
 
 #define GAME_MAIN

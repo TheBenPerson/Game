@@ -27,68 +27,56 @@
 
 #include <GL/gl.h>
 #include <math.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stddef.h>
 
+#include "audio.hpp"
 #include "button.hpp"
 #include "client.hpp"
 #include "console.hpp"
-#include "data.hpp"
 #include "gfx.hpp"
 #include "input.hpp"
-#include "timing.hpp"
-#include "ui.hpp"
 #include "win.hpp"
 
-GLuint bg;
-Panel *panel = &mmenu;
-Timing::mutex m = MTX_DEFAULT;
+static float width = 4;
+static float dwidth = width / 2;
+static float height = 2;
+static float dheight = height / 2;
+static float margin = .5f;
 
-Panel mmenu;
-Panel about;
+static GLuint texBG;
+static GLuint texButton;
 
-void initGL();
-void cleanupGL();
-void tick();
-void draw();
-void setPanel(Panel* panel);
+static Button::Menu *menu;
+static Button *selected;
+static enum { NORMAL, SELECTED, CLICKED } state = NORMAL;
 
-bool actnStart();
-bool actnSettings();
-bool actnAbout();
-bool actnQuit();
+static void initGL();
+static void cleanupGL();
+static void tick();
+static void draw();
 
 extern "C" {
 
 	char* depends[] = {
 
+		"button.so",
 		"gfx.so",
+		"audio.so", // to init audio settings
 		NULL
 
 	};
 
 	bool init() {
 
-		mmenu.buttons.add((void*) new Button({0.0f, 6.0f}, 10.0f, "Single Player", &actnStart));
-		mmenu.buttons.add((void*) new Button({0.0f, 3.0f}, 10.0f, "Multiplayer", &actnStart));
-		mmenu.buttons.add((void*) new Button({0.0f, 0.0f}, 10.0f, "Settings", &actnSettings));
-		mmenu.buttons.add((void*) new Button({0.0f, -3.0f}, 10.0f, "About", &actnAbout));
-		mmenu.buttons.add((void*) new Button({0.0f, -6.0f}, 10.0f, "Quit", &actnQuit));
-		mmenu.back = NULL;
-
-		initSettings();
-
-		about.buttons.add((void*) new Button({0.0f, -3.0f}, 10.0f, "Back", actnBack));
-		about.back = &mmenu;
+		menu = Button::root;
 
 		Input::listeners.add((void*) &tick);
 
 		GFX::call(&initGL);
 		GFX::listeners.add((void*) &draw);
 
-		cputs(GREEN, "Loaded module: 'ui.so'");
+		//Audio::play("res/audio/menu.ogg", true);
 
+		cputs(GREEN, "Loaded module: 'ui.so'");
 		return true;
 
 	}
@@ -99,17 +87,6 @@ extern "C" {
 		GFX::call(&cleanupGL);
 
 		Input::listeners.rem((void*) &tick);
-
-		cleanupSettings();
-
-		unsigned int i;
-
-		for (i = 0; i < mmenu.buttons.len; i++)
-			delete ((Button*) mmenu.buttons.get(i));
-
-		for (i = 0; i < about.buttons.len; i++)
-			delete ((Button*) about.buttons.get(i));
-
 		cputs(YELLOW, "Unloaded module: 'ui.so'");
 
 	}
@@ -118,78 +95,183 @@ extern "C" {
 
 void initGL() {
 
-	Button::init();
-
-	bg = GFX::loadTexture("menu.png");
-	loading = GFX::loadTexture("loading.png");
+	texBG = GFX::loadTexture("menu.png");
+	texButton = GFX::loadTexture("button.png");
 
 }
 
 void cleanupGL() {
 
-	glDeleteTextures(1, &bg);
-	glDeleteTextures(1, &loading);
+	glDeleteTextures(1, &texButton);
+	glDeleteTextures(1, &texBG);
 
-	Button::cleanup();
+}
+
+static bool dologic(Button *button, Point *lower, Point *upper) {
+
+	if (button == selected) {
+
+	if (state == SELECTED && Input::actions[Input::A_ACTION]) state = CLICKED;
+	else {
+
+		if (state == CLICKED) {
+
+			if (button->action.isMenu) menu = button->action.menu;
+			else button->action.callback();
+
+			state = SELECTED;
+
+			Audio::play("res/audio/click.ogg");
+			return true;
+
+		}
+
+	}}
+
+	if (!(Input::cursor > *lower)) return false;
+	if (!(Input::cursor < *upper)) return false;
+
+	selected = button;
+
+	if (state != CLICKED) {
+
+		if (state != SELECTED) Audio::play("res/audio/tick.ogg");
+		state = SELECTED;
+
+	}
+
+	return true;
 
 }
 
 void tick() {
 
-	if (Client::state == Client::IN_GAME) return;
+	if (!Input::wasCursor) {
 
-	if (Input::actions[Input::A_EXIT])
-		if (panel->back) setPanel(panel->back);
+		if (Input::actions[Input::A_EXIT]) {
 
-	int pos = -1;
-	for (unsigned int i = 0; i < panel->buttons.len; i++) {
-
-		Button::State state = ((Button*) panel->buttons.get(i))->tick(&panel->selected);
-
-		if (state == Button::HOVER || state == Button::CLICKED) pos = i;
-		else if (state == Button::CHANGE) i = ~0; // will wrap around to zero
-
-	}
-
-	if (pos != -1) {
-
-		if (Input::actions[Input::A_UP]) {
-
-			pos = panel->buttons.len - 1 - pos;
-			pos = (pos + 1) % panel->buttons.len;
-			pos = panel->buttons.len - 1 - pos;
-
-			Button *button = (Button*) panel->buttons.get(pos);
-			button->state = Button::HOVER;
-
-			panel->selected->state = Button::NORMAL;
-			panel->selected = button;
-
-		} else if (Input::actions[Input::A_DOWN]) {
-
-			Button *button = (Button*) panel->buttons.get((pos + 1) % panel->buttons.len);
-			button->state = Button::HOVER;
-
-			panel->selected->state = Button::NORMAL;
-			panel->selected = button;
+			if (menu->parent) menu = menu->parent;
+			return;
 
 		}
 
-	} else {
+		if (Input::actions[Input::A_UP] || Input::actions[Input::A_DOWN]) {
 
-		if (Input::actions[Input::A_DOWN] || Input::actions[Input::A_ACTION]) {
+			if (!selected) {
 
-			panel->selected = (Button*) panel->buttons.get(0);
-			panel->selected->state = Button::HOVER;
+				selected = (Button*) menu->lists[0].get(0);
+				return;
 
-		} else if (Input::actions[Input::A_UP]) {
+			}
 
-			panel->selected = (Button*) panel->buttons.get(panel->buttons.len - 1);
-			panel->selected->state = Button::HOVER;
+			bool list = false;
+
+			NodeList::Node *node = menu->lists[0].find((void*) selected);
+			if (!node) {
+
+				node = menu->lists[1].find((void*) selected);
+				list = true;
+
+			}
+
+			Button *button = NULL;
+
+			if (Input::actions[Input::A_DOWN]) {
+
+				if (node->next) button = (Button*) node->next->val;
+				if (!button) {
+
+					if (menu->lists[!list].len) button = (Button*) menu->lists[!list].get(0);
+					else button = (Button*) menu->lists[list].get(0);
+
+				}
+
+			} else {
+
+				if (node->prev) button = (Button*) node->prev->val;
+				if (!button) {
+
+					if (menu->lists[!list].len) button = (Button*) menu->lists[!list].get(menu->lists[!list].len - 1);
+					else button = (Button*) menu->lists[list].get(0);
+
+				}
+
+			}
+
+			selected = button;
 
 		}
 
 	}
+
+	float offset = ((menu->lists[0].len * (height + margin)) - margin) / 2;
+	for (unsigned int i = 0; i < menu->lists[0].len; i++) {
+
+		Point lower = { -dwidth, offset - height - ((height + margin) * i) };
+		Point upper = { dwidth, offset - ((height + margin) * i) };
+
+		Button *button = (Button*) menu->lists[0].get(i);
+		bool result = dologic(button, &lower, &upper);
+
+		if (result) return;
+
+	}
+
+	for (unsigned int i = 0; i < menu->lists[1].len; i++) {
+
+		Button *button = (Button*) menu->lists[1].get(i);
+
+		Point lower = { button->pos->x - dwidth, button->pos->y - dheight };
+		Point upper = { button->pos->x + dwidth, button->pos->y + dheight };
+
+		dologic(button, &lower, &upper);
+
+	}
+
+}
+
+static void drawButton(Button *button) {
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	if (button == selected) glTranslatef(0, -state * (1 / 8.0f), 0);
+
+		glBindTexture(GL_TEXTURE_2D, texButton);
+		glBegin(GL_QUADS);
+
+			glTexCoord2f(0, 5.0f / 8.0f);
+			glVertex2f(-dwidth, dheight);
+			glTexCoord2f(1, 5.0f / 8.0f);
+			glVertex2f(-dwidth + 1, dheight);
+			glTexCoord2f(1, 4.0f / 8.0f);
+			glVertex2f(-dwidth + 1, -dheight);
+			glTexCoord2f(0, 4.0f / 8.0f);
+			glVertex2f(-dwidth, -dheight);
+
+			glTexCoord2f(0, 1);
+			glVertex2f(-dwidth + 1, dheight);
+			glTexCoord2f(width, 1);
+			glVertex2f(dwidth - 1, dheight);
+			glTexCoord2f(width, 7.0f / 8.0f);
+			glVertex2f(dwidth - 1, -dheight);
+			glTexCoord2f(0, 7.0f / 8.0f);
+			glVertex2f(-dwidth + 1, -dheight);
+
+			glTexCoord2f(1, 5.0f / 8.0f);
+			glVertex2f(dwidth - 1, dheight);
+			glTexCoord2f(0, 5.0f / 8.0f);
+			glVertex2f(dwidth, dheight);
+			glTexCoord2f(0, 4.0f / 8.0f);
+			glVertex2f(dwidth, -dheight);
+			glTexCoord2f(1, 4.0f / 8.0f);
+			glVertex2f(dwidth - 1, -dheight);
+
+		glEnd();
+
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+
+	GFX::drawText(button->name, {0, 0}, 1, true);
 
 }
 
@@ -198,100 +280,61 @@ void draw() {
 	if (Client::state == Client::IN_GAME) return;
 	// fix this section w/ better logic
 
-	static float i = 0.0f;
+	static float i = 0;
 	i += 0.005f;
 
-	if (Client::state == Client::LOADING) drawLoading();
-	else {
-
-		glMatrixMode(GL_TEXTURE);
-		glPushMatrix();
-
-		glTranslatef(sinf(i), cosf(i), 0.0f);
-		glRotatef(sinf(i) * 10, 0.0f, 0.0f, 1.0f);
-		glScalef(2.0f, 2.0f, 1.0f);
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glTranslatef(sinf(i), cosf(i), 0);
+	glRotatef(sinf(i) * 10, 0, 0, 1);
+	glScalef(2, 2, 1);
 
 		// this block causes a memory leak somehow
-		glBindTexture(GL_TEXTURE_2D, bg);
+		glBindTexture(GL_TEXTURE_2D, texBG);
 		glBegin(GL_QUADS);
 
-			glTexCoord2f(0.0f, 1.0f);
-			glVertex2f(WIN::aspect * -10, 10.0f);
-			glTexCoord2f(WIN::aspect, 1.0f);
-			glVertex2f(WIN::aspect * 10, 10.0f);
-			glTexCoord2f(WIN::aspect, 0.0f);
-			glVertex2f(WIN::aspect * 10, -10.0f);
-			glTexCoord2f(0.0f, 0.0f);
-			glVertex2f(WIN::aspect * -10, -10.0f);
+			glTexCoord2f(0, 1);
+			glVertex2f(WIN::aspect * -10, 10);
+			glTexCoord2f(WIN::aspect, 1);
+			glVertex2f(WIN::aspect * 10, 10);
+			glTexCoord2f(WIN::aspect, 0);
+			glVertex2f(WIN::aspect * 10, -10);
+			glTexCoord2f(0, 0);
+			glVertex2f(WIN::aspect * -10, -10);
 
 		glEnd();
 		// end block
 
+	glPopMatrix();
+	glMatrixMode(GL_MODELVIEW);
+
+	// draw auto positioned buttons
+	for (unsigned int i = 0; i < menu->lists[0].len; i++) {
+
+		Button *button = (Button*) menu->lists[0].get(i);
+
+		glPushMatrix();
+		float offset = (((menu->lists[0].len * (height + margin)) - margin) / 2) - dheight;
+		glTranslatef(0, offset - (i * (height + margin)), 0);
+
+			drawButton(button);
+
 		glPopMatrix();
-		glMatrixMode(GL_MODELVIEW);
-
-		if (panel == &about) GFX::drawText(Data::aboutString, { 0.0f, 3.5f }, 0.7f, true);
-
-		Point p = {(WIN::aspect * -10) + 0.5f, 9.5f};
-		GFX::drawText(Data::versionString, p);
 
 	}
 
-	Timing::lock(&m);
+	// draw manually positioned button
+	for (unsigned int i = 0; i < menu->lists[1].len; i++) {
 
-	for (unsigned int i = 0; i < panel->buttons.len; i++)
-		((Button*) panel->buttons.get(i))->draw();
+		Button *button = (Button*) menu->lists[1].get(i);
 
-	Timing::unlock(&m);
+		glPushMatrix();
+		glTranslatef(button->pos->x, button->pos->y, 0);
 
-}
+			drawButton(button);
 
-void setPanel(Panel* panel) {
+		glPopMatrix();
 
-	if (::panel->selected) ::panel->selected->state = Button::NORMAL;
-	// consider changing (flickering)
-
-	Timing::lock(&m);
-	::panel = panel;
-	Timing::unlock(&m);
-
-	Input::wasCursor = true;
-
-}
-
-bool actnBack() {
-
-	setPanel(panel->back);
-	return true;
-
-}
-
-bool actnStart() {
-
-	Client::setState(Client::LOADING);
-	setPanel(&cancel);
-
-	return true;
-
-}
-
-bool actnSettings() {
-
-	setPanel(&settings);
-	return true;
-
-}
-
-bool actnAbout() {
-
-	setPanel(&about);
-	return true;
-
-}
-
-bool actnQuit() {
-
-	killpg(NULL, SIGINT);
-	return true;
+	}
 
 }

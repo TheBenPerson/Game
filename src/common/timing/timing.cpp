@@ -54,7 +54,7 @@ namespace Timing {
 
 	void doInterval(void (*callback)(), time_t hertz, bool smooth, bool* control) {
 
-		double frequency = 1000000.0d / hertz;
+		double frequency = 1000000.0 / hertz;
 		double avgTime = 0;
 
 		int i = 1;
@@ -64,13 +64,13 @@ namespace Timing {
 		while (*control) {
 
 			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
-			double startTime = t.tv_nsec / 1000.0d;
+			double startTime = t.tv_nsec / 1000.0;
 
 			callback();
 
 			clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t);
 
-			double dTime = (t.tv_nsec / 1000.0d) - startTime;
+			double dTime = (t.tv_nsec / 1000.0) - startTime;
 
 			if (!(++i)) i = 1;
 			if (smooth) avgTime = ((avgTime * i) + dTime) / i;

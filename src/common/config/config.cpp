@@ -1,73 +1,27 @@
-/*
- *
- * Game Development Build
- * https://github.com/TheBenPerson/Game
- *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- *
- */
-
-#include <stddef.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "config.hpp"
 
-void Config::add(char *name, void *val) {
+Config::Config(char *dir): dir(dir) {}
 
-	Setting* setting = new Setting();
-	setting->name = name;
-	setting->val = val;
+void Config::load(char *base) {
 
-	setting->freeName = false;
-	setting->freeVal = false;
-
-	settings.add(setting);
-
-}
-
-Config::Setting* Config::get(char* name) {
-
-	for (unsigned int i = 0; i < settings.len; i++) {
-
-		Setting *setting = (Setting*) settings.get(i);
-		if (!strcmp(setting->name, name)) return setting;
-
-	}
-
-	return NULL;
-
-}
-
-Config::Setting* Config::get(unsigned int i) {
-
-	return (Setting*) settings.get(i);
-
-}
-
-bool Config::load(char *path) {
+	char *path = new char[strlen(dir) + strlen(base) + 1];
+	strcpy(path, dir);
+	strcpy(path + strlen(dir), base); // consider less strlen()'s
 
 	FILE *file = fopen(path, "r");
-	if (!file) return false;
+	delete[] path;
+
+	if (!file) {
+
+		fprintf(stderr, "Error loading config '%s': %s\n", base, strerror(errno));
+		return;
+
+	}
 
 	for (;;) {
 
@@ -87,78 +41,59 @@ bool Config::load(char *path) {
 			name = strtok(buf, "=:\t ");
 			if (!name) {
 
-				free(buf);
 				fclose(file);
-				return false;
+
+				fprintf(stderr, "Error loading config '%s': invalid format\n", base);
+
+				free(buf);
+				return;
 
 			}
-
-			name = strdup(name);
 
 			val = strtok(NULL, "=:\t ");
 			if (!val) {
 
-				free(name);
-				free(buf);
 				fclose(file);
-				return false;
+
+				fprintf(stderr, "Error loading config '%s': invalid format\n", base);
+
+				free(buf);
+				return;
 
 			}
 
-			val = strdup(val);
-
-			bool isNew;
-
-			Setting *setting = get(name);
-			if (setting) {
-
-				free(name);
-				if (setting->freeVal) free(setting->val);
-
-				isNew = false;
-
-			} else {
-
-				setting = new Setting();
-				setting->name = name;
-				setting->freeName = true;
-
-				isNew = true;
-
-			}
-
-			setting->isString = false;
+			bool isString = false;
 
 			char* flag;
-			long int nVal = strtol(val, &flag, 10);
+			void *nVal = (void*) strtol(val, &flag, 10); // TODO: rename nVal to something else
 
 			if (*flag) {
 
-				if (!strcasecmp(val, "true")) nVal = true;
-				else if (!strcasecmp(val, "false")) nVal = false;
-				else {
-
-					setting->isString = true;
-
-				}
+				if (!strcasecmp(val, "true")) nVal = (void*) true;
+				else if (!strcasecmp(val, "false")) nVal = (void*) false;
+				else isString = true;
 
 			}
 
-			if (setting->isString) {
+			if (isString) nVal = strdup(val);
 
-				setting->val = val;
-				setting->freeVal = true;
+			// key format is file.key
+			// where file is the file name without any suffix (.conf, .cfg)
+			// and key is just the key in the config file
 
-			} else {
+			char *end = strchr(base, '.');
+			if (!end) end = base + strlen(base); // TODO: strchrnul if compatible
+			unsigned int len = end - base;
 
-				setting->val = (void*) nVal;
-				free(val);
+			char *buf = new char[len + strlen(name) + 2];
 
-				setting->freeVal = false;
+			strncpy(buf, base, len);
+			buf[len] = '.';
+			strcpy(buf + len + 1, name);
 
-			}
+			set(buf, nVal, isString);
 
-			if (isNew) settings.add(setting);
+			delete[] buf;
 
 		}
 
@@ -168,36 +103,48 @@ bool Config::load(char *path) {
 	}
 
 	fclose(file);
+	printf("Loaded config: '%s'\n", base);
 
-	printf("Loaded config: '%s'\n", basename(path));
-	return true;
+}
+
+// TODO: saving things
+
+/*static void addwrite(FILE *file, ) {
+
+	free(key->name);
+
+	switch (key->t) {
+
+		case hval: free(key->val);
+		case val: delete key;
+		return;
+
+		case type::key:
+		break;
+
+	}
+
+	NodeList *list = (NodeList*) key->val;
+	delete key;
+
+	for (unsigned int i = 0; i < list->len; i++) {
+
+		key = (Key*) list->get(i);
+		del(key);
+
+	}
+
+	delete list;
 
 }
 
 void Config::save(char *path) {
 
+	for (unsigned int i = 0; i < list->len; i++) {
 
-
-}
-
-void Config::set(char *name, void *val) {
-
-	get(name)->val = val;
-
-}
-
-Config::~Config() {
-
-	Setting* setting;
-
-	for (unsigned int i = 0; i < settings.len; i++) {
-
-		setting = (Setting*) settings.get(i);
-		if (setting->freeName) free(setting->name);
-		if (setting->freeVal) free(setting->val);
-
-		delete setting;
+		key = (Key*) list->get(i);
+		addwrite(key);
 
 	}
 
-}
+}*/

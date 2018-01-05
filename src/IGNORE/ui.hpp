@@ -25,45 +25,43 @@
  *
  */
 
-#ifndef GAME_COMMON_NODELIST
+#ifndef GAME_CLIENT_GFX_MENU
 
+#include <GL/gl.h>
+#include <stddef.h>
+
+#include "button.hpp"
+#include "nodelist.hpp"
 #include "timing.hpp"
 
-class NodeList {
+typedef struct Panel {
 
-	public:
+	NodeList buttons;
+	Button *selected;
+	Panel *back;
 
-		typedef struct Node {
+} Panel;
 
-			Node *prev;
-			Node *next;
+extern GLuint bg;
+extern Panel *panel;
+extern Timing::mutex m;
+void setPanel(Panel *panel);
+bool actnBack();
 
-			void *val;
+extern Panel mmenu;
+extern Panel about;
 
-		} Node;
+extern Panel settings;
+extern Panel video;
+extern Panel input;
+extern void initSettings();
+extern void cleanupSettings();
 
-		unsigned int len;
+extern GLuint loading;
+extern Panel cancel;
 
-		void* add(void *item);
-		void* get(unsigned int index);
-		Node* find(void* item); // inspect me
-		void rem(unsigned int index);
-		void rem(void* item);
+void tickLoading();
+void drawLoading();
 
-		NodeList();
-		~NodeList();
-
-	private:
-
-		Timing::mutex m = MTX_DEFAULT;
-
-		Node *last;
-		Node *index;
-
-		Node* find(unsigned int index);
-		void del(Node* node);
-
-};
-
-#define GAME_COMMON_NODELIST
+#define GAME_CLIENT_GFX_MENU
 #endif

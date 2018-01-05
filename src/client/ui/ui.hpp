@@ -25,43 +25,7 @@
  *
  */
 
-#ifndef GAME_CLIENT_GFX_MENU
+#ifndef GAME_CLIENT_UI
 
-#include <GL/gl.h>
-#include <stddef.h>
-
-#include "button.hpp"
-#include "nodelist.hpp"
-#include "timing.hpp"
-
-typedef struct Panel {
-
-	NodeList buttons;
-	Button *selected;
-	Panel *back;
-
-} Panel;
-
-extern GLuint bg;
-extern Panel *panel;
-extern Timing::mutex m;
-void setPanel(Panel *panel);
-bool actnBack();
-
-extern Panel mmenu;
-extern Panel about;
-
-extern Panel settings;
-extern Panel video;
-extern Panel input;
-extern void initSettings();
-extern void cleanupSettings();
-
-extern GLuint loading;
-extern Panel cancel;
-
-void tickLoading();
-void drawLoading();
-
-#define GAME_CLIENT_GFX_MENU
+#define GAME_CLIENT_UI
 #endif

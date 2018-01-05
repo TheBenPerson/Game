@@ -5,7 +5,7 @@
 
 namespace Input {
 
-	enum Actions {
+	typedef enum {
 
 		A_UP,
 		A_DOWN,
@@ -16,7 +16,7 @@ namespace Input {
 		A_FULLSCREEN,
 		A_NUM_ACTIONS
 
-	};
+	} Action;
 
 	extern bool actions[A_NUM_ACTIONS];
 	extern Point cursor;
