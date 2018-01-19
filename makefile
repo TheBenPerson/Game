@@ -25,8 +25,7 @@
 export CPATH := src/:$(shell find src/common -type d | tr '\n' ':')
 
 # compiler flags
-CF := -Wall -Wextra -Wpedantic
-#~ CF := -Wall -Wextra -Wpedantic -Wno-conversion-null -Wno-write-strings -fpermissive # REMOVE ME!!!!!
+CF := -Wall -Wextra -Wpedantic -Wno-conversion-null -Wno-implicit-fallthrough -Wno-write-strings -fpermissive
 
 # linker flags
 LF := -fsanitize=address -g
@@ -44,15 +43,16 @@ all:
 	@setterm --default
 	make -j $(shell nproc) _all
 
-_all: launcher client server
+_all: launcher client
 	@setterm --foreground green
 	# Done
 	@setterm --default
 
-release: LF := -Os -s
+release: LF := -O2 -s
 release: all
 
 # launcher
+# -rdynamic flag for modules referencing things defined in
 
 .PHONY: launcher
 launcher: $(BIN)/game
@@ -60,9 +60,9 @@ $(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
 	@setterm --foreground green
 	# Compiling launcher: 'game'...
 	@setterm --default
-	gcc $(CF) $^ $(LF) -ldl -lstdc++ -o $@
+	gcc $(CF) $^ $(LF) -ldl -lstdc++ -rdynamic -o $@
 
-$(OBJ)/main.o: src/main.cpp
+$(OBJ)/main.o: src/main.cc
 	@setterm --foreground green
 	# Compiling launcher: 'main.o'...
 	@setterm --default
@@ -87,36 +87,46 @@ client: client.so input.so win.so gfx.so ui.so
 client.so: $(CBIN)/client.so
 $(CBIN)/client.so: LFA := -lGL -lpng -lX11 -lX11-xcb -lxcb
 $(CBIN)/client.so: $(addprefix $(CBIN)/, button.so)
-$(CBIN)/client.so: src/client/client.cpp
+$(CBIN)/client.so: src/client/client.cc
 
 .PHONY: input.so
 input.so: $(CBIN)/input.so
-$(CBIN)/input.so: src/client/input/input.cpp
+$(CBIN)/input.so: src/client/input/input.cc
 
 .PHONY: win.so
 win.so: $(CBIN)/win.so
 $(CBIN)/win.so: $(addprefix $(CBIN)/, client.so input.so)
-$(CBIN)/win.so: src/client/win/win.cpp
+$(CBIN)/win.so: src/client/win/win.cc
 
 .PHONY: gfx.so
 gfx.so: $(CBIN)/gfx.so
 $(CBIN)/gfx.so: $(addprefix $(CBIN)/, client.so win.so)
-$(CBIN)/gfx.so: src/client/gfx/gfx.cpp
+$(CBIN)/gfx.so: src/client/gfx/gfx.cc
 
 .PHONY: audio.so
 audio.so: $(CBIN)/audio.so
 $(CBIN)/audio.so: LFA := -lvorbisfile -lasound
 $(CBIN)/audio.so: $(addprefix $(CBIN)/, client.so button.so)
-$(CBIN)/audio.so: src/client/audio/audio.cpp
+$(CBIN)/audio.so: src/client/audio/audio.cc
 
 .PHONY: button.so
 button.so: $(CBIN)/button.so
-$(CBIN)/button.so: $(shell find src/client/button/ -name "*.cpp")
+$(CBIN)/button.so: $(shell find src/client/button/ -name "*.cc")
 
 .PHONY: ui.so
 ui.so: $(CBIN)/ui.so
 $(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so button.so audio.so)
-$(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cpp")
+$(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cc")
+
+.PHONY: net.so
+net.so: $(CBIN)/net.so
+$(CBIN)/net.so: $(addprefix $(CBIN)/, client.so)
+$(CBIN)/net.so: src/client/net/net.cc
+
+.PHONY: world.so
+world.so: $(CBIN)/world.so
+$(CBIN)/world.so: $(addprefix $(CBIN)/, net.so input.so gfx.so)
+$(CBIN)/world.so: src/client/world/world.cc
 
 $(CBIN)/%.so:
 	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
@@ -128,26 +138,26 @@ $(CBIN)/%.so:
 	gcc $(CF) -Isrc/client $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
 
 .PHONY: server
-server: client.so server.so
+server: sclient.so server.so
 
 .PHONY: sclient.so
 sclient.so: $(SBIN)/sclient.so
 $(SBIN)/sclient.so: $(addprefix $(SBIN)/, server.so net.so world.so)
-$(SBIN)/sclient.so: src/server/client/client.cpp
+$(SBIN)/sclient.so: src/server/client/client.cc
 
-.PHONY: world.so
-world.so: $(SBIN)/world.so
+.PHONY: sworld.so
+sworld.so: $(SBIN)/world.so
 $(SBIN)/world.so: $(SBIN)/server.so
-$(SBIN)/world.so: src/server/world/world.cpp
+$(SBIN)/world.so: src/server/world/world.cc
 
 .PHONY: server.so
 server.so: $(SBIN)/server.so
-$(SBIN)/server.so: src/server/server.cpp
+$(SBIN)/server.so: src/server/server.cc
 
-.PHONY: net.so
-net.so: $(SBIN)/net.so
+.PHONY: snet.so
+snet.so: $(SBIN)/net.so
 $(SBIN)/net.so: $(SBIN)/server.so
-$(SBIN)/net.so: src/server/net/net.cpp
+$(SBIN)/net.so: src/server/net/net.cc
 
 $(SBIN)/%.so:
 	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
@@ -158,10 +168,10 @@ $(SBIN)/%.so:
 
 	gcc $(CF) -Isrc/server $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
 
-tmp/client.cpp.tags: DIRS := $(shell find src/common src/client -type d)
-tmp/client.cpp.tags: FILES := $(shell find src/common src/client -type f)
-tmp/client.cpp.tags: CFLAGS := "-Isrc/ $(shell echo $(DIRS) | sed 's/src/-Isrc/g')"
-tmp/client.cpp.tags:
+tmp/client.cc.tags: DIRS := $(shell find src/common src/client -type d)
+tmp/client.cc.tags: FILES := $(shell find src/common src/client -type f)
+tmp/client.cc.tags: CFLAGS := "-Isrc/ $(shell echo $(DIRS) | sed 's/src/-Isrc/g')"
+tmp/client.cc.tags:
 	CFLAGS=$(CFLAGS) geany -g $@ $(FILES)
 
 .PHONY:clean

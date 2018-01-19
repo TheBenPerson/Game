@@ -1,0 +1,6 @@
+Added support for PNG's without an alpha channel
+Replaced killpg() quit method with Timing::signal()
+Fixed audio effects for buttons
+Fixed warning about non-standard escape sequences
+Added file extension check on when loading modules
+Menus now automatically get a back button
