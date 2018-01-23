@@ -37,7 +37,7 @@ namespace World {
 
 	bool init();
 	void cleanup();
-	bool loadMap(char path[]);
+	bool loadMap(char *name);
 
 }
 

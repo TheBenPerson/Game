@@ -3,6 +3,5 @@ Trim audio
 Inspect memory increase when scrolling through buttons
 Decide max size of NodeList
 Fix crash on fullscreen toggle
-Implement loadTexture as GFX::call internally
-Figure out how to interrupt blocking recv calls
-Fix Game::port in license header of server net.cc
+Inspect what happens when listeners removed while looping through them
+dlsym searches dependancies. Very problematic when module has no depends symbol, but it's dependancies do.

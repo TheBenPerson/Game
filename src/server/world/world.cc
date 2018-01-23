@@ -30,8 +30,42 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "client.hh"
 #include "console.hh"
+#include "net.hh"
+#include "packet.hh"
 #include "world.hh"
+
+static bool tickNet(Packet *packet, Client *client) {
+
+	switch (packet->raw[0]) {
+
+		case P_GMAP: {
+
+			printf("Sending map to %s...\n", client->name);
+
+			Packet packet;
+			packet.size = 3 + (sizeof(Tile) * World::width * World::height);
+			packet.raw = (uint8_t*) malloc(packet.size);
+
+			packet.raw[0] = P_SMAP;
+			packet.raw[1] = World::width;
+			packet.raw[2] = World::height;
+
+			memcpy(packet.raw + 3, World::data, packet.size - 3);
+
+			client->send(&packet);
+			free(packet.raw);
+
+		} break;
+
+		default: return false;
+
+	}
+
+	return true;
+
+}
 
 extern "C" {
 
@@ -40,12 +74,16 @@ extern "C" {
 		bool result = World::loadMap("main.map");
 		if (!result) return false;
 
+		Net::listeners.add((void*) &tickNet);
+
 		cputs(GREEN, "Loaded module: 'world.so'");
 		return true;
 
 	}
 
 	void cleanup() {
+
+		Net::listeners.rem((void*) &tickNet);
 
 		free(World::data);
 		cputs(YELLOW, "Unloaded module: 'world.so'");
@@ -60,15 +98,17 @@ namespace World {
 	unsigned int width;
 	unsigned int height;
 
-	bool loadMap(char *map) {
+	bool loadMap(char *name) {
 
-		char *path = (char*) malloc(sizeof("res/map/") + sizeof(map) + 1);
-		sprintf(path, "res/map/%s", map);
+		char *path = (char*) malloc(strlen("res/map/") + strlen(name) + 1);
+		sprintf(path, "res/map/%s", name);
 
 		FILE *file = fopen(path, "r");
+		free(path);
+
 		if (!file) {
 
-			ceprintf(RED, "Error opening file '%s': %s\n", path, strerror(errno));
+			ceprintf(RED, "Error opening file '%s': %s\n", name, strerror(errno));
 			return false;
 
 		}
@@ -165,7 +205,7 @@ namespace World {
 
 		}
 
-		printf("Loaded map '%s' (%ix%i)\n", path, width, height);
+		printf("Loaded map '%s' (%ix%i)\n", name, width, height);
 		return true;
 
 	}

@@ -4,3 +4,5 @@ Fixed audio effects for buttons
 Fixed warning about non-standard escape sequences
 Added file extension check on when loading modules
 Menus now automatically get a back button
+Figured out how to interrupt recv calls
+Split makefile into 3 files

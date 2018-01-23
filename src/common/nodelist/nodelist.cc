@@ -63,9 +63,9 @@ void* NodeList::add(void *item, unsigned int index) {
 	node->next = target->next;
 
 	target->next = node;
-	if (node->next) node->next->prev = node;
 
-	if (!node->next) last = node;
+	if (node->next) node->next->prev = node;
+	else last = node;
 
 	len++;
 	Timing::unlock(&m);
@@ -128,6 +128,7 @@ void NodeList::del(Node* node) {
 	else root = node->next;
 
 	if (node->next) node->next->prev = node->prev;
+	if (last == node) last = node->prev;
 
 	delete node;
 	len--;

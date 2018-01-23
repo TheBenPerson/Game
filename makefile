@@ -32,8 +32,8 @@ LF := -fsanitize=address -g
 
 # build directories
 BIN := bin
-CBIN := $(BIN)/client
-SBIN := $(BIN)/server
+CB := $(BIN)/client
+SB := $(BIN)/server
 OBJ := $(BIN)/obj
 
 all:
@@ -80,93 +80,8 @@ $(BIN)/common.so: $(shell find src/common -type f)
 
 # client modules
 
-.PHONY: client
-client: client.so input.so win.so gfx.so ui.so
-
-.PHONY: client.so
-client.so: $(CBIN)/client.so
-$(CBIN)/client.so: LFA := -lGL -lpng -lX11 -lX11-xcb -lxcb
-$(CBIN)/client.so: $(addprefix $(CBIN)/, button.so)
-$(CBIN)/client.so: src/client/client.cc
-
-.PHONY: input.so
-input.so: $(CBIN)/input.so
-$(CBIN)/input.so: src/client/input/input.cc
-
-.PHONY: win.so
-win.so: $(CBIN)/win.so
-$(CBIN)/win.so: $(addprefix $(CBIN)/, client.so input.so)
-$(CBIN)/win.so: src/client/win/win.cc
-
-.PHONY: gfx.so
-gfx.so: $(CBIN)/gfx.so
-$(CBIN)/gfx.so: $(addprefix $(CBIN)/, client.so win.so)
-$(CBIN)/gfx.so: src/client/gfx/gfx.cc
-
-.PHONY: audio.so
-audio.so: $(CBIN)/audio.so
-$(CBIN)/audio.so: LFA := -lvorbisfile -lasound
-$(CBIN)/audio.so: $(addprefix $(CBIN)/, client.so button.so)
-$(CBIN)/audio.so: src/client/audio/audio.cc
-
-.PHONY: button.so
-button.so: $(CBIN)/button.so
-$(CBIN)/button.so: $(shell find src/client/button/ -name "*.cc")
-
-.PHONY: ui.so
-ui.so: $(CBIN)/ui.so
-$(CBIN)/ui.so: $(addprefix $(CBIN)/, client.so input.so win.so gfx.so button.so audio.so)
-$(CBIN)/ui.so: $(shell find src/client/ui/ -name "*.cc")
-
-.PHONY: net.so
-net.so: $(CBIN)/net.so
-$(CBIN)/net.so: $(addprefix $(CBIN)/, client.so)
-$(CBIN)/net.so: src/client/net/net.cc
-
-.PHONY: world.so
-world.so: $(CBIN)/world.so
-$(CBIN)/world.so: $(addprefix $(CBIN)/, net.so input.so gfx.so)
-$(CBIN)/world.so: src/client/world/world.cc
-
-$(CBIN)/%.so:
-	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
-	$(eval export CPATH)
-	@setterm --foreground green
-	# Compiling client module: '$(shell basename $@)'...
-	@setterm --default
-
-	gcc $(CF) -Isrc/client $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
-
-.PHONY: server
-server: sclient.so server.so
-
-.PHONY: sclient.so
-sclient.so: $(SBIN)/sclient.so
-$(SBIN)/sclient.so: $(addprefix $(SBIN)/, server.so net.so world.so)
-$(SBIN)/sclient.so: src/server/client/client.cc
-
-.PHONY: sworld.so
-sworld.so: $(SBIN)/world.so
-$(SBIN)/world.so: $(SBIN)/server.so
-$(SBIN)/world.so: src/server/world/world.cc
-
-.PHONY: server.so
-server.so: $(SBIN)/server.so
-$(SBIN)/server.so: src/server/server.cc
-
-.PHONY: snet.so
-snet.so: $(SBIN)/net.so
-$(SBIN)/net.so: $(SBIN)/server.so
-$(SBIN)/net.so: src/server/net/net.cc
-
-$(SBIN)/%.so:
-	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
-	$(eval export CPATH)
-	@setterm --foreground green
-	# Compiling server module: '$(shell basename $@)'...
-	@setterm --default
-
-	gcc $(CF) -Isrc/server $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
+include client.mak
+include server.mak
 
 tmp/client.cc.tags: DIRS := $(shell find src/common src/client -type d)
 tmp/client.cc.tags: FILES := $(shell find src/common src/client -type f)
@@ -176,8 +91,8 @@ tmp/client.cc.tags:
 
 .PHONY:clean
 clean:
-	-rm $(CBIN)/*.so 2> /dev/null
-	-rm $(SBIN)/*.so 2> /dev/null
+	-rm $(CB)/*.so 2> /dev/null
+	-rm $(SB)/*.so 2> /dev/null
 	-rm $(BIN)/common.so 2> /dev/null
 	-rm $(BIN)/game 2> /dev/null
 	-rm $(OBJ)/*.o 2> /dev/null

@@ -48,12 +48,13 @@ void cprintf(char *color, char *format, ...) {
 	va_end(args);
 
 	printf("\33[m");
+	fflush(stdout); // todo: remove?
 
 }
 
 void ceputs(char *color, char *string) {
 
-	fprintf(stderr, "%s\33[1m%s%s\n", color, string, "\33[m");
+	fprintf(stderr, "%s\33[1m%s\33[m\n", color, string);
 
 }
 
@@ -69,5 +70,6 @@ void ceprintf(char *color, char *format, ...) {
 	va_end(args);
 
 	fprintf(stderr, "\33[m");
+	fflush(stderr); // todo: remove?
 
 }

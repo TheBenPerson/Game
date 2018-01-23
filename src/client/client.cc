@@ -33,7 +33,8 @@
 
 static void start(Button *) {
 
-	Client::state = Client::IN_GAME;
+	bool result = Game::loadModule("world.so");
+	if (result) Client::state = Client::IN_GAME;
 
 }
 

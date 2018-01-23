@@ -43,7 +43,7 @@
 
 static Timing::thread t;
 static void* spawn(void *);
-static bool running = true;
+static unsigned int dtimeout;
 
 extern "C" {
 
@@ -60,7 +60,8 @@ extern "C" {
 
 		Server::config.set("client.timeout", (void*) 30);
 		Server::config.load("client.cfg");
-		Client::timeout = (unsigned int) Server::config.get("client.timeout")->val;
+		dtimeout = (unsigned int) Server::config.get("client.timeout")->val;
+		dtimeout /= 2; // could be zero - tell user
 
 		t = Timing::createThread(spawn, NULL);
 
@@ -71,7 +72,14 @@ extern "C" {
 
 	void cleanup() {
 
-		running = false;
+		while (Client::clients.len) {
+
+			Client *client = (Client*) Client::clients.get(0);
+			client->kick("Server shut down");
+
+		}
+
+		Net::stop();
 		Timing::waitFor(t);
 
 		cputs(YELLOW, "Unloaded module: 'sclient.so'");
@@ -85,10 +93,10 @@ void* spawn(void *) {
 	sockaddr_in addr;
 	Packet packet;
 
-	while (running) {
+	for (;;) {
 
-		Net::wait();
-		Net::recv(&addr, &packet);
+		bool result = Net::recv(&addr, &packet);
+		if (!result) return NULL;
 
 		Client *client = Client::get(&addr);
 
@@ -120,7 +128,7 @@ void* spawn(void *) {
 			}
 
 			client = new Client(&addr, name);
-			printf("Client %s (%s) connected.\n", name, ip);
+			printf("%s (%s) connected.\n", name, ip);
 
 		}
 
@@ -172,44 +180,45 @@ void* Client::entry(void* arg) {
 	Client *client = (Client*) arg;
 	client->send(P_ACCEPT);
 
-	Packet *packet;
+	while (client->running) {
 
-	for (;;) {
-
-		packet = client->recv();
+		Packet *packet = client->recv();
 		if (!packet) {
 
-			printf("Client '%s' lost connection\n", client->name);
+			if (client->running) {
 
-			delete client;
-			return NULL;
+				printf("%s lost connection\n", client->name);
+				client->kick("Timed out");
+
+			}
+
+			break;
 
 		}
 
 		switch (packet->raw[0]) {
 
-			case P_GMAP: {
+			case P_POKE: client->send(P_ACCEPT);
+			break;
 
-				printf("Sending map to %s...\n", client->name);
+			case P_DENY:
 
-				uint8_t data[2];
-				data[0] = World::width;
-				data[1] = World::height;
+				printf("%s disconnected\n", client->name);
+				delete client;
 
-				Packet packet;
-				packet.raw = data;
-				packet.size = 2;
-				client->send(&packet);
+				free(packet->raw);
 
-				packet.size = sizeof(Tile) * World::width * World::height;
-				packet.raw = (uint8_t*) malloc(packet.size);
+			return NULL;
 
-				memcpy(packet.raw, World::data, packet.size);
+			default:
 
-				client->send(&packet);
-				free(packet.raw);
+				for (unsigned int i = 0; i < Net::listeners.len; i++) {
 
-			} break;
+					// todo: maybe Client:: instead?
+					bool (*callback)(Packet*, Client*) = (bool (*)(Packet *, Client*)) Net::listeners.get(i);
+					if (callback(packet, client)) break;
+
+				}
 
 		}
 
@@ -217,7 +226,7 @@ void* Client::entry(void* arg) {
 
 	}
 
-	delete client;
+	return NULL;
 
 }
 
@@ -234,15 +243,7 @@ Client::Client(sockaddr_in *addr, char *name) {
 
 Client::~Client() {
 
-	Client *client;
-
-	for (size_t i = 0; i < clients.len; i++) {
-
-		client = (Client*) clients.get(i);
-		if (this == client) clients.rem(i);
-
-	}
-
+	clients.rem((void*) this);
 	free(name);
 
 }
@@ -273,11 +274,35 @@ void Client::recv(Packet *packet) {
 Packet* Client::recv() {
 
 	// returns false if time ran out
-	//bool result = Timing::waitFor(&cond, timeout);
-	//if (!result) return NULL;
+	bool result = Timing::waitFor(&cond, dtimeout);
+	if (result) return packet;
 
-	Timing::waitFor(&cond);
+	send(P_POKE);
+	result = Timing::waitFor(&cond, dtimeout);
 
-	return packet;
+	if (result) return recv();
+	else return NULL;
+
+}
+
+void Client::kick(char *reason) {
+
+	running = false;
+	recv(NULL); // send dummy packet to exit recv
+
+	Timing::waitFor(this->t);
+
+	Packet packet;
+	packet.size = strlen(reason) + 2;
+	packet.raw = (uint8_t*) malloc(packet.size);
+	packet.raw[0] = P_DENY;
+	strcpy((char*) packet.raw + 1, reason);
+
+	send(&packet);
+	free(packet.raw);
+
+	printf("Kicked %s (%s)\n", name, reason);
+
+	delete this;
 
 }

@@ -13,7 +13,7 @@
  * furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be included in all
- * copies or substantial Game::portions of the Software.
+ * copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,8 +27,6 @@
 
 #include <arpa/inet.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <netinet/in.h>
 #include <poll.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,14 +37,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "client.hh"
 #include "console.hh"
 #include "main.hh"
 #include "net.hh"
-#include "timing.hh"
 
 static int sock;
-static Timing::mutex m = MTX_DEFAULT;
 
 extern "C" {
 
@@ -85,9 +80,6 @@ extern "C" {
 
 		}
 
-		int flags = fcntl(sock, F_GETFL, NULL);
-		fcntl(sock, F_GETFL, flags | O_NONBLOCK); //set nonblocking
-
 		cputs(GREEN, "Loaded module: 'net.so'");
 		return true;
 
@@ -95,7 +87,9 @@ extern "C" {
 
 	void cleanup() {
 
+		Net::stop(); // in case client.so doesn't
 		close(sock);
+
 		cputs(YELLOW, "Unloaded module: 'net.so'");
 
 	}
@@ -104,14 +98,11 @@ extern "C" {
 
 namespace Net {
 
-	void wait(int timeout) {
+	NodeList listeners;
 
-		pollfd p;
-		p.fd = sock;
-		p.events = POLLIN;
-		p.revents = NULL;
+	void stop() {
 
-		poll(&p, 1, timeout);
+		shutdown(sock, SHUT_RDWR);
 
 	}
 
@@ -121,17 +112,23 @@ namespace Net {
 
 	}
 
-	void recv(sockaddr_in *addr, Packet *packet) {
+	bool recv(sockaddr_in *addr, Packet *packet) {
 
-		socklen_t len = sizeof(sockaddr_in);
+		pollfd p;
+		p.fd = sock;
+		p.events = POLLIN;
+		p.revents = NULL;
 
-		Timing::lock(&m);
+		poll(&p, 1, -1);
+		if (p.revents & POLLHUP) return false;
 
 		ioctl(sock, FIONREAD, &packet->size);
 		packet->raw = (uint8_t*) malloc(packet->size);
 
+		socklen_t len = sizeof(sockaddr_in);
 		recvfrom(sock, packet->raw, packet->size, NULL, (sockaddr*) addr, &len);
-		Timing::unlock(&m);
+
+		return true;
 
 	}
 

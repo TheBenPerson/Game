@@ -37,6 +37,7 @@ class Client {
 
 	public:
 
+		static NodeList clients;
 		static uint timeout;
 
 		static Client* get(sockaddr_in *addr);
@@ -45,16 +46,17 @@ class Client {
 
 		sockaddr_in addr;
 		char *name;
+		bool running = true;
 
 		Client(sockaddr_in *addr, char *name);
 		~Client();
+
 		void send(uint8_t id);
 		void send(Packet *packet);
 		void recv(Packet *packet);
+		void kick(char *reason);
 
 	private:
-
-		static NodeList clients;
 
 		Packet *packet;
 		Timing::thread t;

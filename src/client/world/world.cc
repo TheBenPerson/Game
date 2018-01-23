@@ -27,6 +27,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "client.hh"
 #include "console.hh"
@@ -191,7 +192,16 @@ static bool netTick(Packet *packet) {
 
 		case P_SMAP:
 
-			puts("Got map");
+			// todo: check sizes
+
+			World::width = packet->raw[1];
+			World::height = packet->raw[2];
+
+			size_t size = sizeof(Tile) * World::width * World::height;
+			World::tiles = (Tile*) malloc(size);
+			memcpy(World::tiles, packet->raw + 3, size);
+
+			printf("Recieved map (%ix%i)\n", World::width, World::height);
 
 		break;
 

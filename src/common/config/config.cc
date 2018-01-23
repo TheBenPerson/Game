@@ -9,12 +9,11 @@ Config::Config(char *dir): dir(dir) {}
 
 void Config::load(char *base) {
 
-	char *path = new char[strlen(dir) + strlen(base) + 1];
-	strcpy(path, dir);
-	strcpy(path + strlen(dir), base); // consider less strlen()'s
+	char *path = (char*) malloc(strlen(dir) + strlen(base) + 1);
+	sprintf(path, "%s%s", dir, base);
 
 	FILE *file = fopen(path, "r");
-	delete[] path;
+	free(path);
 
 	if (!file) {
 

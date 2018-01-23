@@ -18,10 +18,17 @@
 #include "timing.hh"
 
 static Timing::thread t;
-static bool running = true;
+static bool running = false;
+static int dtimeout;
 static int sock;
 
-static bool get(Packet *packet) {
+// todo: maybe not static
+
+static char *name;
+static char *host;
+static uint16_t port;
+
+static bool recv(Packet *packet) {
 
 	static bool timed = false;
 
@@ -30,17 +37,20 @@ static bool get(Packet *packet) {
 	p.events = POLLIN;
 	p.revents = NULL;
 
-	if (!poll(&p, 1, 5000)) {
+	int result = poll(&p, 1, dtimeout);
+	if (p.revents & POLLHUP) return false;
+
+	if (!result) {
 
 		if (timed) return false;
 
 		Net::send(P_POKE);
 		timed = true;
 
-		if (!get(packet)) return false;
+		if (!recv(packet)) return false;
 		free(packet->raw);
 
-		return get(packet);
+		return recv(packet);
 
 	}
 
@@ -55,14 +65,19 @@ static bool get(Packet *packet) {
 
 static void* tmain(void*) {
 
+	running = true;
+
 	while (running) {
 
 		Packet packet;
-		if (!get(&packet)) {
+		if (!recv(&packet)) {
 
-			ceputs(RED, "Disconnected: server not responding");
-			close(sock);
+			if (running) {
 
+				ceprintf(RED, "Disconnected: Server not responding\n");
+				close(sock);
+
+			} else puts("Disconnected");
 			return NULL;
 
 		}
@@ -87,8 +102,13 @@ static void* tmain(void*) {
 
 			default:
 
-				for (unsigned int i = 0; i < Net::listeners.len; i++)
-					if (((bool (*)(Packet*)) Net::listeners.get(i))(&packet)) break;
+				for (unsigned int i = 0; i < Net::listeners.len; i++) {
+
+					// todo: maybe Client:: instead?
+					bool (*callback)(Packet*) = (bool (*)(Packet *)) Net::listeners.get(i);
+					if (callback(&packet)) break;
+
+				}
 
 		}
 
@@ -106,39 +126,17 @@ extern "C" {
 
 		Client::config.set("net.name", (void*) "John_Doe");
 		Client::config.set("net.host", (void*) "localhost");
+		Client::config.set("net.timeout", (void*) 30);
 		Client::config.set("net.port", (void*) 1270);
 		Client::config.load("net.cfg");
 
-		char *name = (char*) Client::config.get("net.name")->val;
-		char *host = (char*) Client::config.get("net.host")->val;
-		uint16_t port = (uint16_t) Client::config.get("net.port")->val;
+		name = (char*) Client::config.get("net.name")->val;
+		host = (char*) Client::config.get("net.host")->val;
+		port = (uint16_t) Client::config.get("net.port")->val;
 
-		if (!Net::start(name, host, port)) {
-
-			ceputs(RED, "Error loading module: 'net.so'");
-			return false;
-
-		}
-		cputs(GREEN, "Loaded module: 'net.so'");
-
-		return true;
-
-	}
-
-	void cleanup() {
-
-		Net::stop();
-		cputs(YELLOW, "Unloaded module: 'net.so'");
-
-	}
-
-}
-
-namespace Net {
-
-	NodeList listeners;
-
-	bool start(char *name, char *host, uint16_t port) {
+		dtimeout = (int) Client::config.get("net.timeout")->val;
+		dtimeout *= 1000;
+		dtimeout /= 2; // todo: might be zero - tell user
 
 		sock = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -184,11 +182,11 @@ namespace Net {
 		}
 
 		Packet packet;
-		packet.raw = name;
-		packet.size = strlen(packet.raw) + 1;
+		packet.raw = (uint8_t*) name;
+		packet.size = strlen(name) + 1;
 
-		send(&packet);
-		if (!get(&packet)) {
+		Net::send(&packet);
+		if (!recv(&packet)) {
 
 			ceputs(RED, "Connection failed: request timed out");
 
@@ -223,18 +221,29 @@ namespace Net {
 		t = Timing::createThread(&tmain, NULL);
 
 		printf("Connected to %s:%i\n", host, port);
+		cputs(GREEN, "Loaded module: 'net.so'");
 		return true;
 
 	}
 
-	void stop() {
+	void cleanup() {
 
-		running = false;
+		running = false; // todo: remove maybe?
+		Net::send(P_DENY);
+
+		shutdown(sock, SHUT_RDWR);
 		Timing::waitFor(t);
 
 		close(sock);
+		cputs(YELLOW, "Unloaded module: 'net.so'");
 
 	}
+
+}
+
+namespace Net {
+
+	NodeList listeners;
 
 	void send(uint8_t id) {
 

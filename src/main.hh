@@ -29,20 +29,11 @@
 
 #include <stddef.h>
 
-#include "nodelist.hh"
-
-typedef struct {
-
-	void *handle;
-	void (*cleanup)();
-
-} Module;
-
 namespace Game {
 
-	extern NodeList modules;
 	extern uint16_t port;
 
+	bool loadModule(char *path);
 	void stop();
 
 }

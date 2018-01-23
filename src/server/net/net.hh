@@ -28,16 +28,17 @@
 #ifndef GAME_SERVER_NET
 
 #include <netinet/in.h>
-#include <stddef.h>
-#include <stdint.h>
 
+#include "nodelist.hh"
 #include "packet.hh"
 
 namespace Net {
 
-	void wait(int timeout = -1);
+	extern NodeList listeners;
+
+	void stop();
 	void send(sockaddr_in *addr, Packet *packet);
-	void recv(sockaddr_in *addr, Packet *packet);
+	bool recv(sockaddr_in *addr, Packet *packet);
 
 }
 

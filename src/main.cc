@@ -38,26 +38,27 @@
 #include "console.hh"
 #include "data.hh"
 #include "main.hh"
+#include "nodelist.hh"
 #include "timing.hh"
 
+typedef struct {
+
+	void *handle;
+	void (*cleanup)();
+
+} Module;
+
+static char *base;
+static NodeList modules;
 static Timing::condition cond;
 
-namespace Game {
+void sigHandler(int signal) {
 
-	NodeList modules;
-	uint16_t port;
-
-	void stop() {
-
-		Timing::signal(&cond);
-
-	}
+	// I know it's not reentrant, but it's worked so far.
+	cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
+	Game::stop();
 
 }
-
-bool loadMods(char *path);
-bool loadMod(char *base, char *path);
-void sigHandler(int signal);
 
 int main(int argc, char* argv[]) {
 
@@ -125,16 +126,51 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	char *path;
+	char *path = (char*) malloc(20);
+	sprintf(path, "cfg/%s/mods.txt", isServer ? "server" : "client");
 
-	if (isServer) path = "bin/server/";
-	else path = "bin/client/";
+	FILE *file = fopen(path, "r");
+	if (!file) {
 
-	if (loadMods(path))	Timing::waitFor(&cond);
+		ceprintf(RED, "Error opening '%s': %s -- exiting...\n", path, strerror(errno));
 
-	for (int i = Game::modules.len - 1; i >= 0; i--) {
+		free(path);
+		return 1;
 
-		Module *module = (Module *) Game::modules.get(i);
+	}
+
+	free(path);
+	base = isServer ? "bin/server/" : "bin/client/";
+
+	bool result = false;
+
+	for (;;) {
+
+		char *name = NULL;
+		size_t n = NULL;
+
+		if (getline(&name, &n, file) == -1) {
+
+			free(name);
+			break;
+
+		}
+
+		if (name[strlen(name) - 1] == '\n') name[strlen(name) - 1] = '\0';
+
+		result = Game::loadModule(name);
+		free(name);
+
+		if (!result) break;
+
+	}
+
+	fclose(file);
+	if (result) Timing::waitFor(&cond);
+
+	for (int i = modules.len - 1; i >= 0; i--) {
+
+		Module *module = (Module *) modules.get(i);
 		if (module->cleanup) module->cleanup();
 
 		delete module;
@@ -145,133 +181,87 @@ int main(int argc, char* argv[]) {
 
 }
 
-bool loadMod(char *base, char *path) {
+namespace Game {
 
-	char *name = new char[strlen(base) + strlen(path) + 1];
-	sprintf(name, "%s%s", base, path);
+	uint16_t port;
 
-	void *handle = dlopen(name, RTLD_LAZY);
+	bool loadModule(char *path) {
 
-	if (!handle) {
+		char *name = (char*) malloc(strlen(base) + strlen(path) + 1);
+		sprintf(name, "%s%s", base, path);
 
-		delete[] name;
+		void *handle = dlopen(name, RTLD_LAZY);
+		free(name);
 
-		ceprintf(RED, "Error loading module: '%s'\n", dlerror());
-		return false;
+		if (!handle) {
 
-	}
-
-	// has the module been loaded already?
-	for (unsigned int i = 0; i < Game::modules.len; i++) {
-
-		if (((Module*) Game::modules.get(i))->handle == handle) {
-
-			delete[] name;
-			dlclose(handle);
-			return true;
+			ceprintf(RED, "Error loading module: '%s'\n", dlerror());
+			return false;
 
 		}
 
-	}
+		// has the module been loaded already?
+		for (unsigned int i = 0; i < modules.len; i++) {
 
-	Module *mod = new Module();
-	mod->handle = handle;
+			if (((Module*) modules.get(i))->handle == handle) {
 
-	char **depends = (char**) dlsym(handle, "depends");
-	if (depends) {
-
-		// load module dependancies
-		for (; *depends; depends++) {
-
-			if (!loadMod(base, *depends)) {
-
-				delete mod;
-
-				ceprintf(RED, "Error loading module '%s': error loading dependency '%s'\n", path, *depends);
 				dlclose(handle);
-
-				delete[] name;
-				return false;
+				return true;
 
 			}
 
 		}
 
-	}
+		Module *mod = new Module();
+		mod->handle = handle;
 
-	bool (*init)() = (bool (*)()) dlsym(handle, "init");
+		char **depends = (char**) dlsym(handle, "depends");
+		if (depends) {
 
-	bool result = true;
-	if (init) result = init();
-	// mod prints its own message for success and error
+			// load module dependancies
+			for (; *depends; depends++) {
 
-	if (!result) {
+				if (!loadModule(*depends)) {
 
-		delete mod;
-		dlclose(handle);
+					delete mod;
 
-		delete[] name;
-		return false;
+					ceprintf(RED, "Error loading module '%s': error loading dependency '%s'\n", path, *depends);
+					dlclose(handle);
 
-	}
+					return false;
 
-	delete[] name;
-	mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
-	Game::modules.add((void*) mod);
+				}
 
-	return true;
+			}
 
-}
+		}
 
-bool loadMods(char *path) {
+		bool (*init)() = (bool (*)()) dlsym(handle, "init");
 
-	DIR *dir = opendir(path);
-	if (!dir) {
+		bool result = true;
+		if (init) result = init();
+		// mod prints its own message for success and error
 
-		ceprintf(RED, "Error loading modules in '%s': %s - exiting...\n", path, strerror(errno));
-		return false;
-
-	}
-
-	bool empty = true;
-
-	for (;;) {
-
-		dirent *file = readdir(dir);
-		if (!file) break;
-
-		if (file->d_type != DT_REG) continue;
-		if (strcmp(file->d_name + strlen(file->d_name) - 3, ".so")) continue;
-
-		bool result = loadMod(path, file->d_name);
 		if (!result) {
 
-			closedir(dir);
+			delete mod;
+			dlclose(handle);
+
 			return false;
 
 		}
 
-		empty = false;
+		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
+		modules.add((void*) mod);
+
+		return true;
 
 	}
 
-	closedir(dir);
+	void stop() {
 
-	if (empty) {
-
-		cprintf(RED, "Error: no modules in '%s' - exiting...\n", path);
-		return false;
+		Timing::signal(&cond);
 
 	}
-
-	return true;
-
-}
-
-void sigHandler(int signal) {
-
-	// I know it's not reentrant, but it's worked so far.
-	cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
-	Game::stop();
 
 }
