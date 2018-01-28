@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 #include "button.hh"
 #include "client.hh"
 #include "console.hh"
+#include "data.hh"
 #include "gfx.hh"
 #include "input.hh"
 #include "win.hh"
@@ -56,7 +57,7 @@ static void draw();
 
 extern "C" {
 
-	char* depends[] = {
+	char* ui_deps[] = {
 
 		"button.so",
 		"gfx.so",
@@ -111,7 +112,7 @@ static bool dologic(Button *button, Point *lower, Point *upper) {
 
 	if (button == selected) {
 
-		if (state == SELECTED && Input::actions[Input::A_ACTION]) state = CLICKED;
+		if (state == SELECTED && Input::actions[Input::A_PRIMARY]) state = CLICKED;
 		else {
 
 			if (state == CLICKED) {
@@ -364,5 +365,7 @@ void draw() {
 		glPopMatrix();
 
 	}
+
+	GFX::drawText(Data::versionString, {(-10 * WIN::aspect) + 1, 9});
 
 }

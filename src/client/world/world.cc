@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@
 #include "gfx.hh"
 #include "input.hh"
 #include "net.hh"
-#include "point.hh"
 #include "win.hh"
 #include "world.hh"
 
@@ -44,29 +43,196 @@ namespace World {
 	unsigned int width = 0;
 	unsigned int height = 0;
 	Tile *tiles;
+	NodeList listeners;
 
-	float scale = 1;
 	float rot;
+	Point pos = {0, 0};
 
 }
 
-static Point pos = {0, 0};
+float scale = 2;
+static float speed = 0.075f;
 
-static void draw() {
+static bool tickNet(Packet *packet);
+static void tickInput();
+static void tick();
+static void initGL();
+static void cleanupGL();
+static void draw();
+
+extern "C" {
+
+	char* world_deps[] = {
+
+		"net.so",
+		"input.so",
+		"gfx.so",
+		NULL
+
+	};
+
+	bool init() {
+
+		Net::listeners.add((void*) tickNet);
+		Net::send(P_GMAP);
+
+		Input::listeners.add((void*) &tickInput);
+
+		GFX::call(&initGL);
+		GFX::listeners.add((void*) &draw);
+
+		cputs(GREEN, "Loaded module: 'world.so'");
+
+		return true;
+
+	}
+
+	void cleanup() {
+
+		GFX::listeners.rem((void*) &draw);
+		GFX::call(&cleanupGL);
+
+		Input::listeners.rem((void*) &tickInput);
+
+		free(World::tiles);
+		cputs(YELLOW, "Unloaded module: 'world.so'");
+
+	}
+
+}
+
+static bool tickNet(Packet *packet) {
+
+	switch (packet->id) {
+
+		case P_SMAP: {
+
+			// todo: check sizes
+
+			World::width = packet->raw[1];
+			World::height = packet->raw[2];
+
+			size_t size = sizeof(Tile) * World::width * World::height;
+			World::tiles = (Tile*) malloc(size);
+			memcpy(World::tiles, packet->raw + 3, size);
+
+			printf("Recieved map (%ix%i)\n", World::width, World::height);
+
+		} break;
+
+		case P_SBLK: {
+
+			unsigned int index = (packet->data[1] * World::height) + packet->data[0];
+			World::tiles[index].id = packet->data[2];
+
+		} break;
+
+		default: return false;
+
+	}
+
+	return true;
+
+}
+
+// callback
+void tickInput() {
+
+	if (Input::wasCursor) World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
+	else if (Input::actions[Input::A_EXIT]) Client::state = Client::PAUSED;
+
+}
+
+// per draw
+void tick() {
+
+	if (Input::actions[Input::A_SECONDARY]) {
+
+		if (Input::actions[Input::A_UP]) scale += speed;
+		else if (Input::actions[Input::A_DOWN]) scale -= speed;
+
+		return;
+
+	}
+
+	if (Input::actions[Input::A_PRIMARY]) {
+
+		unsigned int x = World::pos.x + (World::width / 2);
+		unsigned int y = (World::height / 2) - World::pos.y;
+
+		unsigned int index = (y * World::width) + x;
+
+		if (World::tiles[index].id != 4) {
+
+			World::tiles[index].id = 4;
+			uint8_t data[] = { P_SBLK, x, y, 4 };
+
+			Packet packet;
+			packet.raw = data;
+			packet.size = 4;
+
+			Net::send(&packet);
+
+		}
+
+	}
+
+	if (Input::actions[Input::A_UP]) {
+
+
+		World::pos.x += sinf(World::rot) * speed;
+		World::pos.y += cosf(World::rot) * speed;
+
+	}
+
+	if (Input::actions[Input::A_DOWN]) {
+
+		World::pos.x -= sinf(World::rot) * speed;
+		World::pos.y -= cosf(World::rot) * speed;
+
+	}
+
+	if (Input::actions[Input::A_LEFT]) {
+
+		World::pos.x += sinf(World::rot - M_PI_2) * speed;
+		World::pos.y += cosf(World::rot - M_PI_2) * speed;
+
+	}
+
+	if (Input::actions[Input::A_RIGHT]) {
+
+		World::pos.x -= sinf(World::rot - M_PI_2) * speed;
+		World::pos.y -= cosf(World::rot - M_PI_2) * speed;
+
+	}
+
+}
+
+void initGL() {
+
+	World::tex = GFX::loadTexture("world.png");
+
+}
+
+void cleanupGL() {
+
+	glDeleteTextures(1, &World::tex);
+
+}
+
+void draw() {
 
 	if (Client::state != Client::IN_GAME) return;
 
-	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-	glScalef(World::scale, World::scale, 1);
-
+	glScalef(scale, scale, 1);
 	glRotatef((World::rot * 360) / (M_PI * 2) , 0, 0, 1);
-	glTranslatef(-pos.x, -pos.y, 0);
+	glTranslatef(-World::pos.x, -World::pos.y, 0);
 
 	for (unsigned int i = 0; i < (World::width * World::height); i++) {
 
 		float x = (i % World::width) - (World::width / 2.0f);
-		float y = (i / World::height) - (World::height / 2.0f);
+		float y = (World::height - 1) - (i / World::width) - (World::height / 2.0f);
 
 		glPushMatrix();
 		glTranslatef(x, y, 0);
@@ -97,8 +263,16 @@ static void draw() {
 
 	}
 
+	for (unsigned int i = 0; i < World::listeners.len; i++) {
+
+		void (*callback)() = (void (*)()) World::listeners.get(i);
+		callback();
+
+	}
+
 	glPopMatrix();
 
+	glBindTexture(GL_TEXTURE_2D, NULL);
 	glBegin(GL_LINES);
 
 	glVertex2f(-5, 0);
@@ -110,146 +284,11 @@ static void draw() {
 	glEnd();
 
 	char buffer[50];
-	sprintf(buffer, "Rot: %f\nPos: (%f, %f)", (World::rot * 360) / (M_PI * 2), pos.x, pos.y);
+	sprintf(buffer, "Rot: %f\nPos: (%f, %f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
 
 	GFX::drawText(buffer, {(-10 * WIN::aspect) + 1, 9});
 
-}
-
-static float step = 0.05f;
-
-static void tick() {
-
-	if (Client::state != Client::IN_GAME) return;
-
-	if (Input::wasCursor) {
-
-		World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
-		return;
-	}
-
-	if (Input::actions[Input::A_EXIT]) {
-
-		Client::state = Client::PAUSED;
-		return;
-
-	}
-
-	if (Input::actions[Input::A_ACTION]) {
-
-		if (Input::actions[Input::A_UP]) World::scale += step;
-		if (Input::actions[Input::A_DOWN]) World::scale -= step;
-		return;
-
-	}
-
-	if (Input::actions[Input::A_UP]) {
-
-
-		pos.x += sinf(World::rot) * step;
-		pos.y += cosf(World::rot) * step;
-
-	}
-
-	if (Input::actions[Input::A_DOWN]) {
-
-		pos.x -= sinf(World::rot) * step;
-		pos.y -= cosf(World::rot) * step;
-
-	}
-
-	if (Input::actions[Input::A_LEFT]) {
-
-		pos.x += sin(World::rot - M_PI_2) * step;
-		pos.y += cos(World::rot - M_PI_2) * step;
-
-	}
-
-	if (Input::actions[Input::A_RIGHT]) {
-
-		pos.x -= sin(World::rot - M_PI_2) * step;
-		pos.y -= cos(World::rot - M_PI_2) * step;
-
-	}
+	tick();
 
 }
 
-static void initGL() {
-
-	World::tex = GFX::loadTexture("world.png");
-
-}
-
-static void cleanupGL() {
-
-	glDeleteTextures(1, &World::tex);
-
-}
-
-static bool netTick(Packet *packet) {
-
-	switch (packet->raw[0]) {
-
-		case P_SMAP:
-
-			// todo: check sizes
-
-			World::width = packet->raw[1];
-			World::height = packet->raw[2];
-
-			size_t size = sizeof(Tile) * World::width * World::height;
-			World::tiles = (Tile*) malloc(size);
-			memcpy(World::tiles, packet->raw + 3, size);
-
-			printf("Recieved map (%ix%i)\n", World::width, World::height);
-
-		break;
-
-		default: return false;
-
-	}
-
-	return true;
-
-}
-
-extern "C" {
-
-	char* depends[] = {
-
-		"net.so",
-		"input.so",
-		"gfx.so",
-		NULL
-
-	};
-
-	bool init() {
-
-		Net::listeners.add((void*) netTick);
-		Net::send(P_GMAP);
-
-		Input::listeners.add((void*) &tick);
-
-		GFX::call(&initGL);
-		GFX::listeners.add((void*) &draw);
-
-		cputs(GREEN, "Loaded module: 'world.so'");
-
-		return true;
-
-	}
-
-	void cleanup() {
-
-		GFX::listeners.rem((void*) &draw);
-		GFX::call(&cleanupGL);
-
-		Input::listeners.rem((void*) &tick);
-
-		free(World::tiles);
-		cputs(YELLOW, "Unloaded module: 'world.so'");
-
-	}
-
-}

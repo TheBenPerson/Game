@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ static int sock;
 
 extern "C" {
 
-	char* depends[] = {
+	char* net_deps[] = {
 
 		// world has to be up before we start listening
 		"world.so",
@@ -127,6 +127,9 @@ namespace Net {
 
 		socklen_t len = sizeof(sockaddr_in);
 		recvfrom(sock, packet->raw, packet->size, NULL, (sockaddr*) addr, &len);
+
+		packet->id = packet->raw[0];
+		packet->data = packet->raw + 1;
 
 		return true;
 

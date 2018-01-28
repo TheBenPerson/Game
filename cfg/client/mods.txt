@@ -1,2 +1,4 @@
 input.so
 ui.so
+eye.so
+entity.so

@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,6 @@
 #include <GL/glxext.h>
 #include <math.h>
 #include <png.h>
-#include <setjmp.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,6 +51,7 @@
 namespace GFX {
 
 	NodeList listeners;
+	unsigned int frame;
 
 }
 
@@ -67,7 +67,7 @@ static void draw();
 
 extern "C" {
 
-	char* depends[] = {
+	char* gfx_deps[] = {
 
 		"win.so",
 		NULL
@@ -117,7 +117,7 @@ namespace GFX {
 		Timing::lock(&m);
 
 		callback = function;
-		while (callback) {}
+		while (callback) {} // todo: use condition
 
 		Timing::unlock(&m);
 
@@ -213,28 +213,26 @@ namespace GFX {
 		char *res = (char*) Client::config.get("gfx.res")->val;
 		size_t len = strlen(name);
 
-		char *buf = new char[12 + strlen(res) + 1 + len + 1];
+		char *buf = (char*) malloc(12 + strlen(res) + 1 + len + 1);
 		sprintf(buf, "res/texture/%s/%s", res, name); // strcpy might be faster
 
 		FILE *file = fopen(buf, "r");
-		delete[] buf;
+		free(buf);
 
 		if (!file) {
 
-			buf = new char[20 + len + 1];
+			buf = (char*) malloc(20 + len + 1);
 			sprintf(buf, "res/texture/default/%s", name);
 
 			file = fopen(buf, "r");
+			free(buf);
+
 			if (!file) {
 
 				fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
-
-				delete[] buf;
-				return 0;
+				return NULL;
 
 			}
-
-			delete[] buf;
 
 		}
 
@@ -365,7 +363,7 @@ void draw() {
 
 	}
 
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();
@@ -377,5 +375,6 @@ void draw() {
 		((void (*)()) GFX::listeners.get(i))();
 
 	WIN::swapBuffers();
+	GFX::frame++;
 
 }

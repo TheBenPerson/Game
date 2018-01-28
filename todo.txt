@@ -4,4 +4,5 @@ Inspect memory increase when scrolling through buttons
 Decide max size of NodeList
 Fix crash on fullscreen toggle
 Inspect what happens when listeners removed while looping through them
-dlsym searches dependancies. Very problematic when module has no depends symbol, but it's dependancies do.
+Even though client looses connection, client w/ username still exists
+Mysterious server leaks

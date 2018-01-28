@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,12 +29,12 @@ namespace Data {
 
 	const char *versionString =
 	"Game\n"
-	"Build Version 1.0.0";
+	"Development build";
 
 	const char *aboutString =
 	"Game Development Build\n"
 	"https://github.com/TheBenPerson/Game\n\n"
 
-	"Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>";
+	"Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>";
 
 }

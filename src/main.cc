@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -215,7 +215,19 @@ namespace Game {
 		Module *mod = new Module();
 		mod->handle = handle;
 
-		char **depends = (char**) dlsym(handle, "depends");
+		char *base = strdup(path);
+		*strchr(base, '.') = '\0';
+
+		name = (char*) malloc(strlen(base) + 6);
+		sprintf(name, "%s_deps", base);
+		free(base);
+
+		// module dependancy format is (module name)_deps
+		// this is because dlsym() searches link-level dependancies for symbols if not found
+
+		char **depends = (char**) dlsym(handle, name);
+		free(name);
+
 		if (depends) {
 
 			// load module dependancies

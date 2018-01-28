@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +90,7 @@ static void fullscreenHandler();
 // global functions
 extern "C" {
 
-	char* depends[] = {
+	char* win_deps[] = {
 
 		"client.so", // for menu it creates
 		NULL
@@ -105,13 +105,15 @@ extern "C" {
 		Client::config.set("win.fullscreen", (void*) true);
 		Client::config.set("win.vsync", (void*) true);
 
+		Client::config.set("win.kbd.exit", (void*) "Escape");
+		Client::config.set("win.kbd.fullscreen", (void*) "F11");
 		Client::config.set("win.kbd.left", (void*) "A");
 		Client::config.set("win.kbd.right", (void*) "D");
 		Client::config.set("win.kbd.up", (void*) "W");
 		Client::config.set("win.kbd.down", (void*) "S");
-		Client::config.set("win.kbd.exit", (void*) "Escape");
-		Client::config.set("win.kbd.action", (void*) "Left_Click");
-		Client::config.set("win.kbd.fullscreen", (void*) "F11");
+		Client::config.set("win.kbd.primary", (void*) "Left_Click,Return");
+		Client::config.set("win.kbd.secondary", (void*) "space");
+		Client::config.set("win.kbd.modifier", (void*) "Shift_L");
 
 		Client::config.load("win.conf");
 		if (!createWindow()) return false; // could also fail
@@ -535,13 +537,15 @@ static void loadKey(Input::Action action, char *key) {
 
 void loadKeys() {
 
+	loadKey(Input::A_EXIT, "win.kbd.exit");
+	loadKey(Input::A_FULLSCREEN, "win.kbd.fullscreen");
 	loadKey(Input::A_LEFT, "win.kbd.left");
 	loadKey(Input::A_RIGHT, "win.kbd.right");
 	loadKey(Input::A_UP, "win.kbd.up");
 	loadKey(Input::A_DOWN, "win.kbd.down");
-	loadKey(Input::A_EXIT, "win.kbd.exit");
-	loadKey(Input::A_ACTION, "win.kbd.action");
-	loadKey(Input::A_FULLSCREEN, "win.kbd.fullscreen");
+	loadKey(Input::A_PRIMARY, "win.kbd.primary");
+	loadKey(Input::A_SECONDARY, "win.kbd.secondary");
+	loadKey(Input::A_MODIFIER, "win.kbd.modifier");
 
 }
 

@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,13 +36,21 @@
 
 // requests
 #define P_GMAP 'g'
-#define P_SMAP 's'
+// todo: replace (#define P_SMAP 's') with above line
+
+#define P_SBLK 'b'
 #define P_POKE 'p'
+
+#define P_NENT 'n'
+#define P_GENT 'e'
+#define P_UENT 'g'
 
 typedef struct {
 
-	unsigned short size;
+	unsigned int size;
+	uint8_t id;
 	uint8_t *raw;
+	uint8_t *data;
 
 } Packet;
 

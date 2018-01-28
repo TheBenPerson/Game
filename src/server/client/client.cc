@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,7 @@ static unsigned int dtimeout;
 
 extern "C" {
 
-	char* depends[] = {
+	char* client_deps[] = {
 
 		"server.so",
 		"world.so",
@@ -65,7 +65,7 @@ extern "C" {
 
 		t = Timing::createThread(spawn, NULL);
 
-		cputs(GREEN, "Loaded module: 'sclient.so'");
+		cputs(GREEN, "Loaded module: 'client.so'");
 		return true;
 
 	}
@@ -82,7 +82,7 @@ extern "C" {
 		Net::stop();
 		Timing::waitFor(t);
 
-		cputs(YELLOW, "Unloaded module: 'sclient.so'");
+		cputs(YELLOW, "Unloaded module: 'client.so'");
 
 	}
 
@@ -196,7 +196,7 @@ void* Client::entry(void* arg) {
 
 		}
 
-		switch (packet->raw[0]) {
+		switch (packet->id) {
 
 			case P_POKE: client->send(P_ACCEPT);
 			break;
@@ -265,6 +265,8 @@ void Client::send(Packet *packet) {
 }
 
 void Client::recv(Packet *packet) {
+
+	// todo: if busy put on a fifo?
 
 	this->packet = packet;
 	Timing::signal(&cond);

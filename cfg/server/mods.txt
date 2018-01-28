@@ -1,1 +1,2 @@
-sclient.so
+client.so
+eye.so

@@ -3,7 +3,7 @@
  * Game Development Build
  * https://github.com/TheBenPerson/Game
  *
- * Copyright (C) 2016-2017 Ben Stockett <thebenstockett@gmail.com>
+ * Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@
 
 static bool tickNet(Packet *packet, Client *client) {
 
-	switch (packet->raw[0]) {
+	switch (packet->id) {
 
 		case P_GMAP: {
 
@@ -52,10 +52,27 @@ static bool tickNet(Packet *packet, Client *client) {
 			packet.raw[1] = World::width;
 			packet.raw[2] = World::height;
 
-			memcpy(packet.raw + 3, World::data, packet.size - 3);
+			memcpy(packet.raw + 3, World::tiles, packet.size - 3);
 
 			client->send(&packet);
 			free(packet.raw);
+
+		} break;
+
+		case P_SBLK: {
+
+			unsigned int index = (packet->data[1] * World::height) + packet->data[0];
+			World::tiles[index].id = packet->data[2];
+
+			for (unsigned int i = 0; i < Client::clients.len; i++) {
+
+				Client *dest = (Client*) Client::clients.get(i);
+				if (dest == client) continue;
+
+				// relay packet
+				dest->send(packet);
+
+			}
 
 		} break;
 
@@ -85,7 +102,7 @@ extern "C" {
 
 		Net::listeners.rem((void*) &tickNet);
 
-		free(World::data);
+		free(World::tiles);
 		cputs(YELLOW, "Unloaded module: 'world.so'");
 
 	}
@@ -94,7 +111,7 @@ extern "C" {
 
 namespace World {
 
-	Tile *data = NULL; // should be mutex locked...
+	Tile *tiles = NULL; // should be mutex locked...
 	unsigned int width;
 	unsigned int height;
 
@@ -177,8 +194,8 @@ namespace World {
 
 		size_t size = width * height;
 
-		if (data) free(data);
-		data = (Tile*) malloc(sizeof(Tile) * size);
+		if (tiles) free(tiles);
+		tiles = (Tile*) malloc(sizeof(Tile) * size);
 
 		for (size_t i = 0; i < size; i++) {
 
@@ -196,7 +213,7 @@ namespace World {
 					c = fgetc(file);
 					if ((c >= 0x30) && (c <= 0x39)) buf[1] = c;
 
-					data[i].id = atoi(buf);
+					tiles[i].id = atoi(buf);
 					break;
 
 				}
