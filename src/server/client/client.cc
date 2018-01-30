@@ -39,7 +39,6 @@
 #include "net.hh"
 #include "server.hh"
 #include "timing.hh"
-#include "world.hh"
 
 static Timing::thread t;
 static void* spawn(void *);
@@ -227,6 +226,17 @@ void* Client::entry(void* arg) {
 	}
 
 	return NULL;
+
+}
+
+void Client::broadcast(Packet *packet) {
+
+	for (unsigned int i = 0; i < clients.len; i++) {
+
+		Client *client = (Client*) clients.get(i);
+		client->send(packet);
+
+	}
 
 }
 

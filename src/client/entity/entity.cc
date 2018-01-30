@@ -53,8 +53,8 @@ bool tickNet(Packet *packet) {
 
 		case P_UENT:
 
-			Entity *entity = Entity::get(packet.raw[1]);
-			entity->update(packet->raw + 2);
+			Entity *entity = Entity::get(*((uint16_t*) (packet->raw + 1)));
+			entity->update(packet->raw + 3);
 
 		break;
 
@@ -107,14 +107,12 @@ Entity::~Entity() {
 
 void Entity::update(void *raw) {
 
-	typedef struct {
+	struct Data {
 
-		Point pos;
-		Point vel;
+		__attribute__((packed)) Point pos;
+		__attribute__((packed)) Point vel;
 
-	} __attribute__((packed)) Data;
-
-	Data *data = (Data*) raw;
+	} __attribute__((packed)) *data = (Data*) raw;
 
 	pos = data->pos;
 	vel = data->vel;

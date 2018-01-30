@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include "client.hh"
 #include "console.hh"
@@ -56,14 +58,27 @@ extern "C" {
 
 void* tmain(void*) {
 
-	for (unsigned int i = 0; i < Entity::entities.len; i++) {
+	while (running) {
 
-		Entity *entity = (Entity*) Entity::entities.get(i);
-		entity->tick();
+		unsigned int toSleep = ~0;
+
+		for (unsigned int i = 0; i < Entity::entities.len; i++) {
+
+			Entity *entity = (Entity*) Entity::entities.get(i);
+
+			timespec time;
+			clock_gettime(CLOCK_MONOTONIC, &time);
+
+			unsigned int dtime = entity->tick(&time);
+			if (dtime < toSleep) toSleep = dtime;
+
+		}
+
+		usleep(toSleep * 1000);
 
 	}
 
-	// todo: sleep here
+	return NULL;
 
 }
 
@@ -76,6 +91,7 @@ bool tickNet(Packet *packet, Client *client) {
 			for (unsigned int i = 0; i < Entity::entities.len; i++) {
 
 				Entity *entity = (Entity*) Entity::entities.get(i);
+
 				Packet packet;
 				packet.raw = (uint8_t*) entity->toNet(&packet.size);
 				client->send(&packet);
@@ -126,7 +142,11 @@ Entity* Entity::get(unsigned int id) {
 
 Entity::Entity(Point pos, Point vel): pos(pos), vel(vel) {
 
+	// get lowest available id
+	for (id = 0; get(id); id++) {}
 	entities.add((void*) this);
+
+	// todo: send P_NENT to clients
 
 }
 
@@ -156,12 +176,42 @@ void* Entity::toNet(unsigned int *size) {
 	*size = sizeof(Data) + strlen(type) + 1;
 	Data *data = (Data*) malloc(*size);
 
-	data->pid = P_NENT;
+	data->pid = P_GENT;
 	data->id = id;
 	data->pos = pos;
 	data->vel = vel;
 	strcpy(data->type, type);
 
 	return data;
+
+}
+
+void Entity::update() {
+
+	struct {
+
+		uint8_t pid;
+		uint16_t id;
+
+		__attribute__((packed)) Point pos;
+		__attribute__((packed)) Point vel;
+
+	} __attribute__((packed)) data;
+
+	data.pid = P_UENT;
+	data.id = id;
+	data.pos = pos;
+	data.vel = vel;
+
+	Packet packet;
+	packet.raw = (uint8_t*) &data;
+	packet.size = sizeof(data);
+
+	for (unsigned int i = 0; i < Client::clients.len; i++) {
+
+		Client *client = (Client*) Client::clients.get(i);
+		client->send(&packet);
+
+	}
 
 }

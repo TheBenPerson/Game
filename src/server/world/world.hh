@@ -27,6 +27,7 @@
 
 #ifndef GAME_SERVER_WORLD
 
+#include "point.hh"
 #include "tile.hh"
 
 namespace World {
@@ -38,6 +39,7 @@ namespace World {
 	bool init();
 	void cleanup();
 	bool loadMap(char *name);
+	void setTile(Point *pos, Tile::type id);
 
 }
 

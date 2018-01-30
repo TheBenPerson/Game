@@ -1,5 +1,7 @@
 #ifndef GAME_SERVER_EYE
 
+#include <time.h>
+
 #include "entity.hh"
 #include "point.hh"
 
@@ -9,7 +11,7 @@ class Eye: public Entity {
 
 		Eye(Point pos, Point vel);
 
-		void tick();
+		unsigned int tick(timespec *time);
 
 	private:
 

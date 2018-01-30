@@ -105,14 +105,14 @@ static bool tickNet(Packet *packet) {
 
 	switch (packet->id) {
 
-		case P_SMAP: {
+		case P_GMAP: {
 
 			// todo: check sizes
 
 			World::width = packet->raw[1];
 			World::height = packet->raw[2];
 
-			size_t size = sizeof(Tile) * World::width * World::height;
+			unsigned int size = sizeof(Tile) * World::width * World::height;
 			World::tiles = (Tile*) malloc(size);
 			memcpy(World::tiles, packet->raw + 3, size);
 
@@ -122,8 +122,8 @@ static bool tickNet(Packet *packet) {
 
 		case P_SBLK: {
 
-			unsigned int index = (packet->data[1] * World::height) + packet->data[0];
-			World::tiles[index].id = packet->data[2];
+			unsigned int index = (packet->data[1] * World::width) + packet->data[0];
+			World::tiles[index].id = (Tile::type) packet->data[2];
 
 		} break;
 
@@ -157,8 +157,8 @@ void tick() {
 
 	if (Input::actions[Input::A_PRIMARY]) {
 
-		unsigned int x = World::pos.x + (World::width / 2);
-		unsigned int y = (World::height / 2) - World::pos.y;
+		unsigned int x = World::pos.x + (World::width / 2.0f);
+		unsigned int y = (World::height / 2.0f) - World::pos.y;
 
 		unsigned int index = (y * World::width) + x;
 

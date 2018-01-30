@@ -63,7 +63,7 @@ bool tickNet(Packet *packet) {
 
 	switch (packet->id) {
 
-		case P_NENT: {
+		case P_GENT: {
 
 			typedef struct {
 

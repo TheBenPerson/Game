@@ -43,6 +43,7 @@ class Client {
 		static Client* get(sockaddr_in *addr);
 		static Client* get(char *name);
 		static void* entry(void*);
+		static void broadcast(Packet *packet);
 
 		sockaddr_in addr;
 		char *name;

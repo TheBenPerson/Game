@@ -36,14 +36,12 @@
 
 // requests
 #define P_GMAP 'g'
-// todo: replace (#define P_SMAP 's') with above line
-
 #define P_SBLK 'b'
+
 #define P_POKE 'p'
 
-#define P_NENT 'n'
 #define P_GENT 'e'
-#define P_UENT 'g'
+#define P_UENT 'u'
 
 typedef struct {
 

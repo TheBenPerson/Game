@@ -35,12 +35,12 @@ $(SB)/net.so: src/server/net/net.cc
 
 .PHONY: sclient.so
 sclient.so: $(SB)/client.so
-$(SB)/client.so: $(addprefix $(SB)/, server.so net.so world.so)
+$(SB)/client.so: $(addprefix $(SB)/, server.so net.so)
 $(SB)/client.so: src/server/client/client.cc
 
 .PHONY: sworld.so
 sworld.so: $(SB)/world.so
-$(SB)/world.so: $(addprefix $(SB)/, server.so net.so)
+$(SB)/world.so: $(addprefix $(SB)/, server.so net.so client.so)
 $(SB)/world.so: src/server/world/world.cc
 
 .PHONY: sentity.so
@@ -50,6 +50,7 @@ $(SB)/entity.so: src/server/entity/entity.cc
 
 .PHONY: seye.so
 seye.so: $(SB)/eye.so
+$(CB)/eye.so: LFA := -lm
 $(SB)/eye.so: $(addprefix $(SB)/, server.so net.so client.so world.so entity.so)
 $(SB)/eye.so: src/server/eye/eye.cc
 

@@ -1,5 +1,7 @@
 #ifndef GAME_SERVER_ENTITY
 
+#include <time.h>
+
 #include "nodelist.hh"
 #include "point.hh"
 
@@ -19,8 +21,14 @@ class Entity {
 		Entity(Point pos, Point vel);
 		virtual ~Entity();
 
-		virtual void tick() = 0;
+		virtual unsigned int tick(timespec *time) = 0;
 		virtual void* toNet(unsigned int *size);
+		virtual void update(); // todo: remove virtual?
+
+	protected:
+
+		unsigned int lastNano = NULL;
+		unsigned int lastSec = NULL;
 
 	private:
 

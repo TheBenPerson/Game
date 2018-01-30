@@ -31,7 +31,9 @@
 
 typedef struct {
 
-	uint8_t id;
+	typedef enum { ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA, NUM_TYPES } type;
+
+	type id;
 
 } Tile;
 

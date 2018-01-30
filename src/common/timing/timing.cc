@@ -105,7 +105,7 @@ namespace Timing {
 
 		timespec time;
 
-		clock_gettime(CLOCK_REALTIME, &time);
+		clock_gettime(CLOCK_MONOTONIC, &time);
 		time.tv_sec += secs;
 
 		return !pthread_cond_timedwait(&cond->cond, &cond->m, &time);

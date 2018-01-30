@@ -34,6 +34,7 @@
 #include "console.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "point.hh"
 #include "world.hh"
 
 static bool tickNet(Packet *packet, Client *client) {
@@ -48,7 +49,7 @@ static bool tickNet(Packet *packet, Client *client) {
 			packet.size = 3 + (sizeof(Tile) * World::width * World::height);
 			packet.raw = (uint8_t*) malloc(packet.size);
 
-			packet.raw[0] = P_SMAP;
+			packet.raw[0] = P_GMAP;
 			packet.raw[1] = World::width;
 			packet.raw[2] = World::height;
 
@@ -61,8 +62,8 @@ static bool tickNet(Packet *packet, Client *client) {
 
 		case P_SBLK: {
 
-			unsigned int index = (packet->data[1] * World::height) + packet->data[0];
-			World::tiles[index].id = packet->data[2];
+			unsigned int index = (packet->data[1] * World::width) + packet->data[0];
+			World::tiles[index].id = (Tile::type) packet->data[2];
 
 			for (unsigned int i = 0; i < Client::clients.len; i++) {
 
@@ -117,7 +118,7 @@ namespace World {
 
 	bool loadMap(char *name) {
 
-		char *path = (char*) malloc(strlen("res/map/") + strlen(name) + 1);
+		char *path = (char*) malloc(8 + strlen(name) + 1);
 		sprintf(path, "res/map/%s", name);
 
 		FILE *file = fopen(path, "r");
@@ -192,12 +193,12 @@ namespace World {
 
 		}
 
-		size_t size = width * height;
+		unsigned int size = width * height;
 
 		if (tiles) free(tiles);
 		tiles = (Tile*) malloc(sizeof(Tile) * size);
 
-		for (size_t i = 0; i < size; i++) {
+		for (unsigned int i = 0; i < size; i++) {
 
 			for (;;) {
 
@@ -213,7 +214,7 @@ namespace World {
 					c = fgetc(file);
 					if ((c >= 0x30) && (c <= 0x39)) buf[1] = c;
 
-					tiles[i].id = atoi(buf);
+					tiles[i].id = (Tile::type) atoi(buf);
 					break;
 
 				}
@@ -224,6 +225,27 @@ namespace World {
 
 		printf("Loaded map '%s' (%ix%i)\n", name, width, height);
 		return true;
+
+	}
+
+	void setTile(Point *pos, Tile::type id) {
+
+		unsigned int x = pos->x + (width / 2.0f);
+		unsigned int y = (height / 2.0f) - pos->y;
+
+		unsigned int index = (y * width) + x;
+
+		if (tiles[index].id == id) return;
+
+		tiles[index].id = id;
+
+		Packet packet;
+		uint8_t data[] = { P_SBLK, x, y, id };
+
+		packet.raw = data;
+		packet.size = 4;
+
+		Client::broadcast(&packet);
 
 	}
 
