@@ -25,12 +25,78 @@
  *
  */
 
+#include <math.h>
+
 #include "point.hh"
+
+void Point::operator=(float val) {
+
+	x = val;
+	y = val;
+
+}
 
 void Point::operator+=(Point &point) {
 
 	x += point.x;
 	y += point.y;
+
+}
+
+void Point::operator-=(Point &point) {
+
+	x -= point.x;
+	y -= point.y;
+
+}
+
+void Point::operator*=(Point &point) {
+
+	x *= point.x;
+	y *= point.y;
+
+}
+
+void Point::operator+=(float val) {
+
+	x += val;
+	y += val;
+
+}
+
+Point Point::operator*(float val) {
+
+	Point point = *this;
+
+	point.x *= val;
+	point.y *= val;
+
+	return point;
+
+}
+
+Point Point::operator/(float val) {
+
+	Point point = *this;
+
+	point.x /= val;
+	point.y /= val;
+
+	return point;
+
+}
+
+void Point::operator*=(float val) {
+
+	x *= val;
+	y *= val;
+
+}
+
+void Point::operator/=(float val) {
+
+	x /= val;
+	y /= val;
 
 }
 
@@ -49,5 +115,15 @@ bool Point::operator>(Point &point) {
 	if (y <= point.y) return false;
 
 	return true;
+
+}
+
+void Point::rot(float theta) {
+
+	float before = this->x;
+
+	x = (x * cosf(theta)) - (y * sinf(theta));
+	y = (before * sinf(theta)) + (y * cosf(theta));
+
 
 }

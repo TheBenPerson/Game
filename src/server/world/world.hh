@@ -39,6 +39,7 @@ namespace World {
 	bool init();
 	void cleanup();
 	bool loadMap(char *name);
+	Tile* getTile(Point *pos);
 	void setTile(Point *pos, Tile::type id);
 
 }

@@ -46,15 +46,6 @@ static unsigned int dtimeout;
 
 extern "C" {
 
-	char* client_deps[] = {
-
-		"server.so",
-		"world.so",
-		"net.so",
-		NULL
-
-	};
-
 	bool init() {
 
 		Server::config.set("client.timeout", (void*) 30);
@@ -292,8 +283,12 @@ Packet* Client::recv() {
 	send(P_POKE);
 	result = Timing::waitFor(&cond, dtimeout);
 
-	if (result) return recv();
-	else return NULL;
+	if (result) {
+
+		free(packet->raw);
+		return recv();
+
+	} else return NULL;
 
 }
 

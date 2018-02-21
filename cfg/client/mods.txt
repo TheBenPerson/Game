@@ -1,4 +1,7 @@
+button.so
+client.so
 input.so
+win.so
+gfx.so
+audio.so
 ui.so
-eye.so
-entity.so

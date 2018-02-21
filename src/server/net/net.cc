@@ -45,14 +45,6 @@ static int sock;
 
 extern "C" {
 
-	char* net_deps[] = {
-
-		// world has to be up before we start listening
-		"world.so",
-		NULL
-
-	};
-
 	bool init() {
 
 		sock = socket(AF_INET, SOCK_DGRAM, 0);

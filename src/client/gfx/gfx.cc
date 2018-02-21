@@ -67,18 +67,11 @@ static void draw();
 
 extern "C" {
 
-	char* gfx_deps[] = {
-
-		"win.so",
-		NULL
-
-	};
-
 	bool init() {
 
 		Client::config.set("gfx.fps", (void*) 60);
 		Client::config.set("gfx.res", (void*) "default");
-		Client::config.load("gfx.conf");
+		Client::config.load("gfx.cfg");
 
 		volatile int8_t result = -1; //  volatile because reasons
 		t = Timing::createThread(threadMain, (void*) &result);
@@ -123,88 +116,105 @@ namespace GFX {
 
 	}
 
-	void drawText(char *text, Point position, float size, bool centered) {
+	void drawText(char *text, Point *point, float size, bool center) {
 
-		float texWidth = 5.0f / 512.0f;
+		unsigned int width = 16;
+		unsigned int height = 6;
 
-		float charWidth = (5.0f / 16.0f) * size;
-		float charHeight = size;
-		float spaceWidth = 0.125f * size;
+		Point dimTex = {1.0f / width, 1.0f / height};
+		Point dimChar = dimTex * size * 8;
+		float spacing = 0;
 
 		size_t len = strlen(text);
 
-		float x = position.x;
-		float y = position.y - charHeight;
+		Point pos = *point;
+		float dx = 0;
 
-		float dX = 0;
-
-		if (centered) {
+		if (center) {
 
 			char *start = text;
 			char *end;
 
-			size_t tLen = 0;
+			unsigned int lines = 0;
 			size_t best = 0;
-			size_t lines = 0;
 
+			// get number of lines and max width
 			for (;;) {
 
 				lines++;
 
+				size_t tlen = 0;
+
 				end = strchr(start, '\n');
 				if (!end) {
 
-					tLen = (text + len) - start;
-					if (tLen > best) best = tLen;
+					// find length of last line
+					tlen = (text + len) - start - lines;
+					if (len > best) best = tlen;
 
 					break;
 
 				}
 
-				tLen = end - start;
-				if (tLen > best) best = tLen;
+				// find length of line
+				tlen = end - start;
+				if (tlen > best) best = tlen;
+
 				start = end + 1;
 
 			}
 
-			if (!best) best = tLen;
+			dx = ((dimChar.x + spacing) * best) / 2;
 
-			dX = -(((charWidth + spaceWidth) * best) / 2);
-			y += ((charHeight * lines) - (charHeight / 2)) / 2;
-
-			x += dX;
+			pos.x -= dx;
+			pos.y -= ((lines * dimChar.y) / 2) - dimChar.y;
 
 		}
 
-		glBindTexture(GL_TEXTURE_2D, font);
-		glBegin(GL_QUADS);
-
-		for (size_t i = 0; i < len; i++) {
+		for (unsigned int i = 0; i < len; i++) {
 
 			if (text[i] == '\n') {
 
-				y -= charHeight;
-				x = position.x + dX;
+				pos.y -= dimChar.y;
+				pos.x = point->x - dx;
 				continue;
 
 			}
 
-			float offset = (5.0f / 512.0f) * (text[i] - 32);
+			Point offset;
+			offset.x = ((text[i] - 32) % width) * dimTex.x;
+			offset.y = -(((text[i] - 32) / width) * dimTex.y);
 
-			glTexCoord2f(offset, 1.0f);
-			glVertex2f(x, y + charHeight);
-			glTexCoord2f(offset + texWidth, 1.0f);
-			glVertex2f(x + charWidth, y + charHeight);
-			glTexCoord2f(offset + texWidth, 0.0f);
-			glVertex2f(x + charWidth, y);
-			glTexCoord2f(offset, 0.0f);
-			glVertex2f(x, y);
+			glPushMatrix();
+			glTranslatef(pos.x, pos.y, 0);
+			glScalef(dimChar.x, dimChar.y, 1);
 
-			x += charWidth + spaceWidth;
+			glMatrixMode(GL_TEXTURE);
+			glPushMatrix();
+			glTranslatef(offset.x, offset.y - dimTex.y, 0);
+			glScalef(dimTex.x, dimTex.y, 1);
+
+			glBindTexture(GL_TEXTURE_2D, font);
+			glBegin(GL_QUADS);
+
+			glTexCoord2f(1, 1);
+			glVertex2f(1, 0);
+			glTexCoord2f(0, 1);
+			glVertex2f(0, 0);
+			glTexCoord2f(0, 0);
+			glVertex2f(0, -1);
+			glTexCoord2f(1, 0);
+			glVertex2f(1, -1);
+
+			glEnd();
+			glPopMatrix();
+
+			glMatrixMode(GL_MODELVIEW);
+			glPopMatrix();
+
+			pos.x += dimChar.x + spacing;
 
 		}
-
-		glEnd();
 
 	}
 

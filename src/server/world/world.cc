@@ -35,6 +35,7 @@
 #include "net.hh"
 #include "packet.hh"
 #include "point.hh"
+#include "server.hh"
 #include "world.hh"
 
 static bool tickNet(Packet *packet, Client *client) {
@@ -89,7 +90,12 @@ extern "C" {
 
 	bool init() {
 
-		bool result = World::loadMap("main.map");
+		Server::config.set("world.map", (void*) "default.map");
+		Server::config.load("world.cfg");
+
+		char *map = (char*) Server::config.get("world.map")->val;
+
+		bool result = World::loadMap(map);
 		if (!result) return false;
 
 		Net::listeners.add((void*) &tickNet);
@@ -228,7 +234,18 @@ namespace World {
 
 	}
 
+	Tile* getTile(Point *pos) {
+
+		unsigned int x = pos->x + (width / 2);
+		unsigned int y = (height / 2.0f) - pos->y;
+
+		return tiles + (y * width) + x;
+
+	}
+
 	void setTile(Point *pos, Tile::type id) {
+
+		// todo: floorf?
 
 		unsigned int x = pos->x + (width / 2.0f);
 		unsigned int y = (height / 2.0f) - pos->y;
@@ -240,7 +257,14 @@ namespace World {
 		tiles[index].id = id;
 
 		Packet packet;
-		uint8_t data[] = { P_SBLK, x, y, id };
+		uint8_t data[] = {
+
+			P_SBLK,
+			((uint16_t) index) & 0x00FF,   // lo-byte
+			(((uint16_t) index) & 0xFF00) >> 8, // hi-byte
+			id
+
+		};
 
 		packet.raw = data;
 		packet.size = 4;

@@ -29,7 +29,7 @@ namespace Data {
 
 	const char *versionString =
 	"Game\n"
-	"Development build";
+	"Development Build";
 
 	const char *aboutString =
 	"Game Development Build\n"

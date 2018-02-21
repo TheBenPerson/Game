@@ -5,6 +5,7 @@
 #include "client.hh"
 #include "console.hh"
 #include "eye.hh"
+#include "fireball.hh"
 #include "packet.hh"
 #include "world.hh"
 
@@ -12,20 +13,8 @@ extern "C" {
 
 	bool init() {
 
-		Point pos = {-4, 0};
-		Point vel = {0, 0};
-		new Eye(pos, vel);
-
-		pos = {4, 0};
-		new Eye(pos, vel);
-
-		/*pos = {-2.5f, -2.5f};
-		vel = {.01f, .01f};
-		new Eye(pos, vel);
-
-		pos = {-2.5f, 2.5f};
-		vel = {.01f, -.01f};
-		new Eye(pos, vel);*/
+		Point pos = {0, 0};
+		new Eye(&pos);
 
 		cputs(GREEN, "Loaded module: 'eye.so'");
 		return true;
@@ -40,54 +29,80 @@ extern "C" {
 
 }
 
-Eye::Eye(Point pos, Point vel): Entity(pos, vel) {}
+Eye::Eye(Point *pos, Point *vel) {
 
-unsigned int Eye::tick(timespec *time) {
+	type = "eye";
+	dim = {1, 1};
 
-	time->tv_nsec /= 1000000;
+	this->pos = *pos;
 
-	if (!lastNano) lastNano = time->tv_nsec;
-	unsigned int dtime = time->tv_nsec - lastNano;
+	if (vel) this->vel = *vel;
+	else this->vel = {0, 0};
 
-	if (dtime < 16) {
-
-		lastNano = time->tv_nsec;
-		return 16 - dtime;
-
-	}
-
-	// every 50 milis
-
-	World::setTile(&pos, Tile::LAVA);
-	pos += vel;
-
-	lastNano = time->tv_nsec;
-
-	if (!lastSec) lastSec = time->tv_sec;
-	dtime = time->tv_sec - lastSec;
-
-	if (dtime >= 2) {
-
-		// every 2 sec
-
-		float rot = (rand() / (float) RAND_MAX) * M_PI * 2;
-
-		float x = cosf(rot) / 100;
-		float y = sinf(rot) / 100;
-
-		vel = { x, y };
-		update();
-
-		lastSec = time->tv_sec;
-
-	}
-
-	return 0;
+	add();
 
 }
 
-char* Eye::getType() {
+bool Eye::tick(timespec *time) {
 
-	return "eye";
+	bool change = false;
+
+	if (timer >= 3000) {
+
+		float angle = (rand() / (float) RAND_MAX) * M_PI * 2;
+		new Fireball(&pos, angle - (M_PI / 9));
+		new Fireball(&pos, angle);
+		new Fireball(&pos, angle + (M_PI / 9));
+
+		Point dvel = {cosf(angle), sinf(angle)};
+		dvel /= 3;
+		vel -= dvel;
+
+		change = true;
+
+		timer = 0;
+
+	}
+
+	bool bounce = false;
+	Point *bp;
+
+	Point *tiles;
+	unsigned int size = boundWorld(&tiles);
+	for (unsigned int i = 0; i < size; i++) {
+
+		Tile *tile = World::getTile(&tiles[i]);
+		switch (tile->id) {
+
+			case Tile::ROCK:
+			// other solids
+			bounce = true;
+			bp = &tiles[i];
+
+			break;
+
+			default: World::setTile(&tiles[i], Tile::ICE);
+			break;
+
+		}
+
+	}
+
+	if (bounce) {
+
+		float dx = abs(pos.x - bp->x);
+		float dy = abs(pos.y - bp->y);
+
+		if (dx > dy) vel.x *= -1;
+		else vel.y *= -1;
+
+	}
+
+	free(tiles);
+
+	if (bounce || change) update();
+	Entity::tick(time);
+
+	return false;
 
 }

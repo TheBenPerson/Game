@@ -26,6 +26,7 @@
  */
 
 #ifndef GAME_COMMON_PACKET
+#define GAME_COMMON_PACKET
 
 #include <netinet/in.h>
 #include <stddef.h>
@@ -42,6 +43,9 @@
 
 #define P_GENT 'e'
 #define P_UENT 'u'
+#define P_DENT '~'
+
+#define P_SIGN 's'
 
 typedef struct {
 
@@ -52,5 +56,4 @@ typedef struct {
 
 } Packet;
 
-#define GAME_COMMON_PACKET
 #endif

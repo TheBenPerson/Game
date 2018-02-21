@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: client
-client: client.so input.so win.so gfx.so ui.so net.so world.so
+client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so
 
 .PHONY: client.so
 client.so: $(CB)/client.so
@@ -35,7 +35,7 @@ $(CB)/input.so: src/client/input/input.cc
 
 .PHONY: win.so
 win.so: $(CB)/win.so
-$(CB)/win.so: LFA := -lxcb -lX11-xcb
+$(CB)/win.so: LFA := -lxcb -lX11-xcb -lX11 -lGL
 $(CB)/win.so: $(addprefix $(CB)/, client.so input.so)
 $(CB)/win.so: src/client/win/win.cc
 
@@ -77,14 +77,28 @@ $(CB)/entity.so: src/client/entity/entity.cc
 
 .PHONY: eye.so
 eye.so: $(CB)/eye.so
-$(CB)/eye.so: $(addprefix $(CB)/, client.so net.so world.so entity.so)
+$(CB)/eye.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
 $(CB)/eye.so: src/client/eye/eye.cc
 
+.PHONY: fireball.so
+fireball.so: $(CB)/fireball.so
+$(CB)/fireball.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
+$(CB)/fireball.so: src/client/fireball/fireball.cc
+
+.PHONY: explosion.so
+explosion.so: $(CB)/explosion.so
+$(CB)/explosion.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
+$(CB)/explosion.so: src/client/explosion/explosion.cc
+
+.PHONY: sign.so
+sign.so: $(CB)/sign.so
+$(CB)/sign.so: $(addprefix $(CB)/, net.so gfx.so input.so)
+$(CB)/sign.so: src/client/sign/sign.cc
+
+$(CB)/%.so: CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':')
 $(CB)/%.so:
-	$(eval CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':'))
-	$(eval export CPATH)
 	@setterm --foreground green
 	# Compiling client module: '$(shell basename $@)'...
 	@setterm --default
 
-	gcc $(CF) -Isrc/client $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
+	gcc $(CF) -Isrc/client -shared -fpic $^ $(LF) $(LFA) -o $@

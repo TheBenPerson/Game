@@ -37,9 +37,9 @@
 #include "input.hh"
 #include "win.hh"
 
-static float width = 7;
+static float width = 10;
 static float dwidth = width / 2;
-static float height = 2;
+static float height = 2.5;
 static float dheight = height / 2;
 static float margin = .5f;
 
@@ -56,15 +56,6 @@ static void tick();
 static void draw();
 
 extern "C" {
-
-	char* ui_deps[] = {
-
-		"button.so",
-		"gfx.so",
-		"audio.so", // to init audio settings
-		NULL
-
-	};
 
 	bool init() {
 
@@ -300,7 +291,8 @@ static void drawButton(Button *button) {
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
 
-	GFX::drawText(button->name, {0, 0}, 1, true);
+	Point pos = {0, 0};
+	GFX::drawText(button->name, &pos, 1, true);
 
 }
 
@@ -366,6 +358,7 @@ void draw() {
 
 	}
 
-	GFX::drawText(Data::versionString, {(-10 * WIN::aspect) + 1, 9});
+	Point pos = {(-10 * WIN::aspect) + 1, 9};
+	GFX::drawText(Data::versionString, &pos);
 
 }

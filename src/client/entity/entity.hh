@@ -11,16 +11,20 @@ class Entity {
 
 		unsigned int id;
 
+		Point dim;
 		Point pos;
 		Point vel;
 
+		float rot;
+		bool onfire;
+
 		static Entity* get(unsigned int id);
 
-		Entity(unsigned int id, Point pos, Point vel);
+		Entity(void *data);
 		virtual ~Entity();
 
-		virtual void draw() = 0;
-		virtual void update(void *raw);
+		virtual void draw();
+		virtual void update(void *info);
 
 };
 

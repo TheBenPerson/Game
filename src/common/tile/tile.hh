@@ -27,8 +27,6 @@
 
 #ifndef GAME_COMMON_TILE
 
-#include <stdint.h>
-
 typedef struct {
 
 	typedef enum { ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA, NUM_TYPES } type;

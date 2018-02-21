@@ -25,7 +25,9 @@
  *
  */
 
+#include <GL/gl.h>
 #include <math.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -61,15 +63,6 @@ static void cleanupGL();
 static void draw();
 
 extern "C" {
-
-	char* world_deps[] = {
-
-		"net.so",
-		"input.so",
-		"gfx.so",
-		NULL
-
-	};
 
 	bool init() {
 
@@ -122,7 +115,7 @@ static bool tickNet(Packet *packet) {
 
 		case P_SBLK: {
 
-			unsigned int index = (packet->data[1] * World::width) + packet->data[0];
+			unsigned int index = *((uint16_t*) packet->data);
 			World::tiles[index].id = (Tile::type) packet->data[2];
 
 		} break;
@@ -162,10 +155,10 @@ void tick() {
 
 		unsigned int index = (y * World::width) + x;
 
-		if (World::tiles[index].id != 4) {
+		if (World::tiles[index].id != Tile::SAND) {
 
-			World::tiles[index].id = 4;
-			uint8_t data[] = { P_SBLK, x, y, 4 };
+			World::tiles[index].id = Tile::SAND;
+			uint8_t data[] = {P_SBLK, x, y, Tile::SAND};
 
 			Packet packet;
 			packet.raw = data;
@@ -275,18 +268,19 @@ void draw() {
 	glBindTexture(GL_TEXTURE_2D, NULL);
 	glBegin(GL_LINES);
 
-	glVertex2f(-5, 0);
-	glVertex2f(5, 0);
+	glVertex2f(-1, 0);
+	glVertex2f(1, 0);
 
-	glVertex2f(0, -5);
-	glVertex2f(0, 5);
+	glVertex2f(0, -1);
+	glVertex2f(0, 1);
 
 	glEnd();
 
 	char buffer[50];
 	sprintf(buffer, "Rot: %f\nPos: (%f, %f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
 
-	GFX::drawText(buffer, {(-10 * WIN::aspect) + 1, 9});
+	Point pos = {(-10 * WIN::aspect) + 1, 9};
+	GFX::drawText(buffer, &pos);
 
 	tick();
 

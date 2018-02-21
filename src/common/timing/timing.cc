@@ -105,10 +105,15 @@ namespace Timing {
 
 		timespec time;
 
-		clock_gettime(CLOCK_MONOTONIC, &time);
+		// not CLOCK_MONOTONIC: specifing when to wake up
+		clock_gettime(CLOCK_REALTIME, &time);
 		time.tv_sec += secs;
 
-		return !pthread_cond_timedwait(&cond->cond, &cond->m, &time);
+		pthread_mutex_lock(&cond->m);
+		bool result = pthread_cond_timedwait(&cond->cond, &cond->m, &time);
+		pthread_mutex_unlock(&cond->m);
+
+		return !result;
 
 	}
 

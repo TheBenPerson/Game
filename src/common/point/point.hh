@@ -26,18 +26,32 @@
  */
 
 #ifndef GAME_COMMON_POINT
+#define GAME_COMMON_POINT
 
 typedef struct Point {
 
 	float x;
 	float y;
 
+	void operator=(float val);
+
 	void operator+=(Point &point);
+	void operator-=(Point &point);
+	void operator*=(Point &point);
+
+	void operator+=(float val);
+
+	Point operator*(float val);
+	Point operator/(float val);
+
+	void operator*=(float val);
+	void operator/=(float val);
 
 	bool operator<(Point &point);
 	bool operator>(Point &point);
 
+	void rot(float theta);
+
 } Point;
 
-#define GAME_COMMON_POINT
 #endif

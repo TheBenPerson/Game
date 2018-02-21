@@ -26,6 +26,7 @@
  */
 
 #ifndef GAME_SERVER_NET
+#define GAME_SERVER_NET
 
 #include <netinet/in.h>
 
@@ -42,5 +43,4 @@ namespace Net {
 
 }
 
-#define GAME_SERVER_NET
 #endif

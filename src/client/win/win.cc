@@ -90,13 +90,6 @@ static void fullscreenHandler();
 // global functions
 extern "C" {
 
-	char* win_deps[] = {
-
-		"client.so", // for menu it creates
-		NULL
-
-	};
-
 	bool init() {
 
 		// doesn't require configs and could fail
@@ -115,7 +108,7 @@ extern "C" {
 		Client::config.set("win.kbd.secondary", (void*) "space");
 		Client::config.set("win.kbd.modifier", (void*) "Shift_L");
 
-		Client::config.load("win.conf");
+		Client::config.load("win.cfg");
 		if (!createWindow()) return false; // could also fail
 
 		Button::Action action;

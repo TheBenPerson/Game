@@ -1,4 +1,5 @@
 #ifndef GAME_SERVER_EYE
+#define GAME_SERVER_EYE
 
 #include <time.h>
 
@@ -9,15 +10,10 @@ class Eye: public Entity {
 
 	public:
 
-		Eye(Point pos, Point vel);
+		Eye(Point *pos, Point *vel = NULL);
 
-		unsigned int tick(timespec *time);
-
-	private:
-
-		char* getType();
+		bool tick(timespec *time);
 
 };
 
-#define GAME_SERVER_EYE
 #endif

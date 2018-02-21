@@ -1,13 +1,11 @@
 #include <GL/gl.h>
-#include <math.h>
+#include <math.h> // for deg to rad
 #include <string.h>
 
-#include "client.hh"
 #include "console.hh"
-#include "eye.hh"
+#include "fireball.hh"
 #include "gfx.hh"
 #include "net.hh"
-#include "world.hh"
 
 static GLuint tex;
 
@@ -22,7 +20,7 @@ extern "C" {
 		GFX::call(&initGL);
 		Net::listeners.add((void*) &tickNet);
 
-		cputs(GREEN, "Loaded module: 'eye.so'");
+		cputs(GREEN, "Loaded module: 'fireball.so'");
 
 		return true;
 
@@ -33,7 +31,7 @@ extern "C" {
 		Net::listeners.rem((void*) &tickNet);
 		GFX::call(&cleanupGL);
 
-		cputs(YELLOW, "Unloaded module: 'eye.so'");
+		cputs(YELLOW, "Unloaded module: 'fireball.so'");
 
 	}
 
@@ -41,7 +39,7 @@ extern "C" {
 
 void initGL() {
 
-	tex = GFX::loadTexture("eye.png");
+	tex = GFX::loadTexture("fireball.png");
 
 }
 
@@ -72,8 +70,8 @@ bool tickNet(Packet *packet) {
 
 			} __attribute__((packed)) *data = (Data*) packet->data;
 
-			if (strcmp(data->type, "eye")) return false;
-			new Eye((void*) data);
+			if (strcmp(data->type, "fireball")) return false;
+			new Fireball((void*) data);
 
 		} break;
 
@@ -85,29 +83,30 @@ bool tickNet(Packet *packet) {
 
 }
 
-Eye::Eye(void *info): Entity(info) {}
+Fireball::Fireball(void *info): Entity(info) {}
 
-void Eye::draw() {
+void Fireball::draw() {
 
 	Point dpos = vel * (1 / 60.0f);
 	pos += dpos;
 
 	glPushMatrix();
 	glTranslatef(pos.x, pos.y, 0);
+	glRotatef(((rot + M_PI_2) * 360) / (M_PI * 2), 0, 0, 1);
 	glScalef(dim.x / 2, dim.y / 2, 1);
 
 	glMatrixMode(GL_TEXTURE);
 	glPushMatrix();
-	glTranslatef((GFX::frame / 2) / 16.0f, 0, 0);
+	glTranslatef((GFX::frame / 5) / 8.0f, 0, 0);
 
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glBegin(GL_QUADS);
 
 	glTexCoord2f(0, 1);
 	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 16.0f, 1);
+	glTexCoord2f(1 / 8.0f, 1);
 	glVertex2f(1, 1);
-	glTexCoord2f(1 / 16.0f, 0);
+	glTexCoord2f(1 / 8.0f, 0);
 	glVertex2f(1, -1);
 	glTexCoord2f(0, 0);
 	glVertex2f(-1, -1);

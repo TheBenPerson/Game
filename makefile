@@ -43,7 +43,7 @@ all:
 	@setterm --default
 	make -j $(shell nproc) _all
 
-_all: launcher client
+_all: launcher client server
 	@setterm --foreground green
 	# Done
 	@setterm --default
@@ -76,7 +76,7 @@ $(BIN)/common.so: $(shell find src/common -type f)
 	@setterm --foreground green
 	# Compiling library: 'common.so'...
 	@setterm --default
-	gcc $(CF) -shared -fpic $^ $(LF) -lpthread -o $@
+	gcc $(CF) -shared -fpic $^ $(LF) -lpthread -lm -o $@
 
 # client modules
 

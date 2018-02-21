@@ -67,17 +67,10 @@ static void toggle(Button *button) {
 
 extern "C" {
 
-	char* audio_deps[] {
-
-		"client.so", // to init settings menu
-		NULL
-
-	};
-
 	bool init() {
 
 		Client::config.set("audio.enabled", (void*) true);
-		Client::config.load("audio.conf");
+		Client::config.load("audio.cfg");
 
 		Audio::enabled = (bool) Client::config.get("audio.enabled");
 		if (Audio::enabled) puts("Audio enabled");

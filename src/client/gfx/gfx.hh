@@ -38,7 +38,7 @@ namespace GFX {
 	extern unsigned int frame;
 
 	void call(void (*function)());
-	void drawText(char *text, Point pos, float size = 1.0f, bool centered = false);
+	void drawText(char *text, Point *point, float size = 1, bool center = false);
 	GLuint loadTexture(char *path);
 
 }

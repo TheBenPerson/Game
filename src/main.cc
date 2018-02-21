@@ -200,53 +200,8 @@ namespace Game {
 
 		}
 
-		// has the module been loaded already?
-		for (unsigned int i = 0; i < modules.len; i++) {
-
-			if (((Module*) modules.get(i))->handle == handle) {
-
-				dlclose(handle);
-				return true;
-
-			}
-
-		}
-
 		Module *mod = new Module();
 		mod->handle = handle;
-
-		char *base = strdup(path);
-		*strchr(base, '.') = '\0';
-
-		name = (char*) malloc(strlen(base) + 6);
-		sprintf(name, "%s_deps", base);
-		free(base);
-
-		// module dependancy format is (module name)_deps
-		// this is because dlsym() searches link-level dependancies for symbols if not found
-
-		char **depends = (char**) dlsym(handle, name);
-		free(name);
-
-		if (depends) {
-
-			// load module dependancies
-			for (; *depends; depends++) {
-
-				if (!loadModule(*depends)) {
-
-					delete mod;
-
-					ceprintf(RED, "Error loading module '%s': error loading dependency '%s'\n", path, *depends);
-					dlclose(handle);
-
-					return false;
-
-				}
-
-			}
-
-		}
 
 		bool (*init)() = (bool (*)()) dlsym(handle, "init");
 

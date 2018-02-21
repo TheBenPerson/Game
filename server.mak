@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: server
-server: server.so snet.so sclient.so sworld.so
+server: server.so snet.so sclient.so sworld.so sentity.so seye.so sfireball.so
 
 .PHONY: server.so
 server.so: $(SB)/server.so
@@ -50,15 +50,29 @@ $(SB)/entity.so: src/server/entity/entity.cc
 
 .PHONY: seye.so
 seye.so: $(SB)/eye.so
-$(CB)/eye.so: LFA := -lm
-$(SB)/eye.so: $(addprefix $(SB)/, server.so net.so client.so world.so entity.so)
+$(SB)/eye.so: $(addprefix $(SB)/, world.so entity.so fireball.so)
 $(SB)/eye.so: src/server/eye/eye.cc
 
+.PHONY: sfireball.so
+sfireball.so: $(SB)/fireball.so
+$(SB)/fireball.so: LFA := -lm
+$(SB)/fireball.so: $(addprefix $(SB)/, world.so entity.so explosion.so)
+$(SB)/fireball.so: src/server/fireball/fireball.cc
+
+.PHONY: sexplosion.so
+sexplosion.so: $(SB)/explosion.so
+$(SB)/explosion.so: $(addprefix $(SB)/, world.so entity.so)
+$(SB)/explosion.so: src/server/explosion/explosion.cc
+
+.PHONY: ssign.so
+ssign.so: $(SB)/sign.so
+$(SB)/sign.so: $(addprefix $(SB)/, client.so)
+$(SB)/sign.so: src/server/sign/sign.cc
+
+$(SB)/%.so: CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':')
 $(SB)/%.so:
-	$(eval CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':'))
-	$(eval export CPATH)
 	@setterm --foreground green
 	# Compiling server module: '$(shell basename $@)'...
 	@setterm --default
 
-	gcc $(CF) -Isrc/server $(CFA) -shared -fpic $^ $(LF) $(LFA) -o $@
+	gcc $(CF) -Isrc/server -shared -fpic $^ $(LF) $(LFA) -o $@

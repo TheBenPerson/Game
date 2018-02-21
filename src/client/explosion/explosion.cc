@@ -1,13 +1,10 @@
 #include <GL/gl.h>
-#include <math.h>
 #include <string.h>
 
-#include "client.hh"
 #include "console.hh"
-#include "eye.hh"
+#include "explosion.hh"
 #include "gfx.hh"
 #include "net.hh"
-#include "world.hh"
 
 static GLuint tex;
 
@@ -22,7 +19,7 @@ extern "C" {
 		GFX::call(&initGL);
 		Net::listeners.add((void*) &tickNet);
 
-		cputs(GREEN, "Loaded module: 'eye.so'");
+		cputs(GREEN, "Loaded module: 'explosion.so'");
 
 		return true;
 
@@ -33,7 +30,7 @@ extern "C" {
 		Net::listeners.rem((void*) &tickNet);
 		GFX::call(&cleanupGL);
 
-		cputs(YELLOW, "Unloaded module: 'eye.so'");
+		cputs(YELLOW, "Unloaded module: 'explosion.so'");
 
 	}
 
@@ -41,7 +38,7 @@ extern "C" {
 
 void initGL() {
 
-	tex = GFX::loadTexture("eye.png");
+	tex = GFX::loadTexture("explosion.png");
 
 }
 
@@ -72,8 +69,8 @@ bool tickNet(Packet *packet) {
 
 			} __attribute__((packed)) *data = (Data*) packet->data;
 
-			if (strcmp(data->type, "eye")) return false;
-			new Eye((void*) data);
+			if (strcmp(data->type, "explosion")) return false;
+			new Explosion((void*) data);
 
 		} break;
 
@@ -85,9 +82,9 @@ bool tickNet(Packet *packet) {
 
 }
 
-Eye::Eye(void *info): Entity(info) {}
+Explosion::Explosion(void *info): Entity(info) {}
 
-void Eye::draw() {
+void Explosion::draw() {
 
 	Point dpos = vel * (1 / 60.0f);
 	pos += dpos;
@@ -98,16 +95,16 @@ void Eye::draw() {
 
 	glMatrixMode(GL_TEXTURE);
 	glPushMatrix();
-	glTranslatef((GFX::frame / 2) / 16.0f, 0, 0);
+	glTranslatef((GFX::frame / 5) / 7.0f, 0, 0);
 
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glBegin(GL_QUADS);
 
 	glTexCoord2f(0, 1);
 	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 16.0f, 1);
+	glTexCoord2f(1 / 7.0f, 1);
 	glVertex2f(1, 1);
-	glTexCoord2f(1 / 16.0f, 0);
+	glTexCoord2f(1 / 7.0f, 0);
 	glVertex2f(1, -1);
 	glTexCoord2f(0, 0);
 	glVertex2f(-1, -1);
@@ -117,8 +114,5 @@ void Eye::draw() {
 
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
-
-	// draw particles
-	Entity::draw();
 
 }

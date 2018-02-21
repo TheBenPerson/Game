@@ -33,19 +33,34 @@
 
 static void start(Button *) {
 
-	bool result = Game::loadModule("world.so");
-	if (result) Client::state = Client::IN_GAME;
+	// todo: rethink this part
+	bool result = Game::loadModule("net.so");
+	if (!result) return;
+
+	result = Game::loadModule("world.so");
+	if (!result) return;
+
+	result = Game::loadModule("eye.so");
+	if (!result) return;
+
+	result = Game::loadModule("fireball.so");
+	if (!result) return;
+
+	result = Game::loadModule("explosion.so");
+	if (!result) return;
+
+	// request entities
+	result = Game::loadModule("entity.so");
+	if (!result) return;
+
+	result = Game::loadModule("sign.so");
+	if (!result) return;
+
+	Client::state = Client::IN_GAME;
 
 }
 
 extern "C" {
-
-	char* client_deps[] = {
-
-		"button.so",
-		NULL
-
-	};
 
 	bool init() {
 

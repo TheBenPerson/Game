@@ -1,3 +1,8 @@
-client.so
+world.so
+explosion.so
+fireball.so
 eye.so
 entity.so
+sign.so
+net.so
+client.so
