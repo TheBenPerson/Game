@@ -47,6 +47,7 @@ typedef struct Point {
 	void operator*=(float val);
 	void operator/=(float val);
 
+	bool operator==(Point &point);
 	bool operator<(Point &point);
 	bool operator>(Point &point);
 

@@ -29,19 +29,18 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "client.hh"
 #include "console.hh"
 #include "gfx.hh"
-#include "input.hh"
 #include "net.hh"
 #include "win.hh"
 #include "world.hh"
 
 namespace World {
 
-	GLuint tex;
 	unsigned int width = 0;
 	unsigned int height = 0;
 	Tile *tiles;
@@ -52,14 +51,11 @@ namespace World {
 
 }
 
-float scale = 2;
-static float speed = 0.075f;
+static GFX::texture tex;
+static GFX::texture texBG;
+static float scale = 2;
 
 static bool tickNet(Packet *packet);
-static void tickInput();
-static void tick();
-static void initGL();
-static void cleanupGL();
 static void draw();
 
 extern "C" {
@@ -69,9 +65,8 @@ extern "C" {
 		Net::listeners.add((void*) tickNet);
 		Net::send(P_GMAP);
 
-		Input::listeners.add((void*) &tickInput);
-
-		GFX::call(&initGL);
+		tex = GFX::loadTexture("world.png");
+		texBG = GFX::loadTexture("menu.png");
 		GFX::listeners.add((void*) &draw);
 
 		cputs(GREEN, "Loaded module: 'world.so'");
@@ -83,9 +78,8 @@ extern "C" {
 	void cleanup() {
 
 		GFX::listeners.rem((void*) &draw);
-		GFX::call(&cleanupGL);
-
-		Input::listeners.rem((void*) &tickInput);
+		GFX::freeTexture(&texBG);
+		GFX::freeTexture(&tex);
 
 		free(World::tiles);
 		cputs(YELLOW, "Unloaded module: 'world.so'");
@@ -115,8 +109,15 @@ static bool tickNet(Packet *packet) {
 
 		case P_SBLK: {
 
-			unsigned int index = *((uint16_t*) packet->data);
-			World::tiles[index].id = (Tile::type) packet->data[2];
+			struct Data{
+
+				uint16_t index;
+				uint8_t id;
+
+			} __attribute__((packed)) *data = (Data*) packet->data;
+
+			unsigned int index = data->index;
+			World::tiles[index].id = (Tile::type) data->id;
 
 		} break;
 
@@ -128,95 +129,37 @@ static bool tickNet(Packet *packet) {
 
 }
 
-// callback
-void tickInput() {
-
-	if (Input::wasCursor) World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
-	else if (Input::actions[Input::A_EXIT]) Client::state = Client::PAUSED;
-
-}
-
-// per draw
-void tick() {
-
-	if (Input::actions[Input::A_SECONDARY]) {
-
-		if (Input::actions[Input::A_UP]) scale += speed;
-		else if (Input::actions[Input::A_DOWN]) scale -= speed;
-
-		return;
-
-	}
-
-	if (Input::actions[Input::A_PRIMARY]) {
-
-		unsigned int x = World::pos.x + (World::width / 2.0f);
-		unsigned int y = (World::height / 2.0f) - World::pos.y;
-
-		unsigned int index = (y * World::width) + x;
-
-		if (World::tiles[index].id != Tile::SAND) {
-
-			World::tiles[index].id = Tile::SAND;
-			uint8_t data[] = {P_SBLK, x, y, Tile::SAND};
-
-			Packet packet;
-			packet.raw = data;
-			packet.size = 4;
-
-			Net::send(&packet);
-
-		}
-
-	}
-
-	if (Input::actions[Input::A_UP]) {
-
-
-		World::pos.x += sinf(World::rot) * speed;
-		World::pos.y += cosf(World::rot) * speed;
-
-	}
-
-	if (Input::actions[Input::A_DOWN]) {
-
-		World::pos.x -= sinf(World::rot) * speed;
-		World::pos.y -= cosf(World::rot) * speed;
-
-	}
-
-	if (Input::actions[Input::A_LEFT]) {
-
-		World::pos.x += sinf(World::rot - M_PI_2) * speed;
-		World::pos.y += cosf(World::rot - M_PI_2) * speed;
-
-	}
-
-	if (Input::actions[Input::A_RIGHT]) {
-
-		World::pos.x -= sinf(World::rot - M_PI_2) * speed;
-		World::pos.y -= cosf(World::rot - M_PI_2) * speed;
-
-	}
-
-}
-
-void initGL() {
-
-	World::tex = GFX::loadTexture("world.png");
-
-}
-
-void cleanupGL() {
-
-	glDeleteTextures(1, &World::tex);
-
-}
-
 void draw() {
 
 	if (Client::state != Client::IN_GAME) return;
 
+	// draw background
+
+	glMatrixMode(GL_TEXTURE);
+	glPushMatrix();
+	glTranslatef(World::pos.x / 30, World::pos.y / 30, 0);
+	glScalef(1 / scale, 1 / scale, 1);
+	glRotatef(-(World::rot * 360) / (M_PI * 2) , 0, 0, 1);
+	glTranslatef(-.5f * WIN::aspect, -.5f, 0);
+
+	glBindTexture(GL_TEXTURE_2D, texBG);
+	glBegin(GL_QUADS);
+
+	glTexCoord2f(0, 1);
+	glVertex2f(WIN::aspect * -10, 10);
+	glTexCoord2f(WIN::aspect, 1);
+	glVertex2f(WIN::aspect * 10, 10);
+	glTexCoord2f(WIN::aspect, 0);
+	glVertex2f(WIN::aspect * 10, -10);
+	glTexCoord2f(0, 0);
+	glVertex2f(WIN::aspect * -10, -10);
+
+	glEnd();
+	glPopMatrix();
+
+	// draw tiles
+
+	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	glScalef(scale, scale, 1);
 	glRotatef((World::rot * 360) / (M_PI * 2) , 0, 0, 1);
@@ -235,7 +178,7 @@ void draw() {
 
 		glTranslatef(World::tiles[i].id * 0.1f, 0, 0);
 
-		glBindTexture(GL_TEXTURE_2D, World::tex);
+		glBindTexture(GL_TEXTURE_2D, tex);
 		glBegin(GL_QUADS);
 
 		glTexCoord2f(0, 1);
@@ -281,8 +224,6 @@ void draw() {
 
 	Point pos = {(-10 * WIN::aspect) + 1, 9};
 	GFX::drawText(buffer, &pos);
-
-	tick();
 
 }
 

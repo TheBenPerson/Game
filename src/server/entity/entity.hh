@@ -1,6 +1,7 @@
 #ifndef GAME_SERVER_ENTITY
 #define GAME_SERVER_ENTITY
 
+#include <stdint.h>
 #include <time.h>
 
 #include "nodelist.hh"
@@ -10,6 +11,18 @@ class Entity {
 
 	public:
 
+		typedef struct {
+
+			uint16_t id;
+
+			__attribute__((packed)) Point dim;
+			__attribute__((packed)) Point pos;
+			__attribute__((packed)) Point vel;
+
+			char type[10];
+
+		} __attribute__((packed)) UPacket;
+
 		static NodeList entities;
 
 		unsigned int id;
@@ -17,7 +30,6 @@ class Entity {
 		Point dim;
 		Point pos = {0, 0};
 		Point vel = {0, 0};
-		float rot;
 
 		bool onfire = false;
 
@@ -32,7 +44,7 @@ class Entity {
 		virtual ~Entity();
 
 		void add();
-		bool bound(Point *pos, Point *dim, float rot);
+		bool bound(Point *pos, Point *dim);
 		unsigned int boundWorld(Point **tiles);
 
 		virtual bool tick(timespec *time) = 0;

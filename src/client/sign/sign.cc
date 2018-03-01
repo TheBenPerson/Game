@@ -8,11 +8,9 @@
 #include "net.hh"
 #include "point.hh"
 
-static GLuint tex;
+static GFX::texture tex;
 static char *text = NULL;
 
-static void initGL();
-static void cleanupGL();
 static bool tickNet(Packet *packet);
 static void draw();
 
@@ -20,7 +18,7 @@ extern "C" {
 
 	bool init() {
 
-		GFX::call(&initGL);
+		tex = GFX::loadTexture("sign.png");
 
 		Net::listeners.add((void*) &tickNet);
 		GFX::listeners.add((void*) &draw);
@@ -35,23 +33,11 @@ extern "C" {
 		GFX::listeners.rem((void*) &draw);
 		Net::listeners.rem((void*) &tickNet);
 
-		GFX::call(&cleanupGL);
+		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'sign.so'");
 
 	}
-
-}
-
-void initGL() {
-
-	tex = GFX::loadTexture("sign.png");
-
-}
-
-void cleanupGL() {
-
-	glDeleteTextures(1, &tex);
 
 }
 
@@ -71,7 +57,7 @@ void draw() {
 
 	if (!text) return;
 
-	if (Input::actions[Input::A_PRIMARY]) {
+	if (Input::actions[Input::PRIMARY]) {
 
 		free(text);
 		text = NULL;

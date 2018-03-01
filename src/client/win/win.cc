@@ -74,7 +74,7 @@ static xcb_atom_t NET_WM_STATE;
 static xcb_atom_t NET_WM_STATE_FULLSCREEN;
 static xcb_atom_t WM_DELETE_WINDOW;
 
-static xcb_keysym_t* keys[Input::A_NUM_ACTIONS];
+static xcb_keysym_t* keys[Input::NUM_ACTIONS];
 
 static char **text;
 
@@ -144,7 +144,7 @@ extern "C" {
 
 		Timing::waitFor(t);
 
-		for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++)
+		for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++)
 			delete[] keys[i];
 
 		Client::config.del("win");
@@ -426,7 +426,7 @@ void* threadMain(void*) {
 				case XCB_KEY_PRESS: {
 
 					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
-					for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++) {
+					for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++) {
 
 						for (unsigned int n = 0; keys[i][n]; n++) {
 
@@ -449,7 +449,7 @@ void* threadMain(void*) {
 				case XCB_KEY_RELEASE: {
 
 					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
-					for (unsigned int i = 0; i < Input::A_NUM_ACTIONS; i++) {
+					for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++) {
 
 						for (unsigned int n = 0; keys[i][n]; n++) {
 
@@ -530,15 +530,15 @@ static void loadKey(Input::Action action, char *key) {
 
 void loadKeys() {
 
-	loadKey(Input::A_EXIT, "win.kbd.exit");
-	loadKey(Input::A_FULLSCREEN, "win.kbd.fullscreen");
-	loadKey(Input::A_LEFT, "win.kbd.left");
-	loadKey(Input::A_RIGHT, "win.kbd.right");
-	loadKey(Input::A_UP, "win.kbd.up");
-	loadKey(Input::A_DOWN, "win.kbd.down");
-	loadKey(Input::A_PRIMARY, "win.kbd.primary");
-	loadKey(Input::A_SECONDARY, "win.kbd.secondary");
-	loadKey(Input::A_MODIFIER, "win.kbd.modifier");
+	loadKey(Input::EXIT, "win.kbd.exit");
+	loadKey(Input::FULLSCREEN, "win.kbd.fullscreen");
+	loadKey(Input::LEFT, "win.kbd.left");
+	loadKey(Input::RIGHT, "win.kbd.right");
+	loadKey(Input::UP, "win.kbd.up");
+	loadKey(Input::DOWN, "win.kbd.down");
+	loadKey(Input::PRIMARY, "win.kbd.primary");
+	loadKey(Input::SECONDARY, "win.kbd.secondary");
+	loadKey(Input::MODIFIER, "win.kbd.modifier");
 
 }
 
@@ -551,6 +551,6 @@ void toggleFS() {
 
 void fullscreenHandler() {
 
-	if (Input::actions[Input::A_FULLSCREEN]) toggleFS();
+	if (Input::actions[Input::FULLSCREEN]) toggleFS();
 
 }

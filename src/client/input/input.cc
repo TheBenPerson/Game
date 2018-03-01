@@ -47,7 +47,7 @@ extern "C" {
 
 namespace Input {
 
-	bool actions[A_NUM_ACTIONS];
+	bool actions[NUM_ACTIONS];
 	Point cursor;
 	bool wasCursor;
 	NodeList listeners;

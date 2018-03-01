@@ -1,5 +1,6 @@
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "client.hh"
 #include "console.hh"
@@ -40,6 +41,8 @@ Fireball::Fireball(Point *pos, float rot, Point *vel) {
 	} else {
 
 		this->vel = {cosf(rot), sinf(rot)};
+		this->vel *= 5;
+
 		this->rot = rot;
 
 	}
@@ -75,5 +78,33 @@ bool Fireball::tick(timespec *time) {
 
 	Entity::tick(time);
 	return false;
+
+}
+
+void* Fireball::toNet(unsigned int *size) {
+
+	typedef struct {
+
+		uint8_t pid;
+
+		UPacket upacket;
+		float rot;
+
+	} __attribute__((packed)) Data;
+
+	*size = sizeof(Data) + strlen(type) + 1;
+	Data *data = (Data*) malloc(*size);
+
+	data->pid = P_GENT;
+	data->upacket.id = id;
+
+	data->upacket.dim = dim;
+	data->upacket.pos = pos;
+	data->upacket.vel = vel;
+
+	data->rot = rot;
+	strcpy(data->upacket.type, type);
+
+	return data;
 
 }

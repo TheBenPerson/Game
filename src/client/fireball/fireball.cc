@@ -1,23 +1,20 @@
 #include <GL/gl.h>
 #include <math.h> // for deg to rad
-#include <string.h>
 
 #include "console.hh"
 #include "fireball.hh"
 #include "gfx.hh"
 #include "net.hh"
 
-static GLuint tex;
+static GFX::texture tex;
 
-static void initGL();
-static void cleanupGL();
 static bool tickNet(Packet *packet);
 
 extern "C" {
 
 	bool init() {
 
-		GFX::call(&initGL);
+		tex = GFX::loadTexture("fireball.png");
 		Net::listeners.add((void*) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'fireball.so'");
@@ -29,23 +26,11 @@ extern "C" {
 	void cleanup() {
 
 		Net::listeners.rem((void*) &tickNet);
-		GFX::call(&cleanupGL);
+		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'fireball.so'");
 
 	}
-
-}
-
-void initGL() {
-
-	tex = GFX::loadTexture("fireball.png");
-
-}
-
-void cleanupGL() {
-
-	glDeleteTextures(1, &tex);
 
 }
 
@@ -55,23 +40,10 @@ bool tickNet(Packet *packet) {
 
 		case P_GENT: {
 
-			struct Data {
+			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
 
-				uint16_t id;
-
-				__attribute__((packed)) Point dim;
-				__attribute__((packed)) Point pos;
-				__attribute__((packed)) Point vel;
-
-				float rot;
-				bool onfire;
-
-				char type[];
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			if (strcmp(data->type, "fireball")) return false;
-			new Fireball((void*) data);
+			if (!Entity::verify(upacket, "fireball")) return false;
+			new Fireball((void*) upacket);
 
 		} break;
 
@@ -83,7 +55,18 @@ bool tickNet(Packet *packet) {
 
 }
 
-Fireball::Fireball(void *info): Entity(info) {}
+Fireball::Fireball(void *info): Entity(info) {
+
+	struct Data {
+
+		Entity::UPacket packet;
+		float rot;
+
+	} __attribute__((packed)) *data = (Data*) info;
+
+	rot = data->rot;
+
+}
 
 void Fireball::draw() {
 
@@ -116,8 +99,5 @@ void Fireball::draw() {
 
 	glMatrixMode(GL_MODELVIEW);
 	glPopMatrix();
-
-	// draw particles
-	Entity::draw();
 
 }

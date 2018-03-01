@@ -34,6 +34,7 @@
 
 #define P_ACCEPT 'a'
 #define P_DENY 'd'
+#define P_KICK 'k'
 
 // requests
 #define P_GMAP 'g'
@@ -44,6 +45,9 @@
 #define P_GENT 'e'
 #define P_UENT 'u'
 #define P_DENT '~'
+
+#define P_NEWP 'P'
+#define P_UPDP 'U'
 
 #define P_SIGN 's'
 

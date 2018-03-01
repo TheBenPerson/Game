@@ -10,6 +10,10 @@ class Fireball: public Entity {
 
 		void draw();
 
+	private:
+
+		float rot;
+
 };
 
 #define GAME_CLIENT_FIREBALL

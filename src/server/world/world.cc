@@ -26,6 +26,7 @@
  */
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -63,8 +64,15 @@ static bool tickNet(Packet *packet, Client *client) {
 
 		case P_SBLK: {
 
-			unsigned int index = (packet->data[1] * World::width) + packet->data[0];
-			World::tiles[index].id = (Tile::type) packet->data[2];
+			struct Data {
+
+				uint16_t index;
+				uint8_t id;
+
+			} __attribute__((packed)) *data = (Data*) packet->data;
+
+			unsigned int index = data->index;
+			World::tiles[index].id = (Tile::type) data->id;
 
 			for (unsigned int i = 0; i < Client::clients.len; i++) {
 
@@ -256,17 +264,16 @@ namespace World {
 
 		tiles[index].id = id;
 
+		struct {
+
+			uint8_t id = P_SBLK;
+			uint16_t index = index;
+			uint8_t type = Tile::SAND;
+
+		} __attribute__((packed)) data;
+
 		Packet packet;
-		uint8_t data[] = {
-
-			P_SBLK,
-			((uint16_t) index) & 0x00FF,   // lo-byte
-			(((uint16_t) index) & 0xFF00) >> 8, // hi-byte
-			id
-
-		};
-
-		packet.raw = data;
+		packet.raw = (uint8_t*) &data;
 		packet.size = 4;
 
 		Client::broadcast(&packet);

@@ -10,6 +10,11 @@ class Fireball: public Entity {
 		Fireball(Point *pos, float rot, Point *vel = NULL);
 
 		bool tick(timespec *time);
+		void* toNet(unsigned int *size);
+
+	private:
+
+		float rot;
 
 };
 

@@ -1,22 +1,19 @@
 #include <GL/gl.h>
-#include <string.h>
 
 #include "console.hh"
 #include "explosion.hh"
 #include "gfx.hh"
 #include "net.hh"
 
-static GLuint tex;
+static GFX::texture tex;
 
-static void initGL();
-static void cleanupGL();
 static bool tickNet(Packet *packet);
 
 extern "C" {
 
 	bool init() {
 
-		GFX::call(&initGL);
+		tex = GFX::loadTexture("explosion.png");
 		Net::listeners.add((void*) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'explosion.so'");
@@ -28,23 +25,11 @@ extern "C" {
 	void cleanup() {
 
 		Net::listeners.rem((void*) &tickNet);
-		GFX::call(&cleanupGL);
+		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'explosion.so'");
 
 	}
-
-}
-
-void initGL() {
-
-	tex = GFX::loadTexture("explosion.png");
-
-}
-
-void cleanupGL() {
-
-	glDeleteTextures(1, &tex);
 
 }
 
@@ -54,23 +39,10 @@ bool tickNet(Packet *packet) {
 
 		case P_GENT: {
 
-			struct Data {
+			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
 
-				uint16_t id;
-
-				__attribute__((packed)) Point dim;
-				__attribute__((packed)) Point pos;
-				__attribute__((packed)) Point vel;
-
-				float rot;
-				bool onfire;
-
-				char type[];
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			if (strcmp(data->type, "explosion")) return false;
-			new Explosion((void*) data);
+			if (!Entity::verify(upacket, "explosion")) return false;
+			new Explosion((void*) upacket);
 
 		} break;
 

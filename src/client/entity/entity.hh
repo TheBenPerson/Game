@@ -1,4 +1,5 @@
 #ifndef GAME_CLIENT_ENTITY
+#define GAME_CLIENT_ENTITY
 
 #include "nodelist.hh"
 #include "point.hh"
@@ -6,6 +7,18 @@
 class Entity {
 
 	public:
+
+		typedef struct {
+
+			uint16_t id;
+
+			__attribute__((packed)) Point dim;
+			__attribute__((packed)) Point pos;
+			__attribute__((packed)) Point vel;
+
+			char type[10];
+
+		} __attribute__((packed)) UPacket;
 
 		static NodeList entities;
 
@@ -15,18 +28,15 @@ class Entity {
 		Point pos;
 		Point vel;
 
-		float rot;
-		bool onfire;
-
 		static Entity* get(unsigned int id);
+		static bool verify(UPacket *packet, char *type);
 
-		Entity(void *data);
+		Entity(void *info);
 		virtual ~Entity();
 
-		virtual void draw();
+		virtual void draw() = 0;
 		virtual void update(void *info);
 
 };
 
-#define GAME_CLIENT_ENTITY
 #endif

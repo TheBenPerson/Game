@@ -100,6 +100,15 @@ void Point::operator/=(float val) {
 
 }
 
+bool Point::operator==(Point &point) {
+
+	if (x != point.x) return false;
+	if (y != point.y) return false;
+
+	return true;
+
+}
+
 bool Point::operator<(Point &point) {
 
 	if (x >= point.x) return false;

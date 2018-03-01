@@ -34,12 +34,15 @@
 
 namespace GFX {
 
+	typedef GLuint texture;
+
 	extern NodeList listeners;
 	extern unsigned int frame;
 
-	void call(void (*function)());
+	void* call(void* (*function)(void*), void*);
 	void drawText(char *text, Point *point, float size = 1, bool center = false);
-	GLuint loadTexture(char *path);
+	texture loadTexture(char *path);
+	void freeTexture(texture *tex);
 
 }
 

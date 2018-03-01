@@ -48,7 +48,7 @@ typedef struct {
 
 } Module;
 
-static char *base;
+static bool isServer;
 static NodeList modules;
 static Timing::condition cond;
 
@@ -126,46 +126,9 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	char *path = (char*) malloc(20);
-	sprintf(path, "cfg/%s/mods.txt", isServer ? "server" : "client");
+	::isServer = isServer;
 
-	FILE *file = fopen(path, "r");
-	if (!file) {
-
-		ceprintf(RED, "Error opening '%s': %s -- exiting...\n", path, strerror(errno));
-
-		free(path);
-		return 1;
-
-	}
-
-	free(path);
-	base = isServer ? "bin/server/" : "bin/client/";
-
-	bool result = false;
-
-	for (;;) {
-
-		char *name = NULL;
-		size_t n = NULL;
-
-		if (getline(&name, &n, file) == -1) {
-
-			free(name);
-			break;
-
-		}
-
-		if (name[strlen(name) - 1] == '\n') name[strlen(name) - 1] = '\0';
-
-		result = Game::loadModule(name);
-		free(name);
-
-		if (!result) break;
-
-	}
-
-	fclose(file);
+	bool result = Game::loadModules("main.cfg");
 	if (result) Timing::waitFor(&cond);
 
 	for (int i = modules.len - 1; i >= 0; i--) {
@@ -187,8 +150,8 @@ namespace Game {
 
 	bool loadModule(char *path) {
 
-		char *name = (char*) malloc(strlen(base) + strlen(path) + 1);
-		sprintf(name, "%s%s", base, path);
+		char *name = (char*) malloc(11 + strlen(path) + 1);
+		sprintf(name, "bin/%s/%s", isServer ? "server" : "client", path);
 
 		void *handle = dlopen(name, RTLD_LAZY);
 		free(name);
@@ -221,6 +184,47 @@ namespace Game {
 		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
 		modules.add((void*) mod);
 
+		return true;
+
+	}
+
+	bool loadModules(char *name) {
+
+		char *path = (char*) malloc(11 + strlen(name) + 1);
+		sprintf(path, "cfg/%s/%s", isServer ? "server" : "client", name);
+
+		FILE *file = fopen(path, "r");
+		free(path);
+
+		if (!file) {
+
+			ceprintf(RED, "Error opening '%s': %s -- exiting...\n", name, strerror(errno));
+			return false;
+
+		}
+
+		for (;;) {
+
+			char *name = NULL;
+			size_t n = NULL;
+
+			if (getline(&name, &n, file) == -1) {
+
+				free(name);
+				break;
+
+			}
+
+			if (name[strlen(name) - 1] == '\n') name[strlen(name) - 1] = '\0';
+
+			bool result = Game::loadModule(name);
+			free(name);
+
+			if (!result) return false;
+
+		}
+
+		fclose(file);
 		return true;
 
 	}

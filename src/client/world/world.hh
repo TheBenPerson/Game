@@ -26,8 +26,7 @@
  */
 
 #ifndef GAME_CLIENT_WORLD
-
-#include <GL/gl.h>
+#define GAME_CLIENT_WORLD
 
 #include "nodelist.hh"
 #include "point.hh"
@@ -35,19 +34,14 @@
 
 namespace World {
 
-	extern GLuint tex;
 	extern unsigned int width;
 	extern unsigned int height;
-	extern Point pos;
-	extern float rot;
 	extern Tile *tiles;
 	extern NodeList listeners;
 
-	void init();
-	void cleanup();
-	void draw();
+	extern Point pos;
+	extern float rot;
 
 }
 
-#define GAME_CLIENT_WORLD
 #endif

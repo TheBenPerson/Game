@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: server
-server: server.so snet.so sclient.so sworld.so sentity.so seye.so sfireball.so
+server: server.so snet.so sclient.so sworld.so sentity.so seye.so sfireball.so ssign.so sperson.so
 
 .PHONY: server.so
 server.so: $(SB)/server.so
@@ -50,6 +50,7 @@ $(SB)/entity.so: src/server/entity/entity.cc
 
 .PHONY: seye.so
 seye.so: $(SB)/eye.so
+$(SB)/eye.so: LFA := -lm
 $(SB)/eye.so: $(addprefix $(SB)/, world.so entity.so fireball.so)
 $(SB)/eye.so: src/server/eye/eye.cc
 
@@ -68,6 +69,12 @@ $(SB)/explosion.so: src/server/explosion/explosion.cc
 ssign.so: $(SB)/sign.so
 $(SB)/sign.so: $(addprefix $(SB)/, client.so)
 $(SB)/sign.so: src/server/sign/sign.cc
+
+.PHONY: sperson.so
+sperson.so: $(SB)/person.so
+$(SB)/person.so: LFA := -lm
+$(SB)/person.so: $(addprefix $(SB)/, net.so client.so world.so entity.so fireball.so) # remove fireball
+$(SB)/person.so: src/server/person/person.cc
 
 $(SB)/%.so: CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':')
 $(SB)/%.so:

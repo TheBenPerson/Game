@@ -50,8 +50,6 @@ static Button::Menu *menu;
 static Button *selected;
 static enum { NORMAL, SELECTED, CLICKED } state = NORMAL;
 
-static void initGL();
-static void cleanupGL();
 static void tick();
 static void draw();
 
@@ -63,7 +61,8 @@ extern "C" {
 
 		Input::listeners.add((void*) &tick);
 
-		GFX::call(&initGL);
+		texBG = GFX::loadTexture("menu.png");
+		texButton = GFX::loadTexture("button.png");
 		GFX::listeners.add((void*) &draw);
 
 		Audio::play("menu.ogg", true);
@@ -76,7 +75,8 @@ extern "C" {
 	void cleanup() {
 
 		GFX::listeners.rem((void*) &draw);
-		GFX::call(&cleanupGL);
+		GFX::freeTexture(&texButton);
+		GFX::freeTexture(&texBG);
 
 		Input::listeners.rem((void*) &tick);
 		cputs(YELLOW, "Unloaded module: 'ui.so'");
@@ -85,25 +85,11 @@ extern "C" {
 
 }
 
-void initGL() {
-
-	texBG = GFX::loadTexture("menu.png");
-	texButton = GFX::loadTexture("button.png");
-
-}
-
-void cleanupGL() {
-
-	glDeleteTextures(1, &texButton);
-	glDeleteTextures(1, &texBG);
-
-}
-
 static bool dologic(Button *button, Point *lower, Point *upper) {
 
 	if (button == selected) {
 
-		if (state == SELECTED && Input::actions[Input::A_PRIMARY]) state = CLICKED;
+		if (state == SELECTED && Input::actions[Input::PRIMARY]) state = CLICKED;
 		else {
 
 			if (state == CLICKED) {
@@ -149,20 +135,20 @@ void tick() {
 
 	if (!Input::wasCursor) {
 
-		if (Input::actions[Input::A_EXIT]) {
+		if (Input::actions[Input::EXIT]) {
 
 			if (menu->parent) menu = menu->parent;
 			return;
 
 		}
 
-		if (Input::actions[Input::A_UP] || Input::actions[Input::A_DOWN]) {
+		if (Input::actions[Input::UP] || Input::actions[Input::DOWN]) {
 
 			Audio::play("tick.ogg");
 
 			if (!selected) {
 
-				bool list = Input::actions[Input::A_UP];
+				bool list = Input::actions[Input::UP];
 
 				unsigned int num = 1;
 				if (list) {
@@ -196,7 +182,7 @@ void tick() {
 
 			Button *button = NULL;
 
-			if (Input::actions[Input::A_DOWN]) {
+			if (Input::actions[Input::DOWN]) {
 
 				if (node->next) button = (Button*) node->next->val;
 				if (!button) {

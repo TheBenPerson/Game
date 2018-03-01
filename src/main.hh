@@ -26,17 +26,18 @@
  */
 
 #ifndef GAME_LAUNCHER
+#define GAME_LAUNCHER
 
-#include <stddef.h>
+#include <stdint.h>
 
 namespace Game {
 
 	extern uint16_t port;
 
 	bool loadModule(char *path);
+	bool loadModules(char *path);
 	void stop();
 
 }
 
-#define GAME_LAUNCHER
 #endif

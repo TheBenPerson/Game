@@ -1,14 +1,13 @@
 #include <GL/gl.h>
 #include <math.h>
 
-#include "client.hh"
 #include "console.hh"
-#include "eye.hh"
 #include "gfx.hh"
 #include "net.hh"
+#include "person.hh"
 #include "world.hh"
 
-static GFX::texture tex;
+GFX::texture tex;
 
 static bool tickNet(Packet *packet);
 
@@ -16,11 +15,10 @@ extern "C" {
 
 	bool init() {
 
-		tex = GFX::loadTexture("eye.png");
+		tex = GFX::loadTexture("healer_m.png");
 		Net::listeners.add((void*) &tickNet);
 
-		cputs(GREEN, "Loaded module: 'eye.so'");
-
+		cputs(GREEN, "Loaded module: 'person.so'");
 		return true;
 
 	}
@@ -30,7 +28,7 @@ extern "C" {
 		Net::listeners.rem((void*) &tickNet);
 		GFX::freeTexture(&tex);
 
-		cputs(YELLOW, "Unloaded module: 'eye.so'");
+		cputs(YELLOW, "Unloaded module: 'person.so'");
 
 	}
 
@@ -42,10 +40,10 @@ bool tickNet(Packet *packet) {
 
 		case P_GENT: {
 
-			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
+			Entity::UPacket *upacket = (Entity::UPacket *) packet->data;
 
-			if (!Entity::verify(upacket, "eye")) return false;
-			new Eye((void*) upacket);
+			if (!Entity::verify(upacket, "person")) return false;
+			new Person((void*) upacket);
 
 		} break;
 
@@ -57,29 +55,48 @@ bool tickNet(Packet *packet) {
 
 }
 
-Eye::Eye(void *info): Entity(info) {}
+Person::Person(void *info): Entity(info) {}
 
-void Eye::draw() {
+void Person::draw() {
 
 	Point dpos = vel * (1 / 60.0f);
 	pos += dpos;
 
+	Point pvel = vel;
+	pvel.rot(World::rot);
+
+	enum {LEFT, DOWN, RIGHT, UP} dir;
+
+	if (fabsf(pvel.x) > fabsf(pvel.y)) {
+
+		if (pvel.x < 0) dir = LEFT;
+		else dir = RIGHT;
+
+	} else {
+
+		if (pvel.y < 0) dir = DOWN;
+		else dir = UP;
+
+	}
+
 	glPushMatrix();
 	glTranslatef(pos.x, pos.y, 0);
+	glRotatef(-(World::rot * 360) / (M_PI * 2), 0, 0, 1);
 	glScalef(dim.x / 2, dim.y / 2, 1);
 
 	glMatrixMode(GL_TEXTURE);
 	glPushMatrix();
-	glTranslatef((GFX::frame / 2) / 16.0f, 0, 0);
+	glScalef(1 / 3.0f, .25f, 1);
+	glTranslatef(GFX::frame / 20, dir, 0);
 
 	glBindTexture(GL_TEXTURE_2D, tex);
 	glBegin(GL_QUADS);
 
 	glTexCoord2f(0, 1);
 	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 16.0f, 1);
+	glTexCoord2f(1, 1);
 	glVertex2f(1, 1);
-	glTexCoord2f(1 / 16.0f, 0);
+	glTexCoord2f(1, 0);
 	glVertex2f(1, -1);
 	glTexCoord2f(0, 0);
 	glVertex2f(-1, -1);

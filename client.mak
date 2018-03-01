@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: client
-client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so
+client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so explosion.so sign.so person.so player.so
 
 .PHONY: client.so
 client.so: $(CB)/client.so
@@ -94,6 +94,17 @@ $(CB)/explosion.so: src/client/explosion/explosion.cc
 sign.so: $(CB)/sign.so
 $(CB)/sign.so: $(addprefix $(CB)/, net.so gfx.so input.so)
 $(CB)/sign.so: src/client/sign/sign.cc
+
+.PHONY: person.so
+person.so: $(CB)/person.so
+$(CB)/person.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
+$(CB)/person.so: src/client/person/person.cc
+
+.PHONY: player.so
+player.so: $(CB)/player.so
+$(CB)/player.so: LFA := -lm
+$(CB)/player.so: $(addprefix $(CB)/, client.so input.so net.so win.so world.so gfx.so)
+$(CB)/player.so: src/client/player/player.cc
 
 $(CB)/%.so: CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':')
 $(CB)/%.so:

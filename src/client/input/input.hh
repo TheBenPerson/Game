@@ -34,20 +34,20 @@ namespace Input {
 
 	typedef enum {
 
-		A_EXIT,
-		A_FULLSCREEN,
-		A_UP,
-		A_DOWN,
-		A_LEFT,
-		A_RIGHT,
-		A_PRIMARY,
-		A_SECONDARY,
-		A_MODIFIER,
-		A_NUM_ACTIONS
+		EXIT,
+		FULLSCREEN,
+		UP,
+		DOWN,
+		LEFT,
+		RIGHT,
+		PRIMARY,
+		SECONDARY,
+		MODIFIER,
+		NUM_ACTIONS
 
 	} Action;
 
-	extern bool actions[A_NUM_ACTIONS];
+	extern bool actions[NUM_ACTIONS];
 	extern Point cursor;
 	extern bool wasCursor;
 	extern NodeList listeners;

@@ -57,12 +57,15 @@ namespace GFX {
 
 static 	Timing::thread t;
 static Timing::mutex m = MTX_DEFAULT;
-static void (*callback)() = NULL;
+static void* (*callback)(void*) = NULL;
+static void* arg;
 static bool running = true;
 static GLuint font;
 
 static void* threadMain(void*);
 static void glInit();
+static GFX::texture loadTexture(char *name);
+static void freeTexture(GFX::texture *tex);
 static void draw();
 
 extern "C" {
@@ -105,14 +108,18 @@ extern "C" {
 
 namespace GFX {
 
-	void call(void (*function)()) {
+	void* call(void* (*function)(void*), void *arg) {
 
 		Timing::lock(&m);
 
 		callback = function;
-		while (callback) {} // todo: use condition
+		::arg = arg;
+
+		while (callback) {} // TODO: use condition?
 
 		Timing::unlock(&m);
+
+		return ::arg;
 
 	}
 
@@ -218,91 +225,15 @@ namespace GFX {
 
 	}
 
-	GLuint loadTexture(char *name) { // consider strlen instead of constants
+	texture loadTexture(char *name) {
 
-		char *res = (char*) Client::config.get("gfx.res")->val;
-		size_t len = strlen(name);
+		return (GLuint) call((void* (*)(void*)) &::loadTexture, (void*) name);
 
-		char *buf = (char*) malloc(12 + strlen(res) + 1 + len + 1);
-		sprintf(buf, "res/texture/%s/%s", res, name); // strcpy might be faster
+	}
 
-		FILE *file = fopen(buf, "r");
-		free(buf);
+	void freeTexture(texture *tex) {
 
-		if (!file) {
-
-			buf = (char*) malloc(20 + len + 1);
-			sprintf(buf, "res/texture/default/%s", name);
-
-			file = fopen(buf, "r");
-			free(buf);
-
-			if (!file) {
-
-				fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
-				return NULL;
-
-			}
-
-		}
-
-		unsigned char sig[8];
-		fread(sig, 8, 1, file);
-
-		if (png_sig_cmp(sig, 0, 8)) {
-
-			fprintf(stderr, "Error loading texture: '%s' (Invalid PNG file)\n", name);
-			fclose(file);
-
-			return 0;
-
-		}
-
-		png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-		png_info *info = png_create_info_struct(png);
-
-		png_init_io(png, file);
-		png_set_sig_bytes(png, 8);
-
-		png_read_info(png, info);
-
-		png_uint_32 width = png_get_image_width(png, info);
-		png_uint_32 height = png_get_image_height(png, info);
-
-		png_byte channels = png_get_channels(png, info);
-		if (channels < 3) fprintf(stderr, "Warning: texture '%s' has < 3 channels\n", name);
-
-		png_byte* image = (png_byte*) malloc(width * height * channels);
-
-		png_uint_32 i = height - 1;
-
-		for (;;) {
-
-			png_read_row(png, image + (i * width * channels), NULL);
-			if (!i) break;
-
-			i--;
-
-		}
-
-		GLuint texture;
-
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, (channels == 4) ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, image);
-
-		free(image);
-		png_destroy_read_struct(&png, &info, NULL);
-		fclose(file);
-
-		printf("Loaded texture: '%s' (%ix%i)\n", name, width, height);
-		return texture;
+		call((void* (*)(void*)) &::freeTexture, (void*) tex);
 
 	}
 
@@ -319,7 +250,7 @@ void* threadMain(void* result) {
 
 	}
 
-	font = GFX::loadTexture("font.png");
+	font = loadTexture("font.png");
 	glInit(); // initialize OpenGL
 
 	WIN::showWindow(); // display window
@@ -351,12 +282,106 @@ void glInit() {
 
 }
 
+GFX::texture loadTexture(char *name) { // consider strlen instead of constants
+
+	char *res = (char*) Client::config.get("gfx.res")->val;
+	size_t len = strlen(name);
+
+	char *buf = (char*) malloc(12 + strlen(res) + 1 + len + 1);
+	sprintf(buf, "res/texture/%s/%s", res, name); // strcpy might be faster
+
+	FILE *file = fopen(buf, "r");
+	free(buf);
+
+	if (!file) {
+
+		buf = (char*) malloc(20 + len + 1);
+		sprintf(buf, "res/texture/default/%s", name);
+
+		file = fopen(buf, "r");
+		free(buf);
+
+		if (!file) {
+
+			fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
+			return NULL;
+
+		}
+
+	}
+
+	unsigned char sig[8];
+	fread(sig, 8, 1, file);
+
+	if (png_sig_cmp(sig, 0, 8)) {
+
+		fprintf(stderr, "Error loading texture: '%s' (Invalid PNG file)\n", name);
+		fclose(file);
+
+		return 0;
+
+	}
+
+	png_struct *png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	png_info *info = png_create_info_struct(png);
+
+	png_init_io(png, file);
+	png_set_sig_bytes(png, 8);
+
+	png_read_info(png, info);
+
+	png_uint_32 width = png_get_image_width(png, info);
+	png_uint_32 height = png_get_image_height(png, info);
+
+	png_byte channels = png_get_channels(png, info);
+	if (channels < 3) fprintf(stderr, "Warning: texture '%s' has < 3 channels\n", name);
+
+	png_byte* image = (png_byte*) malloc(width * height * channels);
+
+	png_uint_32 i = height - 1;
+
+	for (;;) {
+
+		png_read_row(png, image + (i * width * channels), NULL);
+		if (!i) break;
+
+		i--;
+
+	}
+
+	GLuint tex;
+
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, (channels == 4) ? GL_RGBA : GL_RGB, GL_UNSIGNED_BYTE, image);
+
+	free(image);
+	png_destroy_read_struct(&png, &info, NULL);
+	fclose(file);
+
+	printf("Loaded texture: '%s' (%ix%i)\n", name, width, height);
+	return tex;
+
+}
+
+void freeTexture(GFX::texture *tex) {
+
+	glDeleteTextures(1, tex);
+
+}
+
 void draw() {
 
 	if (callback) {
 
-		callback();
-		callback = NULL;
+		arg = callback(arg);
+		callback = NULL; // TODO: mutex?
 
 	}
 

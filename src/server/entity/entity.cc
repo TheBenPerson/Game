@@ -142,204 +142,33 @@ void Entity::add() {
 
 }
 
-bool Entity::bound(Point *pos, Point *dim, float rot) {
-
-	/*
-	 *
-	 * 1########0
-	 * #        #
-	 * # points #
-	 * #        #
-	 * 2########3
-	 *
-	 * get object's points
-	 * from perspective of entity
-	 *
-	 * this is easier than rotating both
-	 * because this way once one is transformed
-	 * our points are known
-	 *
-	 */
+bool Entity::bound(Point *pos, Point *dim) {
 
 	Point points[4];
 	Point ddim = *dim / 2;
 
-	points[0] = {ddim.x, ddim.y};
-	points[0] -= this->pos;
-	points[0].rot(rot);
+	points[0] = {-ddim.x, -ddim.y};
 	points[0] += *pos;
-	points[0].rot(-this->rot);
-	points[0] += this->pos;
 
-	points[1] = {-ddim.x, ddim.y};
-	points[1] -= this->pos;
-	points[1].rot(rot);
+	points[1] = {ddim.x, ddim.y};
 	points[1] += *pos;
-	points[1].rot(-this->rot);
-	points[1] += this->pos;
 
-	points[2] = {-ddim.x, -ddim.y};
-	points[2] -= this->pos;
-	points[2].rot(rot);
-	points[2] += *pos;
-	points[2].rot(-this->rot);
-	points[2] += this->pos;
+	ddim = this->pos / 2;
 
-	points[3] = {ddim.x, -ddim.y};
-	points[3] -= this->pos;
-	points[3].rot(rot);
-	points[3] += *pos;
-	points[3].rot(-this->rot);
-	points[3] += this->pos;
+	if (points[0].x > (this->pos.x + ddim.x)) return false;
+	if (points[1].x < (this->pos.x - ddim.x)) return false;
+	if (points[0].y > (this->pos.x + ddim.x)) return false;
+	if (points[1].y < (this->pos.x - ddim.x)) return false;
 
-	/*
-	 *
-	 * next check for collision by
-	 * checking all 4 sides of object
-	 * against all sides of entity
-	 * to see if any intersect
-	 *
-	 */
-
-	bool result = true;
-	for (unsigned int i = 0; i < 4; i++) {
-
-		Point *p1 = points + i;
-		Point *p2 = points + ((i + 1) % 4);
-
-		ddim = this->dim / 2;
-
-		// are all points inside *this?
-		if (result) {
-
-			if (!((p1->x >= (this->pos.x - ddim.x)) && (p1->x <= (this->pos.x + ddim.x)))) result = false;
-			if (!((p1->y >= (this->pos.y - ddim.y)) && (p1->y <= (this->pos.y + ddim.y)))) result = false;
-
-		}
-
-		Point *left;
-		Point *right;
-
-		if (p1->x <= p2->x) {
-
-			left = p1;
-			right = p2;
-
-		} else {
-
-			left = p2;
-			right = p1;
-
-		}
-
-		Point *top;
-		Point *bottom;
-
-		if (p1->y <= p2->y) {
-
-			top = p2;
-			bottom = p1;
-
-		} else {
-
-			top = p1;
-			bottom = p2;
-
-		}
-
-		// check division by zero
-		bool divz = !(right->x - left->x);
-
-		float slope;
-		if (!divz) slope = (right->y - left->y) / (right->x - left->x);
-		float b = left->y - (slope * left->x);
-
-		if ((left->x <= (this->pos.x - ddim.x)) && (right->x >= (this->pos.x - ddim.x))) {
-
-			if (divz) return true;
-
-			float y = (slope * (this->pos.x - ddim.x)) + b;
-			if ((y >= (this->pos.y - ddim.y)) && (y <= (this->pos.y + ddim.y))) return true;
-
-		}
-
-		if ((left->x <= (this->pos.x + ddim.x)) && (right->x >= (this->pos.x + ddim.x))) {
-
-			if (divz) return true;
-
-			float y = (slope * (this->pos.x + ddim.x)) + b;
-			if ((y >= (this->pos.y - ddim.y)) && (y <= (this->pos.y + ddim.y))) return true;
-
-		}
-
-		if ((bottom->y <= (this->pos.y - ddim.y)) && (top->y >= (this->pos.y - ddim.y))) {
-
-			float x;
-
-			if (divz) x = left->x;
-			else x = ((this->pos.y - ddim.y) - b) / slope;
-
-			if ((x >= (this->pos.x - ddim.x)) && (x <= (this->pos.x + ddim.x))) return true;
-
-		}
-
-		if ((bottom->y <= (this->pos.y + ddim.y)) && (top->y >= (this->pos.y + ddim.y))) {
-
-			float x;
-
-			if (divz) x = left->x;
-			else x = ((this->pos.y + ddim.y) - b) / slope;
-
-			if ((x >= (this->pos.x - ddim.x)) && (x <= (this->pos.x + ddim.x))) return true;
-
-		}
-
-	}
-
-	return result;
+	return true;
 
 }
 
 unsigned int Entity::boundWorld(Point **tiles) {
 
-	/*
-	 *
-	 * 1########0
-	 * #        #
-	 * # points #
-	 * #        #
-	 * 2########3
-	 *
-	 */
-
-	// get points of entity's rectangle
-
-	Point points[4];
 	Point ddim = dim / 2;
 
-	points[0] = {ddim.x, ddim.y};
-	points[0].rot(rot);
-	points[0] += pos;
-
-	points[1] = {-ddim.x, ddim.y};
-	points[1].rot(rot);
-	points[1] += pos;
-
-	points[2] = {-ddim.x, -ddim.y};
-	points[2].rot(rot);
-	points[2] += pos;
-
-	points[3] = {ddim.x, -ddim.y};
-	points[3].rot(rot);
-	points[3] += pos;
-
-	// find bounding box extrema
-	// to narrow down results
-
-	float top;
-	top = fmaxf(points[0].y, points[1].y);
-	top = fmaxf(top, points[2].y);
-	top = fmaxf(top, points[3].y);
+	float top = pos.y + ddim.y;
 
 	// if dimensions odd align to even ones
 	if (World::height % 2) top += .5f;
@@ -348,32 +177,20 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	// cap to world dimensions
 	if (top > (World::height / 2)) top = World::height / 2;
 
-	float bottom;
-	bottom = fminf(points[0].y, points[1].y);
-	bottom = fminf(bottom, points[2].y);
-	bottom = fminf(bottom, points[3].y);
-
+	float bottom = pos.y - ddim.y;
 	if (World::height % 2) bottom += .5f;
 	bottom = floorf(bottom);
 
 	// if not casted to int interpreted as negative unsinged int
 	if (bottom < -(((int) World::height) / 2)) bottom = -(((int) World::height) / 2);
 
-	float left;
-	left = fminf(points[0].x, points[1].x);
-	left = fminf(left, points[2].x);
-	left = fminf(left, points[3].x);
-
+	float left = pos.x - ddim.x;
 	if (World::width % 2) left += .5f;
 	left = floorf(left);
 
 	if (left < -(((int) World::width) / 2)) left = -(((int) World::width) / 2);
 
-	float right;
-	right = fmaxf(points[0].x, points[1].x);
-	right = fmaxf(right, points[2].x);
-	right = fmaxf(right, points[3].x);
-
+	float right = pos.x + ddim.x;
 	if (World::width % 2) right += .5f;
 	right = floorf(right);
 
@@ -402,8 +219,7 @@ unsigned int Entity::boundWorld(Point **tiles) {
 
 		Point dim = {1, 1};
 
-		// perform more precise check
-		if (bound(&pos, &dim, 0)) (*tiles)[index++] = pos;
+		(*tiles)[index++] = pos;
 
 	}}
 
@@ -462,15 +278,7 @@ void* Entity::toNet(unsigned int *size) {
 	typedef struct {
 
 		uint8_t pid;
-		uint16_t id;
-
-		__attribute__((packed)) Point dim;
-		__attribute__((packed)) Point pos;
-		__attribute__((packed)) Point vel;
-
-		float rot;
-		bool onfire;
-		char type[];
+		UPacket packet;
 
 	} __attribute__((packed)) Data;
 
@@ -478,14 +286,12 @@ void* Entity::toNet(unsigned int *size) {
 	Data *data = (Data*) malloc(*size);
 
 	data->pid = P_GENT;
-	data->id = id;
+	data->packet.id = id;
 
-	data->dim = dim;
-	data->pos = pos;
-	data->vel = vel;
-	data->rot = rot;
-	data->onfire = onfire;
-	strcpy(data->type, type);
+	data->packet.dim = dim;
+	data->packet.pos = pos;
+	data->packet.vel = vel;
+	strcpy(data->packet.type, type);
 
 	return data;
 
@@ -496,25 +302,16 @@ void Entity::update() {
 	struct {
 
 		uint8_t pid;
-		uint16_t id;
-
-		__attribute__((packed)) Point dim;
-		__attribute__((packed)) Point pos;
-		__attribute__((packed)) Point vel;
-
-		float rot;
-		bool onfire;
+		UPacket packet;
 
 	} __attribute__((packed)) data;
 
 	data.pid = P_UENT;
-	data.id = id;
+	data.packet.id = id;
 
-	data.dim = dim;
-	data.pos = pos;
-	data.vel = vel;
-	data.rot = rot;
-	data.onfire = onfire;
+	data.packet.dim = dim;
+	data.packet.pos = pos;
+	data.packet.vel = vel;
 
 	Packet packet;
 	packet.raw = (uint8_t*) &data;

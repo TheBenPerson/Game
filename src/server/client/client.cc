@@ -191,15 +191,8 @@ void* Client::entry(void* arg) {
 			case P_POKE: client->send(P_ACCEPT);
 			break;
 
-			case P_DENY:
-
-				printf("%s disconnected\n", client->name);
-				delete client;
-
-				free(packet->raw);
-
-			return NULL;
-
+			case P_DENY: printf("%s disconnected\n", client->name);
+			case P_KICK: client->running = false;
 			default:
 
 				for (unsigned int i = 0; i < Net::listeners.len; i++) {
@@ -216,6 +209,7 @@ void* Client::entry(void* arg) {
 
 	}
 
+	delete client;
 	return NULL;
 
 }
@@ -295,14 +289,11 @@ Packet* Client::recv() {
 void Client::kick(char *reason) {
 
 	running = false;
-	recv(NULL); // send dummy packet to exit recv
-
-	Timing::waitFor(this->t);
 
 	Packet packet;
 	packet.size = strlen(reason) + 2;
 	packet.raw = (uint8_t*) malloc(packet.size);
-	packet.raw[0] = P_DENY;
+	packet.raw[0] = P_KICK;
 	strcpy((char*) packet.raw + 1, reason);
 
 	send(&packet);
@@ -310,6 +301,11 @@ void Client::kick(char *reason) {
 
 	printf("Kicked %s (%s)\n", name, reason);
 
-	delete this;
+	uint8_t id = P_KICK;
+	packet.raw = &id;
+	packet.size = 1;
+	recv(&packet); // send dummy packet to exit recv
+
+	Timing::waitFor(this->t);
 
 }
