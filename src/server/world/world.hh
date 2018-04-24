@@ -40,7 +40,7 @@ namespace World {
 	void cleanup();
 	bool loadMap(char *name);
 	Tile* getTile(Point *pos);
-	void setTile(Point *pos, Tile::type id);
+	void setTile(Point *pos, uint8_t id);
 
 }
 

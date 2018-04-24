@@ -48,7 +48,7 @@ _all: launcher client server
 	# Done
 	@setterm --default
 
-release: LF := -O2 -s
+release: LF := -O3 -s
 release: all
 
 # launcher

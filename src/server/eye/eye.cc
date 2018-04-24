@@ -98,7 +98,7 @@ bool Eye::tick(timespec *time) {
 
 	}
 
-	free(tiles);
+	if (size) free(tiles);
 
 	if (bounce || change) update();
 	Entity::tick(time);

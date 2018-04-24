@@ -59,7 +59,7 @@ bool Explosion::tick(timespec *time) {
 
 	}
 
-	free(tiles);
+	if (size) free(tiles);
 	return false;
 
 }

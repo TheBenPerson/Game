@@ -27,11 +27,15 @@
 
 #ifndef GAME_COMMON_TILE
 
+#include <stdint.h>
+
 typedef struct {
 
-	typedef enum { ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA, NUM_TYPES } type;
+	enum { ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA, PORTAL, SIGN, CACTUS, NUM_TYPES };
 
-	type id;
+	uint8_t id;
+	void *special = 0;
+	// todo: should be NULL
 
 } Tile;
 

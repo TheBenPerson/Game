@@ -43,7 +43,7 @@ namespace World {
 
 	unsigned int width = 0;
 	unsigned int height = 0;
-	Tile *tiles;
+	uint8_t *tiles;
 	NodeList listeners;
 
 	float rot;
@@ -96,12 +96,21 @@ static bool tickNet(Packet *packet) {
 
 			// todo: check sizes
 
-			World::width = packet->raw[1];
-			World::height = packet->raw[2];
+			struct Data {
 
-			unsigned int size = sizeof(Tile) * World::width * World::height;
-			World::tiles = (Tile*) malloc(size);
-			memcpy(World::tiles, packet->raw + 3, size);
+				uint8_t width;
+				uint8_t height;
+				uint8_t tiles[];
+
+			} __attribute__((packed)) *data = (Data*) packet->data;
+
+			World::width = data->width;
+			World::height = data->height;
+
+			unsigned int size = World::width * World::height;
+
+			World::tiles = (uint8_t*) malloc(size);
+			memcpy(World::tiles, data->tiles, size);
 
 			printf("Recieved map (%ix%i)\n", World::width, World::height);
 
@@ -109,15 +118,13 @@ static bool tickNet(Packet *packet) {
 
 		case P_SBLK: {
 
-			struct Data{
+			struct Data {
 
 				uint16_t index;
 				uint8_t id;
 
 			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			unsigned int index = data->index;
-			World::tiles[index].id = (Tile::type) data->id;
+			World::tiles[data->index] = data->id;
 
 		} break;
 
@@ -176,7 +183,7 @@ void draw() {
 		glMatrixMode(GL_TEXTURE);
 		glPushMatrix();
 
-		glTranslatef(World::tiles[i].id * 0.1f, 0, 0);
+		glTranslatef(World::tiles[i] / 10.0f, 0, 0);
 
 		glBindTexture(GL_TEXTURE_2D, tex);
 		glBegin(GL_QUADS);

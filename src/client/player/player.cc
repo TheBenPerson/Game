@@ -64,9 +64,9 @@ void draw() {
 
 		unsigned int index = (y * World::width) + x;
 
-		if (World::tiles[index].id != Tile::SAND) {
+		if (World::tiles[index] != Tile::SAND) {
 
-			World::tiles[index].id = Tile::SAND;
+			World::tiles[index] = Tile::SAND;
 
 			struct {
 

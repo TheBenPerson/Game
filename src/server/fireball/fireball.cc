@@ -53,7 +53,7 @@ Fireball::Fireball(Point *pos, float rot, Point *vel) {
 
 bool Fireball::tick(timespec *time) {
 
-	bool bounce = false;
+	bool hit = false;
 
 	Point *tiles;
 	unsigned int size = boundWorld(&tiles);
@@ -61,13 +61,13 @@ bool Fireball::tick(timespec *time) {
 	for (unsigned int i = 0; i < size; i++) {
 
 		Tile *tile = World::getTile(&tiles[i]);
-		if (tile->id == Tile::ROCK) bounce = true;
+		if (tile->id == Tile::ROCK) hit = true;
 
 	}
 
-	free(tiles);
+	if (size) free(tiles);
 
-	if (bounce) {
+	if (hit) {
 
 		new Explosion(&pos);
 

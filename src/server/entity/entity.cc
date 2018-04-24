@@ -166,64 +166,44 @@ bool Entity::bound(Point *pos, Point *dim) {
 
 unsigned int Entity::boundWorld(Point **tiles) {
 
+	int dwidth = World::width / 2;
+	int dheight = World::height / 2;
+
 	Point ddim = dim / 2;
 
-	float top = pos.y + ddim.y;
-
 	// if dimensions odd align to even ones
-	if (World::height % 2) top += .5f;
-	top = floorf(top);
+	int top = floor(pos.y + ddim.y + ((World::height % 2) * .5f));
+	if (top < -dheight) return false;
+	if (top > dheight) top = dheight;
 
-	// cap to world dimensions
-	if (top > (World::height / 2)) top = World::height / 2;
+	int bottom = floor(pos.y - ddim.y + ((World::height % 2) * .5f));
+	if (bottom > dheight) return false;
+	if (bottom < -dheight) bottom = -dheight;
 
-	float bottom = pos.y - ddim.y;
-	if (World::height % 2) bottom += .5f;
-	bottom = floorf(bottom);
+	int left = floor(pos.x - ddim.x + (((World::width % 2)) * .5f));
+	if (left > dwidth) return false;
+	if (left < -dwidth) left = -dwidth;
 
-	// if not casted to int interpreted as negative unsinged int
-	if (bottom < -(((int) World::height) / 2)) bottom = -(((int) World::height) / 2);
+	int right = floor(pos.x + ddim.x + ((World::width % 2) * .5f));
+	if (right < -dwidth) return false;
+	if (right > dwidth) right = dwidth;
 
-	float left = pos.x - ddim.x;
-	if (World::width % 2) left += .5f;
-	left = floorf(left);
-
-	if (left < -(((int) World::width) / 2)) left = -(((int) World::width) / 2);
-
-	float right = pos.x + ddim.x;
-	if (World::width % 2) right += .5f;
-	right = floorf(right);
-
-	if (right > (World::width / 2)) right = World::width / 2;
-
-	// allocate maximum possible tiles
 	// tiles is an array of values to be used to index World::tiles
 	// eg. World::tiles[tile[foobar]]
 
+	// +1 is because the set {1 to 3} includes 3 numbers; not 2
 	unsigned int width = (right - left) + 1;
 	unsigned int height = (top - bottom) + 1;
 
-	// + 1 for null terminator
-	*tiles = (Point*) malloc((sizeof(Point) * width * height) + 1);
+	*tiles = (Point*) malloc(sizeof(Point) * (width * height));
 	unsigned int index = 0;
 
 	for (int y = bottom; y < top + 1; y++) {
 	for (int x = left; x < right + 1; x++) {
 
-		// bound expects pos in center of object
-		Point pos = {x, y};
-
-		// if even add .5f
-		pos.x +=  0.5f * !(World::width % 2);
-		pos.y +=  0.5f * !(World::height % 2);
-
-		Point dim = {1, 1};
-
-		(*tiles)[index++] = pos;
+		(*tiles)[index++] = {x, y};
 
 	}}
-
-	*tiles = (Point*) realloc(*tiles, sizeof(Point) * (++index));
 
 	return index;
 

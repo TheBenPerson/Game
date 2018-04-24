@@ -28,6 +28,8 @@
 #ifndef GAME_CLIENT_WORLD
 #define GAME_CLIENT_WORLD
 
+#include <stdint.h>
+
 #include "nodelist.hh"
 #include "point.hh"
 #include "tile.hh"
@@ -36,7 +38,7 @@ namespace World {
 
 	extern unsigned int width;
 	extern unsigned int height;
-	extern Tile *tiles;
+	extern uint8_t *tiles;
 	extern NodeList listeners;
 
 	extern Point pos;

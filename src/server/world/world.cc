@@ -48,14 +48,15 @@ static bool tickNet(Packet *packet, Client *client) {
 			printf("Sending map to %s...\n", client->name);
 
 			Packet packet;
-			packet.size = 3 + (sizeof(Tile) * World::width * World::height);
+			packet.size = 3 + (World::width * World::height);
 			packet.raw = (uint8_t*) malloc(packet.size);
 
 			packet.raw[0] = P_GMAP;
 			packet.raw[1] = World::width;
 			packet.raw[2] = World::height;
 
-			memcpy(packet.raw + 3, World::tiles, packet.size - 3);
+			for (unsigned int i = 3; i < packet.size; i++)
+				packet.raw[i] = World::tiles[i - 3].id;
 
 			client->send(&packet);
 			free(packet.raw);
@@ -72,7 +73,7 @@ static bool tickNet(Packet *packet, Client *client) {
 			} __attribute__((packed)) *data = (Data*) packet->data;
 
 			unsigned int index = data->index;
-			World::tiles[index].id = (Tile::type) data->id;
+			World::tiles[index].id = data->id;
 
 			for (unsigned int i = 0; i < Client::clients.len; i++) {
 
@@ -103,6 +104,7 @@ extern "C" {
 
 		char *map = (char*) Server::config.get("world.map")->val;
 
+		// todo: if failed call cleanup
 		bool result = World::loadMap(map);
 		if (!result) return false;
 
@@ -145,64 +147,12 @@ namespace World {
 
 		}
 
-		char buf[4];
-		buf[0] = '\0';
-		buf[1] = '\0';
-		buf[2] = '\0';
-		buf[3] = '\0';
-
-		char c = fgetc(file);
-		if ((c >= '0') && (c <= '9')) {
-
-			buf[0] = c;
-
-			c = fgetc(file);
-			if ((c >= '0') && (c <= '9')) {
-
-				buf[1] = c;
-
-				c = fgetc(file);
-				if ((c >= '0') && (c <= '9')) buf[2] = c;
-
-			}
-
-			width = atoi(buf);
-
-		} else {
+		int result = fscanf(file, "%ix%i\n", &width, &height);
+		if (result < 1 || result == EOF) {
 
 			fclose(file);
 
-			ceprintf(RED, "Error parsing map '%s'\n", path);
-			return false;
-
-		}
-
-		buf[0] = '\0';
-		buf[1] = '\0';
-		buf[2] = '\0';
-
-		c = fgetc(file);
-		if ((c >= '0') && (c <= '9')) {
-
-			buf[0] = c;
-
-			c = fgetc(file);
-			if ((c >= '0') && (c <= '9')) {
-
-				buf[1] = c;
-
-				c = fgetc(file);
-				if ((c >= '0') && (c <= '9')) buf[2] = c;
-
-			}
-
-			height = atoi(buf);
-
-		} else {
-
-			fclose(file);
-
-			ceprintf(RED, "Error parsing map '%s'\n", path);
+			ceputs(RED, "Error loading world");
 			return false;
 
 		}
@@ -214,28 +164,44 @@ namespace World {
 
 		for (unsigned int i = 0; i < size; i++) {
 
-			for (;;) {
+			unsigned int id;
+			int result = fscanf(file, "%i,", &id);
+			if (result == EOF) {
 
-				char buf[3];
-				buf[1] = '\0';
-				buf[2] = '\0';
+				fclose(file);
 
-				char c = fgetc(file);
-				if ((c >= '0') && (c <= '9')) {
+				ceputs(RED, "Error loading world");
+				return false;
 
-					buf[0] = c;
+			}
 
-					c = fgetc(file);
-					if ((c >= 0x30) && (c <= 0x39)) buf[1] = c;
+			tiles[i].id = id;
 
-					tiles[i].id = (Tile::type) atoi(buf);
-					break;
+		}
+
+		// dummy to read newline
+		fgetc(file);
+
+		for (unsigned int i = 0; i < size; i++) {
+
+			if (tiles[i].id == Tile::SIGN) {
+
+				size_t dummy = NULL;
+				ssize_t result = getline((char**) &tiles[i].special, &dummy, file);
+				if (result == -1) {
+
+					fclose(file);
+
+					ceputs(RED, "Error loading world");
+					return false;
 
 				}
 
 			}
 
 		}
+
+		fclose(file);
 
 		printf("Loaded map '%s' (%ix%i)\n", name, width, height);
 		return true;
@@ -251,30 +217,31 @@ namespace World {
 
 	}
 
-	void setTile(Point *pos, Tile::type id) {
+	void setTile(Point *pos, uint8_t id) {
 
-		// todo: floorf?
-
-		unsigned int x = pos->x + (width / 2.0f);
-		unsigned int y = (height / 2.0f) - pos->y;
+		unsigned int x = pos->x + (width / 2);
+		unsigned int y = (height / 2) - pos->y - 1;
 
 		unsigned int index = (y * width) + x;
 
 		if (tiles[index].id == id) return;
-
 		tiles[index].id = id;
 
 		struct {
 
 			uint8_t id = P_SBLK;
-			uint16_t index = index;
-			uint8_t type = Tile::SAND;
+			uint16_t index;
+			uint8_t type;
 
 		} __attribute__((packed)) data;
 
+		// workaround for same name glitch thingy
+		data.index = index;
+		data.type = id;
+
 		Packet packet;
 		packet.raw = (uint8_t*) &data;
-		packet.size = 4;
+		packet.size = sizeof(data);
 
 		Client::broadcast(&packet);
 
