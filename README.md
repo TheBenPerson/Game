@@ -12,9 +12,9 @@ Because it is module oriented, adding mods is as easy as dragging and dropping f
 
 ### Dependancies:
 
-- GCC, or sad Windows imitation (via [MinGW](http://mingw.org/), [Cygwin](https://cygwin.com/), [Bash for Windows](https://msdn.microsoft.com/en-us/commandline/wsl/about), etc.)
-- libpng
-- XCB
+- *NIX setup, or sad Windows imitation (via [MinGW](http://mingw.org/), [Cygwin](https://cygwin.com/), [Bash for Windows](https://msdn.microsoft.com/en-us/commandline/wsl/about), etc.)
+- [libpng](http://libpng.org/pub/png/libpng.html)
+- [GLFW](http://glfw.org/)
 
 ### Compiling:
 
