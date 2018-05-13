@@ -39,9 +39,9 @@ extern "C" {
 		running = false;
 		Timing::waitFor(t);
 
-		while (Entity::entities.len) {
+		while (Entity::entities.size) {
 
-			Entity *entity = (Entity*) Entity::entities.get(0);
+			Entity *entity = (Entity*) Entity::entities[0];
 			delete entity;
 
 		}
@@ -58,9 +58,9 @@ void* tmain(void*) {
 
 		unsigned int toSleep = UINT_MAX;
 
-		for (unsigned int i = 0; i < Entity::entities.len; i++) {
+		for (unsigned int i = 0; i < Entity::entities.size; i++) {
 
-			Entity *entity = (Entity*) Entity::entities.get(i);
+			Entity *entity = (Entity*) Entity::entities[i];
 
 			timespec time;
 			clock_gettime(CLOCK_MONOTONIC, &time);
@@ -105,9 +105,9 @@ bool tickNet(Packet *packet, Client *client) {
 
 		case P_GENT:
 
-			for (unsigned int i = 0; i < Entity::entities.len; i++) {
+			for (unsigned int i = 0; i < Entity::entities.size; i++) {
 
-				Entity *entity = (Entity*) Entity::entities.get(i);
+				Entity *entity = (Entity*) Entity::entities[i];
 
 				Packet packet;
 				packet.raw = (uint8_t*) entity->toNet(&packet.size);
@@ -170,23 +170,25 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	int dheight = World::height / 2;
 
 	Point ddim = dim / 2;
+	bool evenW = !(World::width % 2);
+	bool evenH = !(World::height % 2);
 
 	// if dimensions odd align to even ones
-	int top = floor(pos.y + ddim.y + ((World::height % 2) * .5f));
+	int top = floor(pos.y + ddim.y + (!evenH * .5f));
 	if (top < -dheight) return false;
-	if (top > dheight) top = dheight;
+	if (top > (dheight - evenH)) top = dheight - evenH;
 
-	int bottom = floor(pos.y - ddim.y + ((World::height % 2) * .5f));
-	if (bottom > dheight) return false;
+	int bottom = floor(pos.y - ddim.y + (!evenH * .5f));
+	if (bottom > (dheight - evenH)) return false;
 	if (bottom < -dheight) bottom = -dheight;
 
-	int left = floor(pos.x - ddim.x + (((World::width % 2)) * .5f));
-	if (left > dwidth) return false;
+	int left = floor(pos.x - ddim.x + (!evenW * .5f));
+	if (left > (dwidth - evenW)) return false;
 	if (left < -dwidth) left = -dwidth;
 
-	int right = floor(pos.x + ddim.x + ((World::width % 2) * .5f));
+	int right = floor(pos.x + ddim.x + (!evenW * .5f));
 	if (right < -dwidth) return false;
-	if (right > dwidth) right = dwidth;
+	if (right > (dwidth - evenW)) right = dwidth - evenW;
 
 	// tiles is an array of values to be used to index World::tiles
 	// eg. World::tiles[tile[foobar]]
@@ -198,6 +200,7 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	*tiles = (Point*) malloc(sizeof(Point) * (width * height));
 	unsigned int index = 0;
 
+	// the +1 is to include the heighest value itself
 	for (int y = bottom; y < top + 1; y++) {
 	for (int x = left; x < right + 1; x++) {
 
@@ -220,9 +223,9 @@ bool Entity::tick(timespec *time) {
 
 Entity* Entity::get(unsigned int id) {
 
-	for (unsigned int i = 0; i < entities.len; i++) {
+	for (unsigned int i = 0; i < entities.size; i++) {
 
-		Entity *entity = (Entity*) entities.get(i);
+		Entity *entity = (Entity*) entities[i];
 		if (entity->id == id) return entity;
 
 	}

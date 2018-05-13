@@ -49,6 +49,7 @@
 #define P_NEWP 'P'
 #define P_UPDP 'U'
 
+#define P_INTR 'i'
 #define P_SIGN 's'
 
 typedef struct {

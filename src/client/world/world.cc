@@ -39,6 +39,8 @@
 #include "win.hh"
 #include "world.hh"
 
+#include "input.hh"
+
 namespace World {
 
 	unsigned int width = 0;
@@ -46,6 +48,7 @@ namespace World {
 	uint8_t *tiles;
 	NodeList listeners;
 
+	float scale = 2;
 	float rot;
 	Point pos = {0, 0};
 
@@ -53,7 +56,6 @@ namespace World {
 
 static GFX::texture tex;
 static GFX::texture texBG;
-static float scale = 2;
 
 static bool tickNet(Packet *packet);
 static void draw();
@@ -85,6 +87,15 @@ extern "C" {
 		cputs(YELLOW, "Unloaded module: 'world.so'");
 
 	}
+
+}
+
+unsigned int World::getIndex(Point *pos) {
+
+	unsigned int x = pos->x + (width / 2.0f);
+	unsigned int y = pos->y + (height / 2.0f);
+
+	return (y * World::width) + x;
 
 }
 
@@ -145,7 +156,7 @@ void draw() {
 	glMatrixMode(GL_TEXTURE);
 	glPushMatrix();
 	glTranslatef(World::pos.x / 30, World::pos.y / 30, 0);
-	glScalef(1 / scale, 1 / scale, 1);
+	glScalef(1 / World::scale, 1 / World::scale, 1);
 	glRotatef(-(World::rot * 360) / (M_PI * 2) , 0, 0, 1);
 	glTranslatef(-.5f * WIN::aspect, -.5f, 0);
 
@@ -168,14 +179,14 @@ void draw() {
 
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-	glScalef(scale, scale, 1);
+	glScalef(World::scale, World::scale, 1);
 	glRotatef((World::rot * 360) / (M_PI * 2) , 0, 0, 1);
 	glTranslatef(-World::pos.x, -World::pos.y, 0);
 
 	for (unsigned int i = 0; i < (World::width * World::height); i++) {
 
 		float x = (i % World::width) - (World::width / 2.0f);
-		float y = (World::height - 1) - (i / World::width) - (World::height / 2.0f);
+		float y = (i / World::width) - (World::height / 2.0f);
 
 		glPushMatrix();
 		glTranslatef(x, y, 0);
@@ -206,9 +217,9 @@ void draw() {
 
 	}
 
-	for (unsigned int i = 0; i < World::listeners.len; i++) {
+	for (unsigned int i = 0; i < World::listeners.size; i++) {
 
-		void (*callback)() = (void (*)()) World::listeners.get(i);
+		void (*callback)() = (void (*)()) World::listeners[i];
 		callback();
 
 	}

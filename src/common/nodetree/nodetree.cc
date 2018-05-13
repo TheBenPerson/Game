@@ -133,11 +133,11 @@ void NodeTree::del(char *name) {
 
 NodeTree::Key* NodeTree::find(char *name, NodeList *list) {
 
-	if (!list->len) return NULL;
+	if (!list->size) return NULL;
 
-	for (unsigned int i = 0; i < list->len; i++) {
+	for (unsigned int i = 0; i < list->size; i++) {
 
-		Key *key = (Key*) list->get(i);
+		Key *key = (Key*) (*list)[i];
 		if (!strcmp(key->name, name)) return key;
 
 	}
@@ -164,9 +164,9 @@ void NodeTree::del(Key *key) {
 	NodeList *list = (NodeList*) key->val;
 	delete key;
 
-	for (unsigned int i = 0; i < list->len; i++) {
+	for (unsigned int i = 0; i < list->size; i++) {
 
-		key = (Key*) list->get(i);
+		key = (Key*) (*list)[i];
 		del(key);
 
 	}

@@ -4,12 +4,18 @@
 
 #include "client.hh"
 #include "console.hh"
-#include "sign.hh"
 #include "packet.hh"
+#include "sign.hh"
+#include "tile.hh"
+#include "tiledef.hh"
+
+static Tile* newSign(void *text, bool freeSpecial);
 
 extern "C" {
 
 	bool init() {
+
+		Tile::regTile(T_SIGN, &newSign);
 
 		cputs(GREEN, "Loaded module: 'sign.so'");
 		return true;
@@ -18,39 +24,54 @@ extern "C" {
 
 	void cleanup() {
 
+		// todo: unregister?
+
 		cputs(YELLOW, "Unloaded module: 'sign.so'");
 
 	}
 
 }
 
-void Sign::send(Client *client, char *string) {
+Sign::Sign(char *text, bool freeStr): Tile(T_SIGN, text, freeStr) {}
+
+void Sign::send(Client *client, char *str) {
 
 	Packet packet;
 
-	packet.size = strlen(string) + 2;
+	packet.size = strlen(str) + 2;
 	packet.raw = (uint8_t*) malloc(packet.size + 1);
 
 	packet.raw[0] = P_SIGN;
-	strcpy((char*) packet.raw + 1, string);
+	strcpy((char*) packet.raw + 1, str);
 
 	client->send(&packet);
 	free(packet.raw);
 
 }
 
-void Sign::send(char *string) {
+void Sign::send(char *str) {
 
 	Packet packet;
 
-	packet.size = strlen(string) + 2;
+	packet.size = strlen(str) + 2;
 	packet.raw = (uint8_t*) malloc(packet.size + 1);
 
 	packet.raw[0] = P_SIGN;
-	strcpy((char*) packet.raw + 1, string);
+	strcpy((char*) packet.raw + 1, str);
 
 	Client::broadcast(&packet);
 	free(packet.raw);
 
 }
 
+void Sign::interact(Client *client) {
+
+	Sign::send(client, (char*) special);
+
+}
+
+Tile* newSign(void *text, bool freeSpecial) {
+
+	return new Sign((char*) text, freeSpecial);
+
+}

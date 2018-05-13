@@ -44,23 +44,24 @@ class NodeList {
 
 		} Node;
 
-		unsigned int len;
-
-		void* add(void *item, unsigned int index = UINT_MAX);
-		void* get(unsigned int index);
-		Node* find(void* item); // inspect me
-		void rem(unsigned int index);
-		void rem(void* item);
+		unsigned int size = 0;
 
 		NodeList();
 		~NodeList();
+
+		void* operator[](unsigned int index);
+
+		void* add(void *item, unsigned int index = UINT_MAX);
+		Node* find(void* item); // inspect me
+		void rem(unsigned int index);
+		void rem(void* item);
 
 	private:
 
 		Timing::mutex m = MTX_DEFAULT;
 
-		Node *last;
-		Node *root;
+		Node *last = NULL;
+		Node *root = NULL;
 
 		Node* find(unsigned int index);
 		void del(Node* node);

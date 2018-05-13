@@ -47,6 +47,7 @@ bool tickNet(Packet *packet, Client *client) {
 			delete person;
 
 		} break;
+		// todo: should it be return true?
 
 		case P_NEWP: new Person(client);
 		return true;
@@ -77,9 +78,9 @@ bool tickNet(Packet *packet, Client *client) {
 
 Person* Person::get(Client *client) {
 
-	for (unsigned int i = 0; i < persons.len; i++) {
+	for (unsigned int i = 0; i < persons.size; i++) {
 
-		Person *person = (Person*) persons.get(i);
+		Person *person = (Person*) persons[i];
 		if (person->client == client) return person;
 
 	}

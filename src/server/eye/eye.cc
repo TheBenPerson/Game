@@ -7,6 +7,7 @@
 #include "eye.hh"
 #include "fireball.hh"
 #include "packet.hh"
+#include "tiledef.hh"
 #include "world.hh"
 
 extern "C" {
@@ -74,14 +75,14 @@ bool Eye::tick(timespec *time) {
 		Tile *tile = World::getTile(&tiles[i]);
 		switch (tile->id) {
 
-			case Tile::ROCK:
+			case T_ROCK:
 			// other solids
 			bounce = true;
 			bp = &tiles[i];
 
 			break;
 
-			default: World::setTile(&tiles[i], Tile::ICE);
+			default: World::setTile(&tiles[i], T_ICE);
 			break;
 
 		}

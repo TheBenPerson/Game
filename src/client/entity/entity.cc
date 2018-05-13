@@ -29,9 +29,9 @@ extern "C" {
 
 	void cleanup() {
 
-		while (Entity::entities.len) {
+		while (Entity::entities.size) {
 
-			Entity *entity = (Entity*) Entity::entities.get(0);
+			Entity *entity = (Entity*) Entity::entities[0];
 			delete entity;
 
 		}
@@ -77,9 +77,9 @@ bool tickNet(Packet *packet) {
 
 void draw() {
 
-	for (unsigned int i = 0; i < Entity::entities.len; i++) {
+	for (unsigned int i = 0; i < Entity::entities.size; i++) {
 
-		Entity *entity = (Entity*) Entity::entities.get(i);
+		Entity *entity = (Entity*) Entity::entities[i];
 		entity->draw();
 
 	}
@@ -90,9 +90,9 @@ NodeList Entity::entities;
 
 Entity* Entity::get(unsigned int id) {
 
-	for (unsigned int i = 0; i < entities.len; i++) {
+	for (unsigned int i = 0; i < entities.size; i++) {
 
-		Entity *entity = (Entity*) entities.get(i);
+		Entity *entity = (Entity*) entities[i];
 		if (entity->id == id) return entity;
 
 	}

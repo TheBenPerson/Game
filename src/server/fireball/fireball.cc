@@ -6,7 +6,7 @@
 #include "console.hh"
 #include "explosion.hh"
 #include "fireball.hh"
-#include "tile.hh"
+#include "tiledef.hh"
 #include "world.hh"
 
 extern "C" {
@@ -61,7 +61,7 @@ bool Fireball::tick(timespec *time) {
 	for (unsigned int i = 0; i < size; i++) {
 
 		Tile *tile = World::getTile(&tiles[i]);
-		if (tile->id == Tile::ROCK) hit = true;
+		if (tile->id == T_ROCK) hit = true;
 
 	}
 

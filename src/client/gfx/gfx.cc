@@ -406,8 +406,8 @@ void draw() {
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	for (unsigned int i = 0; i < GFX::listeners.len; i++)
-		((void (*)()) GFX::listeners.get(i))();
+	for (unsigned int i = 0; i < GFX::listeners.size; i++)
+		((void (*)()) GFX::listeners[i])();
 
 	WIN::swapBuffers();
 	GFX::frame++;

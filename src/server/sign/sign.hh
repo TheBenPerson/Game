@@ -2,12 +2,19 @@
 #define GAME_SERVER_SIGN
 
 #include "client.hh"
+#include "tile.hh"
 
-namespace Sign {
+class Sign: public Tile {
 
-	void send(Client *client, char *string);
-	void send(char *string);
+	public:
 
-}
+		static void send(Client *client, char *str);
+		static void send(char *str);
+
+		Sign(char *text = NULL, bool freeStr = false);
+
+		void interact(Client *client);
+
+};
 
 #endif

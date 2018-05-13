@@ -32,7 +32,6 @@
 
 #include "nodelist.hh"
 #include "point.hh"
-#include "tile.hh"
 
 namespace World {
 
@@ -41,8 +40,11 @@ namespace World {
 	extern uint8_t *tiles;
 	extern NodeList listeners;
 
+	extern float scale;
 	extern Point pos;
 	extern float rot;
+
+	extern unsigned int getIndex(Point *pos);
 
 }
 

@@ -29,6 +29,29 @@
 
 #include "nodelist.hh"
 
+NodeList::NodeList() {}
+
+NodeList::~NodeList() {
+
+	Node* node;
+
+	while (root) {
+
+		node = root;
+
+		root = node->next;
+		delete node;
+
+	}
+
+}
+
+void* NodeList::operator[](unsigned int index) {
+
+	return find(index)->val;;
+
+}
+
 void* NodeList::add(void *item, unsigned int index) {
 
 	Node *node = new Node();
@@ -36,7 +59,7 @@ void* NodeList::add(void *item, unsigned int index) {
 
 	Timing::lock(&m);
 
-	if (index == UINT_MAX) index = len;
+	if (index == UINT_MAX) index = size;
 
 	if (!index) {
 
@@ -50,7 +73,7 @@ void* NodeList::add(void *item, unsigned int index) {
 
 		root = node;
 
-		len++;
+		size++;
 		Timing::unlock(&m);
 
 		return item;
@@ -67,7 +90,7 @@ void* NodeList::add(void *item, unsigned int index) {
 	if (node->next) node->next->prev = node;
 	else last = node;
 
-	len++;
+	size++;
 	Timing::unlock(&m);
 
 	return item;
@@ -83,7 +106,7 @@ NodeList::Node* NodeList::find(unsigned int index) {
 	unsigned int i;
 
 	// find most efficient way to cycle
-	if ((len - 1 - index) >= index) {
+	if ((size - 1 - index) >= index) {
 
 		node = root;
 
@@ -94,7 +117,7 @@ NodeList::Node* NodeList::find(unsigned int index) {
 
 		node = last;
 
-		for (i = len - 1; i > index; i--)
+		for (i = size - 1; i > index; i--)
 			node = node->prev;
 
 	}
@@ -131,15 +154,9 @@ void NodeList::del(Node* node) {
 	if (last == node) last = node->prev;
 
 	delete node;
-	len--;
+	size--;
 
 	Timing::unlock(&m);
-
-}
-
-void* NodeList::get(unsigned int index) {
-
-	return find(index)->val;
 
 }
 
@@ -152,22 +169,5 @@ void NodeList::rem(unsigned int index) {
 void NodeList::rem(void* item) {
 
 	del(find(item));
-
-}
-
-NodeList::NodeList(): len(0), last(NULL), root(NULL) {}
-
-NodeList::~NodeList() {
-
-	Node* node;
-
-	while (root) {
-
-		node = root;
-
-		root = node->next;
-		delete node;
-
-	}
 
 }

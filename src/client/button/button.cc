@@ -35,9 +35,9 @@ static void del(Button::Menu *menu) {
 
 	for (unsigned int m = 0; m < 2; m++) {
 
-		for (unsigned int i = 0; i < menu->lists[m].len; i++) {
+		for (unsigned int i = 0; i < menu->lists[m].size; i++) {
 
-			Button *button = (Button*) menu->lists[m].get(i);
+			Button *button = (Button*) (menu->lists[m])[i];
 			delete button;
 
 		}
@@ -97,7 +97,7 @@ Button::Button(char *name, Action *action, Menu *parent, Point *pos): name(name)
 		this->pos = NULL;
 
 		if (parent == root) parent->lists[0].add((void*) this);
-		else parent->lists[0].add((void*) this, parent->lists[0].len - 1);
+		else parent->lists[0].add((void*) this, parent->lists[0].size - 1);
 
 	}
 

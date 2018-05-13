@@ -5,7 +5,7 @@
 #include "entity.hh"
 #include "explosion.hh"
 #include "point.hh"
-#include "tile.hh"
+#include "tiledef.hh"
 #include "world.hh"
 
 extern "C" {
@@ -55,7 +55,7 @@ bool Explosion::tick(timespec *time) {
 	for (unsigned int i = 0; i < size; i++) {
 
 		Tile *tile = World::getTile(&tiles[i]);
-		if (tile->id != Tile::ROCK) World::setTile(&tiles[i], Tile::LAVA);
+		if (tile->id == T_GRASS) World::setTile(&tiles[i], T_DIRT);
 
 	}
 

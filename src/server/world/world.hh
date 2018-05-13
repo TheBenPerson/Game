@@ -27,17 +27,17 @@
 
 #ifndef GAME_SERVER_WORLD
 
+#include <stdint.h>
+
 #include "point.hh"
 #include "tile.hh"
 
 namespace World {
 
-	extern Tile *tiles;
+	extern Tile **tiles;
 	extern unsigned int width;
 	extern unsigned int height;
 
-	bool init();
-	void cleanup();
 	bool loadMap(char *name);
 	Tile* getTile(Point *pos);
 	void setTile(Point *pos, uint8_t id);

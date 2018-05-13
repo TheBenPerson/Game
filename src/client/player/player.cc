@@ -15,6 +15,7 @@ static float speed = 2;
 static GFX::texture tex;
 
 static void draw();
+static void handlerInput();
 
 extern "C" {
 
@@ -25,6 +26,8 @@ extern "C" {
 		tex = GFX::loadTexture("player.png");
 		GFX::listeners.add((void*) &draw);
 
+		Input::listeners.add((void*) &handlerInput);
+
 		cputs(GREEN, "Loaded module: 'player.so'");
 
 		return true;
@@ -32,6 +35,8 @@ extern "C" {
 	}
 
 	void cleanup() {
+
+		Input::listeners.rem((void*) &handlerInput);
 
 		GFX::listeners.rem((void*) &draw);
 		GFX::freeTexture(&tex);
@@ -54,68 +59,35 @@ void draw() {
 		return;
 
 	}
-
 	*/
-
-	if (Input::actions[Input::PRIMARY]) {
-
-		unsigned int x = World::pos.x + (World::width / 2.0f);
-		unsigned int y = (World::height / 2.0f) - World::pos.y;
-
-		unsigned int index = (y * World::width) + x;
-
-		if (World::tiles[index] != Tile::SAND) {
-
-			World::tiles[index] = Tile::SAND;
-
-			struct {
-
-				uint8_t id = P_SBLK;
-				uint16_t index;
-				uint8_t type = Tile::SAND;
-
-			} __attribute__((packed)) data;
-
-			data.index = index;
-
-			Packet packet;
-			packet.raw = (uint8_t*) &data;
-			packet.size = sizeof(data);
-
-			Net::send(&packet);
-
-		}
-
-	}
 
 	// TODO: move me
 	// if (Input::actions[Input::EXIT]) Client::state = Client::PAUSED;
 
 	Point vel = {0, 0};
-	World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
 
-	if (Input::actions[Input::UP]) {
+	if (Input::actions[Input::UP].state) {
 
 		vel.x += sinf(World::rot) * speed;
 		vel.y += cosf(World::rot) * speed;
 
 	}
 
-	if (Input::actions[Input::DOWN]) {
+	if (Input::actions[Input::DOWN].state) {
 
 		vel.x -= sinf(World::rot) * speed;
 		vel.y -= cosf(World::rot) * speed;
 
 	}
 
-	if (Input::actions[Input::LEFT]) {
+	if (Input::actions[Input::LEFT].state) {
 
 		vel.x += sinf(World::rot - M_PI_2) * speed;
 		vel.y += cosf(World::rot - M_PI_2) * speed;
 
 	}
 
-	if (Input::actions[Input::RIGHT]) {
+	if (Input::actions[Input::RIGHT].state) {
 
 		vel.x -= sinf(World::rot - M_PI_2) * speed;
 		vel.y -= cosf(World::rot - M_PI_2) * speed;
@@ -144,5 +116,49 @@ void draw() {
 	packet.size = sizeof(data);
 
 	Net::send(&packet);
+
+}
+
+void handlerInput() {
+
+	if (!Input::actions[Input::MODIFIER].state && Input::wasCursor) {
+
+		World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
+		return;
+
+	}
+
+	if (Input::actions[Input::MODIFIER].changed) {
+
+		WIN::setCursor(Input::actions[Input::MODIFIER].state);
+
+	}
+
+	if (Input::actions[Input::MODIFIER].state) {
+	if (Input::actions[Input::PRIMARY].changed && Input::actions[Input::PRIMARY].state) {
+
+		Point pos = Input::cursor;
+		pos /= World::scale;
+		pos.rot(-World::rot);
+		pos += World::pos;
+
+		unsigned int index = World::getIndex(&pos);
+
+		struct {
+
+			uint8_t id = P_INTR;
+			uint16_t index;
+
+		} __attribute__((packed)) data;
+
+		data.index = index;
+
+		Packet packet;
+		packet.raw = (uint8_t*) &data;
+		packet.size = sizeof(data);
+
+		Net::send(&packet);
+
+	}}
 
 }

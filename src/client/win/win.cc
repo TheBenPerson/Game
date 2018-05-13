@@ -25,16 +25,11 @@
  *
  */
 
-#include <GL/glx.h>
-#include <GL/glxext.h>
+#include <GLFW/glfw3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <X11/Xlib.h>
-#include <X11/Xlib-xcb.h>
-#include <xcb/xcb.h>
-#include <xcb/xcb_atom.h>
 
 #include "client.hh"
 #include "console.hh"
@@ -45,13 +40,11 @@
 #include "timing.hh"
 #include "win.hh"
 
-// global variables
-
 namespace WIN {
 
 	bool fullscreen;
-	unsigned int screenWidth;
-	unsigned int screenHeight;
+	unsigned int screenWidth = 640;
+	unsigned int screenHeight = 480;
 	bool vSync;
 
 	unsigned int height;
@@ -61,55 +54,48 @@ namespace WIN {
 
 }
 
-// static variables
+static GLFWwindow* window;
+static int* keys[Input::NUM_ACTIONS];
 static Timing::thread t;
 static bool running = true;
-
-static xcb_connection_t *connection;
-static GLXContext context;
-static Display  *display;
-static xcb_window_t rootWin;
-static xcb_window_t winID;
-static xcb_atom_t NET_WM_STATE;
-static xcb_atom_t NET_WM_STATE_FULLSCREEN;
-static xcb_atom_t WM_DELETE_WINDOW;
-
-static xcb_keysym_t* keys[Input::NUM_ACTIONS];
-
 static char **text;
 
-// static functions
-
-static bool initX11();
 static bool createWindow();
 static void* threadMain(void*);
 static void loadKeys();
 static void toggleFS();
 static void fullscreenHandler();
 
-// global functions
+static void eventHandler(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+static void errorHandler(int, const char *error) {
+
+	ceprintf(RED, "GLFW error: %s\n", error);
+
+}
+
 extern "C" {
 
 	bool init() {
 
-		// doesn't require configs and could fail
-		if (!initX11()) return false;
+		glfwSetErrorCallback(errorHandler);
+		if (!glfwInit()) return false;
 
 		Client::config.set("win.fullscreen", (void*) true);
 		Client::config.set("win.vsync", (void*) true);
 
-		Client::config.set("win.kbd.exit", (void*) "Escape");
+		Client::config.set("win.kbd.exit", (void*) "ESC");
 		Client::config.set("win.kbd.fullscreen", (void*) "F11");
 		Client::config.set("win.kbd.left", (void*) "A");
 		Client::config.set("win.kbd.right", (void*) "D");
 		Client::config.set("win.kbd.up", (void*) "W");
 		Client::config.set("win.kbd.down", (void*) "S");
-		Client::config.set("win.kbd.primary", (void*) "Left_Click,Return");
-		Client::config.set("win.kbd.secondary", (void*) "space");
-		Client::config.set("win.kbd.modifier", (void*) "Shift_L");
+		Client::config.set("win.kbd.primary", (void*) "LMOUSE,RETURN");
+		Client::config.set("win.kbd.secondary", (void*) "SPACE");
+		Client::config.set("win.kbd.modifier", (void*) "LSHIFT");
 
 		Client::config.load("win.cfg");
-		if (!createWindow()) return false; // could also fail
+		if (!createWindow()) return false;
 
 		Button::Action action;
 		action.menu = NULL;
@@ -137,12 +123,17 @@ extern "C" {
 
 		Input::listeners.rem((void*) &fullscreenHandler);
 
-		running = false;
-		xcb_destroy_window(connection, winID);
-		glXDestroyContext(display, context);
-		XCloseDisplay(display);
+		if (running) {
 
-		Timing::waitFor(t);
+			running = false;
+			glfwPostEmptyEvent();
+
+			Timing::waitFor(t);
+
+		}
+
+		glfwDestroyWindow(window);
+		glfwTerminate();
 
 		for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++)
 			delete[] keys[i];
@@ -159,238 +150,120 @@ namespace WIN {
 
 	void showWindow() {
 
-		xcb_map_window(connection, winID);
-		if (fullscreen) setFullscreen(true);
+		glfwShowWindow(window);
+
+		WIN::fullscreen = (bool) Client::config.get("win.fullscreen")->val;
+		if (WIN::fullscreen) WIN::setFullscreen(true);
 
 	}
 
 	void setFullscreen(bool mode) {
 
-		xcb_client_message_event_t event;
+		GLFWmonitor *monitor = NULL;
 
-		memset(&event, NULL, sizeof(xcb_configure_notify_event_t));
+		unsigned int width = screenHeight;
+		unsigned int height = screenHeight;
 
-		event.response_type = XCB_CLIENT_MESSAGE;
-		event.format = 32;
-		event.window = winID;
-		event.type = NET_WM_STATE;
-		event.data.data32[0] = mode;
-		event.data.data32[1] = NET_WM_STATE_FULLSCREEN;
-		event.data.data32[2] = 0;
-		event.data.data32[3] = 1;
-		event.data.data32[4] = 0;
+		if (mode) {
 
-		xcb_send_event(connection, false, rootWin, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_STRUCTURE_NOTIFY, (const char*) &event);
-		fullscreen = mode;
+			monitor = glfwGetPrimaryMonitor();
+			width = screenWidth;
+
+		}
+
+		glfwSetWindowMonitor(window, monitor, (screenWidth - screenHeight) / 2, 0, width, height, GLFW_DONT_CARE);
 
 		if (mode) *text = "Fullscreen: True";
 		else *text = "Fullscreen: False";
 
 	}
 
+	void setCursor(bool mode) {
+
+		glfwSetInputMode(window, GLFW_CURSOR, mode ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+
+	}
+
 	bool initContext() {
 
-		if (!glXMakeCurrent(display, winID, context)) {
-
-			glXDestroyContext(display, context);
-			xcb_destroy_window(connection, winID);
-
-			XCloseDisplay(display);
-			ceputs(RED, "Error initalizing context: an unknown error has occurred");
-
-			return false;
-
-		}
-
 		vSync = (bool) Client::config.get("win.vsync")->val;
-		if (!vSync) {
+		if (!vSync) puts("Warning: VSync is disabled");
 
-			puts("Warning: VSync is disabled");
-			return true;
+		glfwMakeContextCurrent(window);
+		glfwSwapInterval(vSync);
 
-		}
-
-		PFNGLXSWAPINTERVALEXTPROC glXSwapIntervalEXT = (PFNGLXSWAPINTERVALEXTPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalEXT");
-
-		if (glXSwapIntervalEXT) {
-
-			glXSwapIntervalEXT(display, winID, vSync);
-			return true;
-
-		}
-
-		puts("Warning: extention glXSwapIntervalEXT not available - trying MESA version instead");
-		PFNGLXSWAPINTERVALMESAPROC glXSwapIntervalMESA = (PFNGLXSWAPINTERVALMESAPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalMESA");
-
-		if (glXSwapIntervalMESA) {
-
-			glXSwapIntervalMESA(vSync);
-			return true;
-
-		}
-
-		puts("Warning: extention glXSwapIntervalMESA not available - trying SGI version instead");
-		PFNGLXSWAPINTERVALSGIPROC glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalSGI");
-
-		if (glXSwapIntervalSGI) {
-
-			glXSwapIntervalSGI(vSync);
-			return true;
-
-		}
-
-		puts("Warning: no swap control extentions available; VSync is disabled");
 		return true;
 
 	}
 
 	void cleanupContext() {
 
-		glXMakeContextCurrent(display, None, None, NULL);
+		glfwMakeContextCurrent(NULL);
 
 	}
 
 	void swapBuffers() {
 
-		glXSwapBuffers(display, winID);
+		glfwSwapBuffers(window);
 
 	}
 
 }
 
-// static functions
-bool initX11() {
+static void resizeHandler(GLFWwindow* window, int width, int height) {
 
-	char *displayVar = getenv("DISPLAY");
-	display = XOpenDisplay(displayVar);
+	WIN::width = width;
+	WIN::height = height;
 
-	if (!display) {
+	WIN::aspect = (float) WIN::width / (float) WIN::height;
+	WIN::resized = true;
 
-		ceprintf(RED, "Error opening display '%s': an unknown error has occurred\n", displayVar);
-		return false;
+}
 
-	}
+static void cursorHandler(GLFWwindow* window, double posX, double posY) {
 
-	int major;
-	int minor;
+	float x = posX;
+	float y = posY;
+	y = WIN::height - y;
 
-	glXQueryVersion(display, &major, &minor);
+	Input::cursor.x = (((x / WIN::width) * 20) - 10) * WIN::aspect;
+	Input::cursor.y = ((y / WIN::height) * 20) - 10;
 
-	if (major == 1 && minor < 2) {
+	Input::wasCursor = true;
+	Input::notify();
 
-		XCloseDisplay(display);
-		ceputs(RED, "Error creating visual: glx version 1.2 or greater is required");
+}
 
-		return false;
+static void mouseHandler(GLFWwindow* window, int button, int action, int mods) {
 
-	}
-
-	connection = XGetXCBConnection(display);
-	xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(connection)).data;
-
-	WIN::screenWidth = screen->width_in_pixels;
-	WIN::screenHeight = screen->height_in_pixels;
-
-	printf("Detected resolution of: %ix%i\n", WIN::screenWidth, WIN::screenHeight);
-
-	rootWin = screen->root;
-
-	char *name;
-	xcb_intern_atom_cookie_t cookie;
-	xcb_intern_atom_reply_t *reply;
-
-	name = "WM_DELETE_WINDOW";
-	cookie = xcb_intern_atom(connection, true, strlen(name), name);
-	reply = xcb_intern_atom_reply(connection, cookie, NULL);
-
-	WM_DELETE_WINDOW = reply->atom;
-	free(reply);
-
-	name = "_NET_WM_STATE";
-	cookie = xcb_intern_atom(connection, true, strlen(name), name);
-	reply = xcb_intern_atom_reply(connection, cookie, NULL);
-
-	NET_WM_STATE = reply->atom;
-	free(reply);
-
-	name = "_NET_WM_STATE_FULLSCREEN";
-	cookie = xcb_intern_atom(connection, true, strlen(name), name);
-	reply = xcb_intern_atom_reply(connection, cookie, NULL);
-
-	NET_WM_STATE_FULLSCREEN = reply->atom;
-	free(reply);
-
-	return true;
+	eventHandler(window, button, NULL, action, mods);
 
 }
 
 bool createWindow() {
 
-	int attr[] = {
+	GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+	if (monitor)  {
 
-		GLX_RGBA,
-		GLX_RED_SIZE, 8,
-		GLX_GREEN_SIZE, 8,
-		GLX_BLUE_SIZE, 8,
-		GLX_ALPHA_SIZE, 8,
-		GLX_DEPTH_SIZE, 24,
-		GLX_DOUBLEBUFFER, true,
-		NULL
+		GLFWvidmode *mode = (GLFWvidmode*) glfwGetVideoMode(monitor);
+		if (mode) {
 
-	};
+			WIN::screenWidth = mode->width;
+			WIN::screenHeight = mode->height;
 
-	XVisualInfo *visualInfo = glXChooseVisual(display, 0/*CHANGE THIS!!!*/, attr);
+			printf("Detected resolution of (%ix%i)\n", WIN::screenWidth, WIN::screenHeight);
 
-	if (!visualInfo) {
+		} else perror("Warning: error getting screen resolution");
 
-		XCloseDisplay(display);
-		ceputs(RED, "Error choosing visual: no visuals exist that match the required criteria");
+	} else perror("Warning: error getting monitor information");
 
-		return false;
+	glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+	window = glfwCreateWindow(WIN::screenHeight, WIN::screenHeight, "Game", NULL, NULL);
+	if (!window) return false;
 
-	}
-
-	uint32_t eventMask =
-	XCB_EVENT_MASK_BUTTON_PRESS
-	| XCB_EVENT_MASK_BUTTON_RELEASE
-	| XCB_EVENT_MASK_KEY_PRESS
-	| XCB_EVENT_MASK_KEY_RELEASE
-	| XCB_EVENT_MASK_POINTER_MOTION
-	| XCB_EVENT_MASK_STRUCTURE_NOTIFY;
-
-	winID = xcb_generate_id(connection);
-	xcb_create_window(connection, visualInfo->depth, winID, rootWin, (WIN::screenWidth - WIN::screenHeight) / 2, 0, WIN::screenHeight, WIN::screenHeight, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, visualInfo->visualid, XCB_CW_EVENT_MASK, &eventMask);
-
-	char *string;
-
-	string = "Game";
-	xcb_change_property(connection, XCB_PROP_MODE_REPLACE, winID, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(string), string);
-
-	string = "WM_PROTOCOLS";
-	xcb_intern_atom_cookie_t cookie = xcb_intern_atom(connection, true, strlen(string), string);
-	xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(connection, cookie, NULL);
-
-	xcb_atom_t WM_PROTOCOLS = reply->atom;
-	free(reply);
-
-	xcb_change_property(connection, XCB_PROP_MODE_APPEND, winID, WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, (void*) &WM_DELETE_WINDOW);
-
-	WIN::fullscreen = (bool) Client::config.get("win.fullscreen")->val;
-	// set fullscreen after window is mapped
-	// some window managers like i3 don't set it fullscreen otherwise
-
-	context = glXCreateContext(display, visualInfo, NULL, true);
-	XFree(visualInfo);
-
-	if (!context) {
-
-		xcb_destroy_window(connection, winID);
-		XCloseDisplay(display);
-
-		ceputs(RED, "Error creating context: an unknown error has occurred");
-		return false;
-
-	}
+	glfwSetWindowSizeCallback(window, &resizeHandler);
+	glfwSetCursorPosCallback(window, &cursorHandler);
+	glfwSetMouseButtonCallback(window, &mouseHandler);
 
 	return true;
 
@@ -398,96 +271,20 @@ bool createWindow() {
 
 void* threadMain(void*) {
 
-	for (;;) {
+	for (; running;) {
 
-		xcb_generic_event_t *event = xcb_wait_for_event(connection);
-		if (!event && !running) break;
+		bool result = glfwWindowShouldClose(window);
+		if (result) {
 
-		uint8_t type = event->response_type & ~0x80;
+			// signal not to send empty event
+			running = false;
+			Game::stop();
 
-		if (type == XCB_CONFIGURE_NOTIFY) {
-
-			WIN::width = ((xcb_configure_notify_event_t*) event)->width;
-			WIN::height = ((xcb_configure_notify_event_t*) event)->height;
-
-			WIN::aspect = (float) WIN::width / (float) WIN::height;
-			WIN::resized = true;
-
-		} else if (type == XCB_CLIENT_MESSAGE) {
-
-			if (((xcb_client_message_event_t*) event)->data.data32[0] == WM_DELETE_WINDOW)
-				Game::stop();
-
-		} else {
-
-			switch (type) {
-
-				case XCB_BUTTON_PRESS:
-				case XCB_KEY_PRESS: {
-
-					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
-					for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++) {
-
-						for (unsigned int n = 0; keys[i][n]; n++) {
-
-							if (keys[i][n] == key) {
-
-								Input::actions[i] = true;
-								break;
-
-							}
-
-						}
-
-					}
-
-					Input::wasCursor = false;
-
-				} break;
-
-				case XCB_BUTTON_RELEASE:
-				case XCB_KEY_RELEASE: {
-
-					xcb_keycode_t key = ((xcb_key_press_event_t*) event)->detail;
-					for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++) {
-
-						for (unsigned int n = 0; keys[i][n]; n++) {
-
-							if (keys[i][n] == key) {
-
-								Input::actions[i] = false;
-								break;
-
-							}
-
-						}
-
-					}
-
-					Input::wasCursor = false;
-
-				} break;
-
-				case XCB_MOTION_NOTIFY:
-
-					float x = (float) ((xcb_motion_notify_event_t*) event)->event_x;
-					float y = (float) ((xcb_motion_notify_event_t*) event)->event_y;
-					y = WIN::height - y;
-
-					Input::cursor.x = (((x / WIN::width) * 20) - 10) * WIN::aspect;
-					Input::cursor.y = ((y / WIN::height) * 20) - 10;
-
-					Input::wasCursor = true;
-
-				break;
-
-			}
-
-			Input::notify();
+			break;
 
 		}
 
-		free(event);
+		glfwWaitEvents();
 
 	}
 
@@ -507,24 +304,52 @@ static void loadKey(Input::Action action, char *key) {
 	for (; c - 1; n++)
 		c = strchr(c, ',') + 1;
 
-	keys[action] = new xcb_keysym_t[n];
+	keys[action] = new int[n];
 
 	c = strtok(string, ", ");
 
 	for (n = 0; c; n++) {
 
-		KeySym ks = XStringToKeysym(c);
-
-		if (ks) keys[action][n] = (xcb_keycode_t) XKeysymToKeycode(display, ks);
-		else if (!strcmp(string, "Left_Click")) keys[action][n] = 1;
-		// find the official key code for left click
+		if (!strcmp(string, "LSHIFT")) keys[action][n] = GLFW_KEY_LEFT_SHIFT;
+		else if (!strcmp(string, "RSHIFT")) keys[action][n] = GLFW_KEY_RIGHT_SHIFT;
+		else if (!strcmp(string, "LMOUSE")) keys[action][n] = GLFW_MOUSE_BUTTON_LEFT;
+		else if (!strcmp(string, "SPACE")) keys[action][n] = GLFW_KEY_SPACE;
+		else if (!strcmp(string, "RETURN")) keys[action][n] = GLFW_KEY_ENTER;
+		else keys[action][n] = c[0];
 
 		c = strtok(NULL, ", ");
 
 	}
 
-	keys[action][n] = NULL;
+	keys[action][n] = ~0;
 	free(string);
+
+}
+
+void eventHandler(GLFWwindow* window, int key, int scancode, int action, int mods) {
+
+	if (action == GLFW_REPEAT) return;
+
+	for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++) {
+
+		for (unsigned int j = 0; keys[i][j] != ~0; j++) {
+
+			if (keys[i][j] == key) {
+
+				Input::actions[i].state = (action == GLFW_PRESS);
+				Input::actions[i].changed = true;
+
+				Input::wasCursor = false;
+				Input::notify();
+
+				Input::actions[i].changed = false;
+				return;
+
+			}
+
+		}
+
+	}
 
 }
 
@@ -540,6 +365,8 @@ void loadKeys() {
 	loadKey(Input::SECONDARY, "win.kbd.secondary");
 	loadKey(Input::MODIFIER, "win.kbd.modifier");
 
+	glfwSetKeyCallback(window, &eventHandler);
+
 }
 
 void toggleFS() {
@@ -551,6 +378,6 @@ void toggleFS() {
 
 void fullscreenHandler() {
 
-	if (Input::actions[Input::FULLSCREEN]) toggleFS();
+	if (Input::actions[Input::FULLSCREEN].changed && Input::actions[Input::FULLSCREEN].state) toggleFS();
 
 }

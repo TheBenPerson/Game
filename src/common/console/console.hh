@@ -38,11 +38,11 @@
 #define MAGENTA "\33[35m"
 #define CYAN    "\33[36m"
 
-extern void cputs(char *color, char *string);
-extern void cprintf(char *color, char *format ...);
+void cputs(char *color, char *string);
+void cprintf(char *color, char *format ...);
 
-extern void ceputs(char *color, char *string);
-extern void ceprintf(char *color, char *format ...);
+void ceputs(char *color, char *string);
+void ceprintf(char *color, char *format ...);
 
 #define GAME_COMMON_CONSOLE
 #endif

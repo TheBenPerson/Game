@@ -25,19 +25,18 @@
  *
  */
 
-#ifndef GAME_COMMON_TILE
+#ifndef GAME_COMMON_TILEDEF
+#define GAME_COMMON_TILEDEF
 
-#include <stdint.h>
+// todo: namespace?
 
-typedef struct {
+enum {
 
-	enum { ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA, PORTAL, SIGN, CACTUS, NUM_TYPES };
+	T_ROCK, T_GRASS, T_DIRT, T_SAND, T_WATER, T_ICE, T_LAVA, T_PORTAL,
+	T_SIGN, T_CACTUS,
 
-	uint8_t id;
-	void *special = 0;
-	// todo: should be NULL
+	T_NUM_TYPES
 
-} Tile;
+};
 
-#define GAME_COMMON_TILE
 #endif

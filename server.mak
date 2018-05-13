@@ -40,7 +40,7 @@ $(SB)/client.so: src/server/client/client.cc
 
 .PHONY: sworld.so
 sworld.so: $(SB)/world.so
-$(SB)/world.so: $(addprefix $(SB)/, server.so net.so client.so)
+$(SB)/world.so: $(addprefix $(SB)/, tile.so server.so net.so client.so)
 $(SB)/world.so: src/server/world/world.cc
 
 .PHONY: sentity.so
@@ -67,7 +67,7 @@ $(SB)/explosion.so: src/server/explosion/explosion.cc
 
 .PHONY: ssign.so
 ssign.so: $(SB)/sign.so
-$(SB)/sign.so: $(addprefix $(SB)/, client.so)
+$(SB)/sign.so: $(addprefix $(SB)/, client.so tile.so)
 $(SB)/sign.so: src/server/sign/sign.cc
 
 .PHONY: sperson.so
@@ -75,6 +75,11 @@ sperson.so: $(SB)/person.so
 $(SB)/person.so: LFA := -lm
 $(SB)/person.so: $(addprefix $(SB)/, net.so client.so world.so entity.so fireball.so) # remove fireball
 $(SB)/person.so: src/server/person/person.cc
+
+.PHONY: tile.so
+tile.so: $(SB)/tile.so
+$(SB)/tile.so: $(addprefix $(SB)/, client.so)
+$(SB)/tile.so: src/server/tile/tile.cc
 
 $(SB)/%.so: CPATH := $(CPATH)$(shell find src/server -type d | tr '\n' ':')
 $(SB)/%.so:

@@ -30,6 +30,7 @@
 #include "client.hh"
 #include "console.hh"
 #include "main.hh"
+#include "win.hh"
 
 static void start(Button *) {
 
@@ -38,6 +39,7 @@ static void start(Button *) {
 	if (!result) return;
 
 	Client::state = Client::IN_GAME;
+	WIN::setCursor(false);
 
 }
 

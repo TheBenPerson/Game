@@ -47,7 +47,14 @@ namespace Input {
 
 	} Action;
 
-	extern bool actions[NUM_ACTIONS];
+	typedef struct {
+
+		bool state;
+		bool changed;
+
+	} State;
+
+	extern State actions[NUM_ACTIONS];
 	extern Point cursor;
 	extern bool wasCursor;
 	extern NodeList listeners;

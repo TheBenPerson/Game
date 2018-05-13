@@ -43,6 +43,7 @@ namespace WIN {
 
 	void showWindow();
 	void setFullscreen(bool mode);
+	void setCursor(bool mode);
 	bool initContext();
 	void cleanupContext();
 	void swapBuffers();

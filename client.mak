@@ -35,7 +35,7 @@ $(CB)/input.so: src/client/input/input.cc
 
 .PHONY: win.so
 win.so: $(CB)/win.so
-$(CB)/win.so: LFA := -lxcb -lX11-xcb -lX11 -lGL
+$(CB)/win.so: LFA := -lglfw -lGL
 $(CB)/win.so: $(addprefix $(CB)/, client.so input.so)
 $(CB)/win.so: src/client/win/win.cc
 

@@ -132,10 +132,10 @@ static void* tmain(void*) {
 
 			default:
 
-				for (unsigned int i = 0; i < Net::listeners.len; i++) {
+				for (unsigned int i = 0; i < Net::listeners.size; i++) {
 
 					// todo: maybe Client:: instead?
-					bool (*callback)(Packet*) = (bool (*)(Packet *)) Net::listeners.get(i);
+					bool (*callback)(Packet*) = (bool (*)(Packet *)) Net::listeners[i];
 					if (callback(&packet)) break;
 
 				}

@@ -89,7 +89,7 @@ static bool dologic(Button *button, Point *lower, Point *upper) {
 
 	if (button == selected) {
 
-		if (state == SELECTED && Input::actions[Input::PRIMARY]) state = CLICKED;
+		if (state == SELECTED && Input::actions[Input::PRIMARY].state) state = CLICKED;
 		else {
 
 			if (state == CLICKED) {
@@ -135,35 +135,35 @@ void tick() {
 
 	if (!Input::wasCursor) {
 
-		if (Input::actions[Input::EXIT]) {
+		if (Input::actions[Input::EXIT].state) {
 
 			if (menu->parent) menu = menu->parent;
 			return;
 
 		}
 
-		if (Input::actions[Input::UP] || Input::actions[Input::DOWN]) {
+		if (Input::actions[Input::UP].state || Input::actions[Input::DOWN].state) {
 
 			Audio::play("tick.ogg");
 
 			if (!selected) {
 
-				bool list = Input::actions[Input::UP];
+				bool list = Input::actions[Input::UP].state;
 
 				unsigned int num = 1;
 				if (list) {
 
-					num = menu->lists[list].len;
+					num = menu->lists[list].size;
 					if (!num) {
 
 						list = !list;
-						num = menu->lists[list].len;
+						num = menu->lists[list].size;
 
 					}
 
 				}
 
-				selected = (Button*) menu->lists[list].get(num - 1);
+				selected = (Button*) (menu->lists[list])[num - 1];
 
 				state = SELECTED;
 				return;
@@ -182,13 +182,13 @@ void tick() {
 
 			Button *button = NULL;
 
-			if (Input::actions[Input::DOWN]) {
+			if (Input::actions[Input::DOWN].state) {
 
 				if (node->next) button = (Button*) node->next->val;
 				if (!button) {
 
-					if (menu->lists[!list].len) button = (Button*) menu->lists[!list].get(0);
-					else button = (Button*) menu->lists[list].get(0);
+					if (menu->lists[!list].size) button = (Button*) (menu->lists[!list])[0];
+					else button = (Button*) (menu->lists[list])[0];
 
 				}
 
@@ -197,8 +197,8 @@ void tick() {
 				if (node->prev) button = (Button*) node->prev->val;
 				if (!button) {
 
-					if (menu->lists[!list].len) button = (Button*) menu->lists[!list].get(menu->lists[!list].len - 1);
-					else button = (Button*) menu->lists[list].get(menu->lists[!list].len - 1);
+					if (menu->lists[!list].size) button = (Button*) (menu->lists[!list])[menu->lists[!list].size - 1];
+					else button = (Button*) (menu->lists[list])[menu->lists[!list].size - 1];
 
 				}
 
@@ -210,22 +210,22 @@ void tick() {
 
 	}
 
-	float offset = ((menu->lists[0].len * (height + margin)) - margin) / 2;
-	for (unsigned int i = 0; i < menu->lists[0].len; i++) {
+	float offset = ((menu->lists[0].size * (height + margin)) - margin) / 2;
+	for (unsigned int i = 0; i < menu->lists[0].size; i++) {
 
 		Point lower = { -dwidth, offset - height - ((height + margin) * i) };
 		Point upper = { dwidth, offset - ((height + margin) * i) };
 
-		Button *button = (Button*) menu->lists[0].get(i);
+		Button *button = (Button*) (menu->lists[0])[i];
 		bool result = dologic(button, &lower, &upper);
 
 		if (result) return;
 
 	}
 
-	for (unsigned int i = 0; i < menu->lists[1].len; i++) {
+	for (unsigned int i = 0; i < menu->lists[1].size; i++) {
 
-		Button *button = (Button*) menu->lists[1].get(i);
+		Button *button = (Button*) (menu->lists[1])[i];
 
 		Point lower = { button->pos->x - dwidth, button->pos->y - dheight };
 		Point upper = { button->pos->x + dwidth, button->pos->y + dheight };
@@ -316,12 +316,12 @@ void draw() {
 	glMatrixMode(GL_MODELVIEW);
 
 	// draw auto positioned buttons
-	for (unsigned int i = 0; i < menu->lists[0].len; i++) {
+	for (unsigned int i = 0; i < menu->lists[0].size; i++) {
 
-		Button *button = (Button*) menu->lists[0].get(i);
+		Button *button = (Button*) (menu->lists[0])[i];
 
 		glPushMatrix();
-		float offset = (((menu->lists[0].len * (height + margin)) - margin) / 2) - dheight;
+		float offset = (((menu->lists[0].size * (height + margin)) - margin) / 2) - dheight;
 		glTranslatef(0, offset - (i * (height + margin)), 0);
 
 			drawButton(button);
@@ -331,9 +331,9 @@ void draw() {
 	}
 
 	// draw manually positioned button
-	for (unsigned int i = 0; i < menu->lists[1].len; i++) {
+	for (unsigned int i = 0; i < menu->lists[1].size; i++) {
 
-		Button *button = (Button*) menu->lists[1].get(i);
+		Button *button = (Button*) (menu->lists[1])[i];
 
 		glPushMatrix();
 		glTranslatef(button->pos->x, button->pos->y, 0);

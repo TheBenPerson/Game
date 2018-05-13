@@ -62,9 +62,9 @@ extern "C" {
 
 	void cleanup() {
 
-		while (Client::clients.len) {
+		while (Client::clients.size) {
 
-			Client *client = (Client*) Client::clients.get(0);
+			Client *client = (Client*) Client::clients[0];
 			client->kick("Server shut down");
 
 		}
@@ -135,9 +135,9 @@ Client* Client::get(sockaddr_in *addr) {
 
 	Client *client;
 
-	for (size_t i = 0; i < clients.len; i++) {
+	for (size_t i = 0; i < clients.size; i++) {
 
-		client = (Client*) clients.get(i);
+		client = (Client*) clients[i];
 
 		if (client->addr.sin_addr.s_addr != addr->sin_addr.s_addr) continue;
 		if (client->addr.sin_port != addr->sin_port) continue;
@@ -154,9 +154,9 @@ Client* Client::get(char *name) {
 
 	Client *client;
 
-	for (size_t i = 0; i < clients.len; i++) {
+	for (size_t i = 0; i < clients.size; i++) {
 
-		client = (Client*) clients.get(i);
+		client = (Client*) clients[i];
 		if (!strcmp(client->name, name)) return client;
 
 	}
@@ -195,16 +195,17 @@ void* Client::entry(void* arg) {
 			case P_KICK: client->running = false;
 			default:
 
-				for (unsigned int i = 0; i < Net::listeners.len; i++) {
+				for (unsigned int i = 0; i < Net::listeners.size; i++) {
 
 					// todo: maybe Client:: instead?
-					bool (*callback)(Packet*, Client*) = (bool (*)(Packet *, Client*)) Net::listeners.get(i);
+					bool (*callback)(Packet*, Client*) = (bool (*)(Packet *, Client*)) Net::listeners[i];
 					if (callback(packet, client)) break;
 
 				}
 
 		}
 
+		// todo: don't free dummy packet
 		free(packet->raw);
 
 	}
@@ -216,9 +217,9 @@ void* Client::entry(void* arg) {
 
 void Client::broadcast(Packet *packet) {
 
-	for (unsigned int i = 0; i < clients.len; i++) {
+	for (unsigned int i = 0; i < clients.size; i++) {
 
-		Client *client = (Client*) clients.get(i);
+		Client *client = (Client*) clients[i];
 		client->send(packet);
 
 	}

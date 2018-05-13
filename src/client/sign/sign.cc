@@ -57,7 +57,7 @@ void draw() {
 
 	if (!text) return;
 
-	if (Input::actions[Input::PRIMARY]) {
+	if (Input::actions[Input::PRIMARY].state) {
 
 		free(text);
 		text = NULL;

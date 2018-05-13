@@ -131,9 +131,9 @@ int main(int argc, char* argv[]) {
 	bool result = Game::loadModules("main.cfg");
 	if (result) Timing::waitFor(&cond);
 
-	for (int i = modules.len - 1; i >= 0; i--) {
+	for (int i = modules.size - 1; i >= 0; i--) {
 
-		Module *module = (Module *) modules.get(i);
+		Module *module = (Module *) modules[i];
 		if (module->cleanup) module->cleanup();
 
 		delete module;

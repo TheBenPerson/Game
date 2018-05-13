@@ -37,63 +37,10 @@
 #include "packet.hh"
 #include "point.hh"
 #include "server.hh"
+#include "tiledef.hh"
 #include "world.hh"
 
-static bool tickNet(Packet *packet, Client *client) {
-
-	switch (packet->id) {
-
-		case P_GMAP: {
-
-			printf("Sending map to %s...\n", client->name);
-
-			Packet packet;
-			packet.size = 3 + (World::width * World::height);
-			packet.raw = (uint8_t*) malloc(packet.size);
-
-			packet.raw[0] = P_GMAP;
-			packet.raw[1] = World::width;
-			packet.raw[2] = World::height;
-
-			for (unsigned int i = 3; i < packet.size; i++)
-				packet.raw[i] = World::tiles[i - 3].id;
-
-			client->send(&packet);
-			free(packet.raw);
-
-		} break;
-
-		case P_SBLK: {
-
-			struct Data {
-
-				uint16_t index;
-				uint8_t id;
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			unsigned int index = data->index;
-			World::tiles[index].id = data->id;
-
-			for (unsigned int i = 0; i < Client::clients.len; i++) {
-
-				Client *dest = (Client*) Client::clients.get(i);
-				if (dest == client) continue;
-
-				// relay packet
-				dest->send(packet);
-
-			}
-
-		} break;
-
-		default: return false;
-
-	}
-
-	return true;
-
-}
+static bool tickNet(Packet *packet, Client *client);
 
 extern "C" {
 
@@ -119,7 +66,11 @@ extern "C" {
 
 		Net::listeners.rem((void*) &tickNet);
 
+		for (unsigned int i = 0; i < (World::width * World::height); i++)
+			delete World::tiles[i];
+
 		free(World::tiles);
+
 		cputs(YELLOW, "Unloaded module: 'world.so'");
 
 	}
@@ -128,7 +79,7 @@ extern "C" {
 
 namespace World {
 
-	Tile *tiles = NULL; // should be mutex locked...
+	Tile **tiles = NULL; // should be mutex locked...
 	unsigned int width;
 	unsigned int height;
 
@@ -159,10 +110,19 @@ namespace World {
 
 		unsigned int size = width * height;
 
-		if (tiles) free(tiles);
-		tiles = (Tile*) malloc(sizeof(Tile) * size);
+		if (tiles) {
 
-		for (unsigned int i = 0; i < size; i++) {
+			for (unsigned int i = 0; i < size; i++)
+				delete tiles[i];
+
+			free(tiles);
+
+		}
+
+		tiles = (Tile**) malloc(sizeof(Tile*) * size);
+
+		for (int row = height - 1; row != -1; row--) {
+		for (unsigned int col = 0; col < width; col++) {
 
 			unsigned int id;
 			int result = fscanf(file, "%i,", &id);
@@ -175,19 +135,19 @@ namespace World {
 
 			}
 
-			tiles[i].id = id;
+			tiles[(row * width) + col] = Tile::newTile(id);
 
-		}
+		}}
 
 		// dummy to read newline
 		fgetc(file);
 
 		for (unsigned int i = 0; i < size; i++) {
 
-			if (tiles[i].id == Tile::SIGN) {
+			if (tiles[i]->id == T_SIGN) {
 
 				size_t dummy = NULL;
-				ssize_t result = getline((char**) &tiles[i].special, &dummy, file);
+				ssize_t result = getline((char**) &tiles[i]->special, &dummy, file);
 				if (result == -1) {
 
 					fclose(file);
@@ -196,6 +156,8 @@ namespace World {
 					return false;
 
 				}
+
+				tiles[i]->freeSpecial = true;
 
 			}
 
@@ -211,21 +173,21 @@ namespace World {
 	Tile* getTile(Point *pos) {
 
 		unsigned int x = pos->x + (width / 2);
-		unsigned int y = (height / 2.0f) - pos->y;
+		unsigned int y = pos->y + (height / 2);
 
-		return tiles + (y * width) + x;
+		return tiles[(y * width) + x];
 
 	}
 
 	void setTile(Point *pos, uint8_t id) {
 
 		unsigned int x = pos->x + (width / 2);
-		unsigned int y = (height / 2) - pos->y - 1;
+		unsigned int y = pos->y + (height / 2);
 
 		unsigned int index = (y * width) + x;
 
-		if (tiles[index].id == id) return;
-		tiles[index].id = id;
+		if (tiles[index]->id == id) return;
+		tiles[index]->id = id;
 
 		struct {
 
@@ -246,5 +208,69 @@ namespace World {
 		Client::broadcast(&packet);
 
 	}
+
+}
+
+
+bool tickNet(Packet *packet, Client *client) {
+
+	switch (packet->id) {
+
+		case P_INTR: {
+
+			Tile *tile = World::tiles[*((uint16_t*) packet->data)];
+			tile->interact(client);
+
+		} break;
+
+		case P_GMAP: {
+
+			printf("Sending map to %s...\n", client->name);
+
+			Packet packet;
+			packet.size = 3 + (World::width * World::height);
+			packet.raw = (uint8_t*) malloc(packet.size);
+
+			packet.raw[0] = P_GMAP;
+			packet.raw[1] = World::width;
+			packet.raw[2] = World::height;
+
+			for (unsigned int i = 3; i < packet.size; i++)
+				packet.raw[i] = World::tiles[i - 3]->id;
+
+			client->send(&packet);
+			free(packet.raw);
+
+		} break;
+
+		case P_SBLK: {
+
+			struct Data {
+
+				uint16_t index;
+				uint8_t id;
+
+			} __attribute__((packed)) *data = (Data*) packet->data;
+
+			unsigned int index = data->index;
+			World::tiles[index]->id = data->id;
+
+			for (unsigned int i = 0; i < Client::clients.size; i++) {
+
+				Client *dest = (Client*) Client::clients[i];
+				if (dest == client) continue;
+
+				// relay packet
+				dest->send(packet);
+
+			}
+
+		} break;
+
+		default: return false;
+
+	}
+
+	return true;
 
 }
