@@ -25,7 +25,7 @@ extern "C" {
 	bool init() {
 
 		t = Timing::createThread(&tmain, NULL);
-		Net::listeners.add((void*) &tickNet);
+		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'entity.so'");
 		return true;
@@ -34,7 +34,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((void*) &tickNet);
+		Net::listeners.rem((intptr_t) &tickNet);
 
 		running = false;
 		Timing::waitFor(t);
@@ -132,7 +132,7 @@ NodeList Entity::entities;
 void Entity::add() {
 
 	for (id = 0; get(id); id++) {}
-	entities.add((void*) this);
+	entities.add((intptr_t) this);
 
 	Packet packet;
 	packet.raw = (uint8_t*) toNet(&packet.size);
@@ -204,7 +204,7 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	for (int y = bottom; y < top + 1; y++) {
 	for (int x = left; x < right + 1; x++) {
 
-		(*tiles)[index++] = {x, y};
+		(*tiles)[index++] = {(float) x, (float) y};
 
 	}}
 
@@ -236,7 +236,7 @@ Entity* Entity::get(unsigned int id) {
 
 Entity::~Entity() {
 
-	entities.rem((void*) this);
+	entities.rem((intptr_t) this);
 
 	struct {
 

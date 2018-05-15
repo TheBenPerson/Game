@@ -25,6 +25,7 @@
  *
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -34,7 +35,7 @@ NodeTree::NodeTree() {
 
 	root = new Key;
 	root->name = strdup("root");
-	root->val = new NodeList;
+	root->val = (intptr_t) new NodeList;
 	root->t = key;
 
 }
@@ -68,7 +69,7 @@ NodeTree::Key* NodeTree::get(char *str) {
 
 }
 
-void NodeTree::set(char *str, void* val, bool heap) { // todo: fix
+void NodeTree::set(char *str, intptr_t val, bool heap) { // todo: fix
 
 	char *name = strdup(str);
 
@@ -89,12 +90,12 @@ void NodeTree::set(char *str, void* val, bool heap) { // todo: fix
 
 			if (token) {
 
-				key->val = new NodeList;
+				key->val = (intptr_t) new NodeList;
 				key->t = type::key;
 
 			} else key->t = type::val;
 
-			list->add((void*) key);
+			list->add((intptr_t) key);
 
 		} else token = strtok(NULL, ".");
 
@@ -103,7 +104,7 @@ void NodeTree::set(char *str, void* val, bool heap) { // todo: fix
 	}
 
 	free(name);
-	if (key->t == hval) free(key->val);
+	if (key->t == hval) free((void*) key->val);
 
 	key->t = heap ? hval : type::val;
 	key->val = val;
@@ -127,7 +128,7 @@ void NodeTree::del(char *name) {
 	}
 
 	free(name);
-	list->rem((void*) key);
+	list->rem((intptr_t) key);
 
 }
 
@@ -152,7 +153,7 @@ void NodeTree::del(Key *key) {
 
 	switch (key->t) {
 
-		case hval: free(key->val);
+		case hval: free((void*) key->val);
 		case val: delete key;
 		return;
 

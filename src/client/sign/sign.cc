@@ -1,4 +1,5 @@
 #include <GL/gl.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -20,8 +21,8 @@ extern "C" {
 
 		tex = GFX::loadTexture("sign.png");
 
-		Net::listeners.add((void*) &tickNet);
-		GFX::listeners.add((void*) &draw);
+		Net::listeners.add((intptr_t) &tickNet);
+		GFX::listeners.add((intptr_t) &draw);
 
 		cputs(GREEN, "Loaded module: 'sign.so'");
 		return true;
@@ -30,8 +31,8 @@ extern "C" {
 
 	void cleanup() {
 
-		GFX::listeners.rem((void*) &draw);
-		Net::listeners.rem((void*) &tickNet);
+		GFX::listeners.rem((intptr_t) &draw);
+		Net::listeners.rem((intptr_t) &tickNet);
 
 		GFX::freeTexture(&tex);
 
@@ -83,7 +84,7 @@ void draw() {
 	glEnd();
 	glPopMatrix();
 
-	Point pos = {-7, 5.5};
+	Point pos = {-7, 5};
 	GFX::drawText(text, &pos);
 
 }

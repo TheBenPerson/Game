@@ -30,6 +30,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -154,10 +155,10 @@ extern "C" {
 
 	bool init() {
 
-		Client::config.set("net.name", (void*) "John_Doe");
-		Client::config.set("net.host", (void*) "localhost");
-		Client::config.set("net.timeout", (void*) 30);
-		Client::config.set("net.port", (void*) 1270);
+		Client::config.set("net.name", (intptr_t) "John_Doe");
+		Client::config.set("net.host", (intptr_t) "localhost");
+		Client::config.set("net.timeout", 30);
+		Client::config.set("net.port", 1270);
 		Client::config.load("net.cfg");
 
 		name = (char*) Client::config.get("net.name")->val;
@@ -186,7 +187,7 @@ extern "C" {
 		int result = getaddrinfo(host, NULL, &hints, &info);
 		if (result) {
 
-			char *err;
+			const char *err;
 
 			if (result == EAI_SYSTEM) err = strerror(errno);
 			else err = gai_strerror(result);

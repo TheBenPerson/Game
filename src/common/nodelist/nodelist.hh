@@ -27,6 +27,7 @@
 
 #ifndef GAME_COMMON_NODELIST
 
+#include <stdint.h>
 #include <limits.h>
 
 #include "timing.hh"
@@ -40,7 +41,7 @@ class NodeList {
 			Node *prev;
 			Node *next;
 
-			void *val;
+			intptr_t val;
 
 		} Node;
 
@@ -49,12 +50,12 @@ class NodeList {
 		NodeList();
 		~NodeList();
 
-		void* operator[](unsigned int index);
+		intptr_t operator[](unsigned int index);
 
-		void* add(void *item, unsigned int index = UINT_MAX);
-		Node* find(void* item); // inspect me
+		void add(intptr_t item, unsigned int index = UINT_MAX);
+		Node* find(intptr_t item); // inspect me
 		void rem(unsigned int index);
-		void rem(void* item);
+		void rem(intptr_t item);
 
 	private:
 

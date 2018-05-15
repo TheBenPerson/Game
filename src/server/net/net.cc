@@ -39,6 +39,7 @@
 
 #include "console.hh"
 #include "main.hh"
+#include "server.hh"
 #include "net.hh"
 
 static int sock;
@@ -46,6 +47,15 @@ static int sock;
 extern "C" {
 
 	bool init() {
+
+		if (!Game::port) {
+
+			Server::config.set("net.port", 1270);
+			Server::config.load("net.cfg");
+
+			Game::port = Server::config.get("net.port")->val;
+
+		}
 
 		sock = socket(AF_INET, SOCK_DGRAM, 0);
 

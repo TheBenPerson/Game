@@ -25,6 +25,7 @@
  *
  */
 
+#include <stdint.h>
 #include <stddef.h>
 
 #include "nodelist.hh"
@@ -46,13 +47,13 @@ NodeList::~NodeList() {
 
 }
 
-void* NodeList::operator[](unsigned int index) {
+intptr_t NodeList::operator[](unsigned int index) {
 
-	return find(index)->val;;
+	return find(index)->val;
 
 }
 
-void* NodeList::add(void *item, unsigned int index) {
+void NodeList::add(intptr_t item, unsigned int index) {
 
 	Node *node = new Node();
 	node->val = item;
@@ -76,7 +77,7 @@ void* NodeList::add(void *item, unsigned int index) {
 		size++;
 		Timing::unlock(&m);
 
-		return item;
+		return;
 
 	}
 
@@ -92,8 +93,6 @@ void* NodeList::add(void *item, unsigned int index) {
 
 	size++;
 	Timing::unlock(&m);
-
-	return item;
 
 }
 
@@ -126,7 +125,7 @@ NodeList::Node* NodeList::find(unsigned int index) {
 
 }
 
-NodeList::Node* NodeList::find(void* item) {
+NodeList::Node* NodeList::find(intptr_t item) {
 
 	Node* node = root;
 
@@ -166,7 +165,7 @@ void NodeList::rem(unsigned int index) {
 
 }
 
-void NodeList::rem(void* item) {
+void NodeList::rem(intptr_t item) {
 
 	del(find(item));
 

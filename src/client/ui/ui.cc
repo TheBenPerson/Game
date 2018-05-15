@@ -59,11 +59,11 @@ extern "C" {
 
 		menu = Button::root;
 
-		Input::listeners.add((void*) &tick);
+		Input::listeners.add((intptr_t) &tick);
 
 		texBG = GFX::loadTexture("menu.png");
 		texButton = GFX::loadTexture("button.png");
-		GFX::listeners.add((void*) &draw);
+		GFX::listeners.add((intptr_t) &draw);
 
 		Audio::play("menu.ogg", true);
 
@@ -74,11 +74,11 @@ extern "C" {
 
 	void cleanup() {
 
-		GFX::listeners.rem((void*) &draw);
+		GFX::listeners.rem((intptr_t) &draw);
 		GFX::freeTexture(&texButton);
 		GFX::freeTexture(&texBG);
 
-		Input::listeners.rem((void*) &tick);
+		Input::listeners.rem((intptr_t) &tick);
 		cputs(YELLOW, "Unloaded module: 'ui.so'");
 
 	}
@@ -172,10 +172,10 @@ void tick() {
 
 			bool list = false;
 
-			NodeList::Node *node = menu->lists[0].find((void*) selected);
+			NodeList::Node *node = menu->lists[0].find((intptr_t) selected);
 			if (!node) {
 
-				node = menu->lists[1].find((void*) selected);
+				node = menu->lists[1].find((intptr_t) selected);
 				list = true;
 
 			}

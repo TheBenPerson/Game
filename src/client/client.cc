@@ -32,14 +32,24 @@
 #include "main.hh"
 #include "win.hh"
 
-static void start(Button *) {
+static void multi(Button*) {
 
 	// TODO: unload mods on escape key?
-	bool result = Game::loadModules("game.cfg");
+	bool result = Game::loadModules(false, "client.cfg");
 	if (!result) return;
 
 	Client::state = Client::IN_GAME;
 	WIN::setCursor(false);
+
+}
+
+static void single(Button*) {
+
+	// start the server
+	bool result = Game::loadModules(true, "main.cfg");
+	if (!result) return;
+
+	multi(NULL);
 
 }
 
@@ -49,9 +59,11 @@ extern "C" {
 
 		Button::Action action;
 		action.isMenu = false;
-		action.callback = &start;
 
+		action.callback = &single;
 		new Button("Single Player", &action);
+
+		action.callback = &multi;
 		new Button("Multiplayer", &action);
 
 		action.isMenu = true;

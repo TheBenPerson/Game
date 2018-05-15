@@ -38,7 +38,7 @@ class NodeTree { // i  need mutexes!!
 		typedef struct {
 
 			char *name;
-			void *val;
+			intptr_t val;
 			type t;
 
 		} Key;
@@ -47,7 +47,7 @@ class NodeTree { // i  need mutexes!!
 		~NodeTree();
 
 		Key* get(char *name);
-		void set(char *name, void *val, bool heap = false);
+		void set(char *name, intptr_t val, bool heap = false);
 		void del(char *name); // me too
 
 	private:

@@ -64,12 +64,12 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((void*) tickNet);
+		Net::listeners.add((intptr_t) tickNet);
 		Net::send(P_GMAP);
 
 		tex = GFX::loadTexture("world.png");
 		texBG = GFX::loadTexture("menu.png");
-		GFX::listeners.add((void*) &draw);
+		GFX::listeners.add((intptr_t) &draw);
 
 		cputs(GREEN, "Loaded module: 'world.so'");
 
@@ -79,7 +79,7 @@ extern "C" {
 
 	void cleanup() {
 
-		GFX::listeners.rem((void*) &draw);
+		GFX::listeners.rem((intptr_t) &draw);
 		GFX::freeTexture(&texBG);
 		GFX::freeTexture(&tex);
 
@@ -226,19 +226,8 @@ void draw() {
 
 	glPopMatrix();
 
-	glBindTexture(GL_TEXTURE_2D, NULL);
-	glBegin(GL_LINES);
-
-	glVertex2f(-1, 0);
-	glVertex2f(1, 0);
-
-	glVertex2f(0, -1);
-	glVertex2f(0, 1);
-
-	glEnd();
-
 	char buffer[50];
-	sprintf(buffer, "Rot: %f\nPos: (%f, %f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
+	sprintf(buffer, "Rot: %.2f\nPos: (%.2f, %.2f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
 
 	Point pos = {(-10 * WIN::aspect) + 1, 9};
 	GFX::drawText(buffer, &pos);

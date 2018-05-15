@@ -31,6 +31,7 @@
 #include <getopt.h>
 #include <inttypes.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,11 +45,16 @@
 typedef struct {
 
 	void *handle;
-	void (*cleanup)();
+
+	union {
+
+		void (*cleanup)();
+		char *group;
+
+	};
 
 } Module;
 
-static bool isServer;
 static NodeList modules;
 static Timing::condition cond;
 
@@ -73,9 +79,10 @@ int main(int argc, char* argv[]) {
 	"Usage: game [Options]\n\n"
 
 	"Options:\n\t"
-		"-h, --help\t\t"			"display this message and exit\n\t"
-		"-v, --version\t\t"			"display version info and exit\n\t"
-		"-s, --server <port>\t" 	"start the server on the specified port";
+		"-h, --help        display this message and exit\n\t"
+		"-v, --version     display version info and exit\n\t"
+		"-s, --server      start the server\n\t"
+		"-p, --port <port> specify the port";
 
 	bool isServer = false;
 
@@ -84,7 +91,8 @@ int main(int argc, char* argv[]) {
 
 		{"help", no_argument, NULL, 'h'},
 		{"version", no_argument, NULL, 'v'},
-		{"server", required_argument, NULL, 's'},
+		{"server", no_argument, NULL, 's'},
+		{"port", required_argument, NULL, 'p'},
 		{NULL, NULL, NULL, NULL}
 
 	};
@@ -93,7 +101,7 @@ int main(int argc, char* argv[]) {
 
 	for (;;) {
 
-		c = getopt_long(argc, argv, "hvs:", options, &index);
+		c = getopt_long(argc, argv, "hvsp:", options, &index);
 		if (c == -1) break;
 
 		switch (c) {
@@ -104,7 +112,10 @@ int main(int argc, char* argv[]) {
 			case 'v': puts(Data::versionString);
 			return 0;
 
-			case 's':
+			case 's': isServer = true;
+			break;
+
+			case 'p': {
 
 				char* flag;
 				Game::port = (uint16_t) strtol(optarg, &flag, 10);
@@ -116,9 +127,10 @@ int main(int argc, char* argv[]) {
 
 					return 1;
 
-				} else isServer = true;
+				}
 
-			break;
+			} break;
+
 			case '?': puts(usage);
 			return 1;
 
@@ -126,15 +138,25 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	::isServer = isServer;
-
-	bool result = Game::loadModules("main.cfg");
+	bool result = Game::loadModules(isServer, "main.cfg");
 	if (result) Timing::waitFor(&cond);
 
 	for (int i = modules.size - 1; i >= 0; i--) {
 
 		Module *module = (Module *) modules[i];
-		if (module->cleanup) module->cleanup();
+		if (!module->handle) {
+
+			char border[30 + strlen(module->group) + 1];
+			memset((void*) border, '=', sizeof(border));
+			border[sizeof(border) - 1] = '\0';
+
+			cputs(BLUE, border);
+			cprintf(YELLOW, "Unloading module group: '%s'...\n", module->group);
+			cputs(BLUE, border);
+
+			free(module->group);
+
+		} else module->cleanup();
 
 		delete module;
 
@@ -146,9 +168,9 @@ int main(int argc, char* argv[]) {
 
 namespace Game {
 
-	uint16_t port;
+	uint16_t port = NULL;
 
-	bool loadModule(char *path) {
+	bool loadModule(bool isServer, char *path) {
 
 		char *name = (char*) malloc(11 + strlen(path) + 1);
 		sprintf(name, "bin/%s/%s", isServer ? "server" : "client", path);
@@ -182,20 +204,35 @@ namespace Game {
 		}
 
 		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
-		modules.add((void*) mod);
+		modules.add((intptr_t) mod);
 
 		return true;
 
 	}
 
-	bool loadModules(char *name) {
+	bool loadModules(bool isServer, char *name) {
 
-		char *path = (char*) malloc(11 + strlen(name) + 1);
-		sprintf(path, "cfg/%s/%s", isServer ? "server" : "client", name);
+		// determine full file name
+		unsigned int len = strlen(name);
+
+		char base[7 + len + 1];
+		sprintf(base, "%s/%s", isServer ? "server" : "client", name);
+
+		len = strlen(base);
+
+		// todo: unsafe to use sizeof?
+		char border[28 + len + 1];
+		memset((void*) border, '=', sizeof(border));
+		border[sizeof(border) - 1] = '\0';
+
+		cputs(BLUE, border);
+		cprintf(GREEN, "Loading module group: '%s'...\n", base);
+		cputs(BLUE, border);
+
+		char path[4 + len + 1];
+		sprintf(path, "cfg/%s", base);
 
 		FILE *file = fopen(path, "r");
-		free(path);
-
 		if (!file) {
 
 			ceprintf(RED, "Error opening '%s': %s -- exiting...\n", name, strerror(errno));
@@ -217,7 +254,7 @@ namespace Game {
 
 			if (name[strlen(name) - 1] == '\n') name[strlen(name) - 1] = '\0';
 
-			bool result = Game::loadModule(name);
+			bool result = Game::loadModule(isServer, name);
 			free(name);
 
 			if (!result) return false;
@@ -225,6 +262,12 @@ namespace Game {
 		}
 
 		fclose(file);
+
+		Module *module = new Module;
+		module->handle = NULL;
+		module->group = strdup(base);
+
+		modules.add((intptr_t) module);
 		return true;
 
 	}

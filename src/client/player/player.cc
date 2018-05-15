@@ -24,9 +24,9 @@ extern "C" {
 		Net::send(P_NEWP);
 
 		tex = GFX::loadTexture("player.png");
-		GFX::listeners.add((void*) &draw);
+		GFX::listeners.add((intptr_t) &draw);
 
-		Input::listeners.add((void*) &handlerInput);
+		Input::listeners.add((intptr_t) &handlerInput);
 
 		cputs(GREEN, "Loaded module: 'player.so'");
 
@@ -36,9 +36,9 @@ extern "C" {
 
 	void cleanup() {
 
-		Input::listeners.rem((void*) &handlerInput);
+		Input::listeners.rem((intptr_t) &handlerInput);
 
-		GFX::listeners.rem((void*) &draw);
+		GFX::listeners.rem((intptr_t) &draw);
 		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'player.so'");

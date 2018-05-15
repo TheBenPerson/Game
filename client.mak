@@ -112,4 +112,4 @@ $(CB)/%.so:
 	# Compiling client module: '$(shell basename $@)'...
 	@setterm --default
 
-	gcc $(CF) -Isrc/client -shared -fpic $^ $(LF) $(LFA) -o $@
+	$(CC) $(CF) -Isrc/client -shared -fpic $^ $(LF) $(LFA) -o $@

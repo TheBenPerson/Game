@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -27,7 +28,7 @@ extern "C" {
 	void cleanup() {
 
 		for (unsigned int i = 0; i < assocs.size; i++)
-			free(assocs[i]);
+			free((void*) assocs[i]);
 
 		cputs(YELLOW, "Unloaded module: 'tile.so'");
 
@@ -41,7 +42,7 @@ void Tile::regTile(uint8_t id, Tile* (*create)(void*, bool)) {
 	assoc->id = id;
 	assoc->create = create;
 
-	assocs.add((void*) assoc);
+	assocs.add((intptr_t) assoc);
 
 }
 

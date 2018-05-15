@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "client.hh"
@@ -19,7 +20,7 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((void*) &tickNet);
+		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'person.so'");
 		return true;
@@ -28,7 +29,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((void*) &tickNet);
+		Net::listeners.rem((intptr_t) &tickNet);
 
 		cputs(YELLOW, "Unloaded module: 'person.so'");
 
@@ -97,13 +98,13 @@ Person::Person(Client *client): client(client) {
 	interval = 1000;
 
 	add();
-	persons.add((void*) this);
+	persons.add((intptr_t) this);
 
 }
 
 Person::~Person() {
 
-	persons.rem((void*) this);
+	persons.rem((intptr_t) this);
 
 }
 

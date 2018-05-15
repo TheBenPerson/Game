@@ -26,6 +26,7 @@
  */
 
 #include <GLFW/glfw3.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,18 +82,18 @@ extern "C" {
 		glfwSetErrorCallback(errorHandler);
 		if (!glfwInit()) return false;
 
-		Client::config.set("win.fullscreen", (void*) true);
-		Client::config.set("win.vsync", (void*) true);
+		Client::config.set("win.fullscreen", true);
+		Client::config.set("win.vsync", true);
 
-		Client::config.set("win.kbd.exit", (void*) "ESC");
-		Client::config.set("win.kbd.fullscreen", (void*) "F11");
-		Client::config.set("win.kbd.left", (void*) "A");
-		Client::config.set("win.kbd.right", (void*) "D");
-		Client::config.set("win.kbd.up", (void*) "W");
-		Client::config.set("win.kbd.down", (void*) "S");
-		Client::config.set("win.kbd.primary", (void*) "LMOUSE,RETURN");
-		Client::config.set("win.kbd.secondary", (void*) "SPACE");
-		Client::config.set("win.kbd.modifier", (void*) "LSHIFT");
+		Client::config.set("win.kbd.exit", (intptr_t) "ESC");
+		Client::config.set("win.kbd.fullscreen", (intptr_t) "F11");
+		Client::config.set("win.kbd.left", (intptr_t) "A");
+		Client::config.set("win.kbd.right", (intptr_t) "D");
+		Client::config.set("win.kbd.up", (intptr_t) "W");
+		Client::config.set("win.kbd.down", (intptr_t) "S");
+		Client::config.set("win.kbd.primary", (intptr_t) "LMOUSE,RETURN");
+		Client::config.set("win.kbd.secondary", (intptr_t) "SPACE");
+		Client::config.set("win.kbd.modifier", (intptr_t) "LSHIFT");
 
 		Client::config.load("win.cfg");
 		if (!createWindow()) return false;
@@ -111,7 +112,7 @@ extern "C" {
 		loadKeys();
 
 		t = Timing::createThread(threadMain, NULL);
-		Input::listeners.add((void*) &fullscreenHandler);
+		Input::listeners.add((intptr_t) &fullscreenHandler);
 
 		cputs(GREEN, "Loaded module: 'win.so'");
 
@@ -121,7 +122,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Input::listeners.rem((void*) &fullscreenHandler);
+		Input::listeners.rem((intptr_t) &fullscreenHandler);
 
 		if (running) {
 
@@ -294,6 +295,8 @@ void* threadMain(void*) {
 
 static void loadKey(Input::Action action, char *key) {
 
+	// todo: needs work
+
 	char *string = strdup((char*) Client::config.get(key)->val);
 	// don't need to if only one binding: might want to redesign this
 
@@ -301,6 +304,7 @@ static void loadKey(Input::Action action, char *key) {
 	unsigned int n = 1;
 	// at least 1 binding /w null terminator
 
+	// find number of commas
 	for (; c - 1; n++)
 		c = strchr(c, ',') + 1;
 

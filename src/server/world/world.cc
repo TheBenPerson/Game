@@ -46,7 +46,7 @@ extern "C" {
 
 	bool init() {
 
-		Server::config.set("world.map", (void*) "default.map");
+		Server::config.set("world.map", (intptr_t) "default.map");
 		Server::config.load("world.cfg");
 
 		char *map = (char*) Server::config.get("world.map")->val;
@@ -55,7 +55,7 @@ extern "C" {
 		bool result = World::loadMap(map);
 		if (!result) return false;
 
-		Net::listeners.add((void*) &tickNet);
+		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'world.so'");
 		return true;
@@ -64,7 +64,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((void*) &tickNet);
+		Net::listeners.rem((intptr_t) &tickNet);
 
 		for (unsigned int i = 0; i < (World::width * World::height); i++)
 			delete World::tiles[i];

@@ -87,4 +87,4 @@ $(SB)/%.so:
 	# Compiling server module: '$(shell basename $@)'...
 	@setterm --default
 
-	gcc $(CF) -Isrc/server -shared -fpic $^ $(LF) $(LFA) -o $@
+	$(CC) $(CF) -Isrc/server -shared -fpic $^ $(LF) $(LFA) -o $@

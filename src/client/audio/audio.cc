@@ -69,7 +69,7 @@ extern "C" {
 
 	bool init() {
 
-		Client::config.set("audio.enabled", (void*) true);
+		Client::config.set("audio.enabled", true);
 		Client::config.load("audio.cfg");
 
 		Audio::enabled = (bool) Client::config.get("audio.enabled");

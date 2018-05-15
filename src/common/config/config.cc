@@ -117,7 +117,7 @@ void Config::load(char *base) {
 			buf[len] = '.';
 			strcpy(buf + len + 1, name);
 
-			set(buf, nVal, isString);
+			set(buf, (intptr_t) nVal, isString);
 
 			delete[] buf;
 

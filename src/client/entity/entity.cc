@@ -17,8 +17,8 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((void*) &tickNet);
-		World::listeners.add((void*) &draw);
+		Net::listeners.add((intptr_t) &tickNet);
+		World::listeners.add((intptr_t) &draw);
 
 		Net::send(P_GENT);
 
@@ -36,8 +36,8 @@ extern "C" {
 
 		}
 
-		World::listeners.rem((void*) &draw);
-		Net::listeners.rem((void*) &tickNet);
+		World::listeners.rem((intptr_t) &draw);
+		Net::listeners.rem((intptr_t) &tickNet);
 
 		cputs(YELLOW, "Unloaded module: 'entity.so'");
 
@@ -114,13 +114,13 @@ Entity::Entity(void *info) {
 	id = upacket->id;
 	update(upacket);
 
-	entities.add((void*) this);
+	entities.add((intptr_t) this);
 
 }
 
 Entity::~Entity() {
 
-	entities.rem((void*) this);
+	entities.rem((intptr_t) this);
 
 }
 

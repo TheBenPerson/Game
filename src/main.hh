@@ -34,8 +34,8 @@ namespace Game {
 
 	extern uint16_t port;
 
-	bool loadModule(char *path);
-	bool loadModules(char *path);
+	bool loadModule(bool isServer, char *path);
+	bool loadModules(bool isServer, char *path);
 	void stop();
 
 }

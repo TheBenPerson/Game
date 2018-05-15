@@ -32,6 +32,7 @@
 #include <math.h>
 #include <png.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,8 +73,8 @@ extern "C" {
 
 	bool init() {
 
-		Client::config.set("gfx.fps", (void*) 60);
-		Client::config.set("gfx.res", (void*) "default");
+		Client::config.set("gfx.fps", 60);
+		Client::config.set("gfx.res", (intptr_t) "default");
 		Client::config.load("gfx.cfg");
 
 		volatile int8_t result = -1; //  volatile because reasons
@@ -227,7 +228,7 @@ namespace GFX {
 
 	texture loadTexture(char *name) {
 
-		return (GLuint) call((void* (*)(void*)) &::loadTexture, (void*) name);
+		return (uintptr_t) call((void* (*)(void*)) &::loadTexture, (void*) name);
 
 	}
 

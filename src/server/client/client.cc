@@ -48,7 +48,7 @@ extern "C" {
 
 	bool init() {
 
-		Server::config.set("client.timeout", (void*) 30);
+		Server::config.set("client.timeout", 30);
 		Server::config.load("client.cfg");
 		dtimeout = (unsigned int) Server::config.get("client.timeout")->val;
 		dtimeout /= 2; // could be zero - tell user
@@ -232,14 +232,14 @@ Client::Client(sockaddr_in *addr, char *name) {
 
 	this->name = name;
 
-	clients.add((void*) this);
+	clients.add((intptr_t) this);
 	t = Timing::createThread(&Client::entry, (void*) this);
 
 }
 
 Client::~Client() {
 
-	clients.rem((void*) this);
+	clients.rem((intptr_t) this);
 	free(name);
 
 }

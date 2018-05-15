@@ -1,5 +1,6 @@
 #include <GL/gl.h>
 #include <math.h> // for deg to rad
+#include <stdint.h>
 
 #include "console.hh"
 #include "fireball.hh"
@@ -15,7 +16,7 @@ extern "C" {
 	bool init() {
 
 		tex = GFX::loadTexture("fireball.png");
-		Net::listeners.add((void*) &tickNet);
+		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'fireball.so'");
 
@@ -25,7 +26,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((void*) &tickNet);
+		Net::listeners.rem((intptr_t) &tickNet);
 		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'fireball.so'");

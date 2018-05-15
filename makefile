@@ -24,11 +24,14 @@
 # always include files in src/common
 export CPATH := src/:$(shell find src/common -type d | tr '\n' ':')
 
+# compiler
+CC := gcc
+
 # compiler flags
-CF := -Wall -Wextra -Wpedantic -Wno-conversion-null -Wno-implicit-fallthrough -Wno-write-strings -fpermissive
+CF := -Wall -Wextra -Wpedantic
 
 # linker flags
-LF := -fsanitize=address -g
+LF := -g -fsanitize=address
 
 # build directories
 BIN := bin
@@ -60,23 +63,23 @@ $(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
 	@setterm --foreground green
 	# Compiling launcher: 'game'...
 	@setterm --default
-	gcc $(CF) $^ $(LF) -ldl -lstdc++ -rdynamic -o $@
+	$(CC) $(CF) $^ $(LF) -ldl -lstdc++ -rdynamic -o $@
 
 $(OBJ)/main.o: src/main.cc
 	@setterm --foreground green
 	# Compiling launcher: 'main.o'...
 	@setterm --default
-	gcc $(CF) -c $^ $(LF) -o $@
+	$(CC) $(CF) -c $^ $(LF) -o $@
 
 # common.so
 
 .PHONY: common.so
 common.so: $(BIN)/common.so
-$(BIN)/common.so: $(shell find src/common -type f)
+$(BIN)/common.so: $(shell find src/common -name "*.cc")
 	@setterm --foreground green
 	# Compiling library: 'common.so'...
 	@setterm --default
-	gcc $(CF) -shared -fpic $^ $(LF) -lpthread -lm -o $@
+	$(CC) $(CF) -shared -fpic $^ $(LF) -lpthread -lm -o $@
 
 # client modules
 

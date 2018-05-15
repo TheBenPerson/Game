@@ -1,5 +1,6 @@
 #include <GL/gl.h>
 #include <math.h>
+#include <stdint.h>
 
 #include "console.hh"
 #include "gfx.hh"
@@ -16,7 +17,7 @@ extern "C" {
 	bool init() {
 
 		tex = GFX::loadTexture("healer_m.png");
-		Net::listeners.add((void*) &tickNet);
+		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'person.so'");
 		return true;
@@ -25,7 +26,7 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((void*) &tickNet);
+		Net::listeners.rem((intptr_t) &tickNet);
 		GFX::freeTexture(&tex);
 
 		cputs(YELLOW, "Unloaded module: 'person.so'");
