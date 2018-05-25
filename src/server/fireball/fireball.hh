@@ -2,6 +2,7 @@
 #define GAME_SERVER_FIREBALL
 
 #include "entity.hh"
+#include "packet.hh"
 
 class Fireball: public Entity {
 
@@ -10,7 +11,7 @@ class Fireball: public Entity {
 		Fireball(Point *pos, float rot, Point *vel = NULL);
 
 		bool tick(timespec *time);
-		void* toNet(unsigned int *size);
+		void toNet(Packet *packet);
 
 	private:
 

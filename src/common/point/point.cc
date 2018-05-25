@@ -127,6 +127,13 @@ bool Point::operator>(Point &point) {
 
 }
 
+Point::operator bool() {
+
+	if (x && y) return true;
+	return false;
+
+}
+
 void Point::rot(float theta) {
 
 	float before = this->x;
@@ -134,5 +141,15 @@ void Point::rot(float theta) {
 	x = (x * cosf(theta)) - (y * sinf(theta));
 	y = (before * sinf(theta)) + (y * cosf(theta));
 
+
+}
+
+void Point::normalize() {
+
+	float len = sqrtf((x * x) + (y * y));
+	if (!len) return;
+
+	x /= len;
+	y /= len;
 
 }

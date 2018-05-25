@@ -1,4 +1,3 @@
-#include <GL/gl.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -66,25 +65,11 @@ void draw() {
 
 	}
 
-	glPushMatrix();
-	glScalef(8, 8, 1);
+	Point pos = {0, 0};
+	Point dim = {16, 16};
+	GFX::drawSprite(tex, &pos, &dim);
 
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(0, 1);
-	glVertex2f(-1, 1);
-	glTexCoord2f(1, 1);
-	glVertex2f(1, 1);
-	glTexCoord2f(1, 0);
-	glVertex2f(1, -1);
-	glTexCoord2f(0, 0);
-	glVertex2f(-1, -1);
-
-	glEnd();
-	glPopMatrix();
-
-	Point pos = {-7, 5};
+	pos = {-7, 5};
 	GFX::drawText(text, &pos);
 
 }

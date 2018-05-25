@@ -40,7 +40,7 @@ Eye::Eye(Point *pos, Point *vel) {
 	if (vel) this->vel = *vel;
 	else this->vel = {0, 0};
 
-	add();
+	send();
 
 }
 

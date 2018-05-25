@@ -27,8 +27,6 @@
 
 #include <errno.h>
 #include <GL/gl.h>
-#include <GL/glx.h>
-#include <GL/glxext.h>
 #include <math.h>
 #include <png.h>
 #include <stddef.h>
@@ -38,8 +36,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <X11/Xatom.h>
-#include <X11/Xlib.h>
 
 #include "client.hh"
 #include "config.hh"
@@ -126,11 +122,11 @@ namespace GFX {
 
 	void drawText(char *text, Point *point, float size, bool center) {
 
-		unsigned int width = 16;
-		unsigned int height = 6;
+		Point dimTex = {16, 6};
 
-		Point dimTex = {1.0f / width, 1.0f / height};
-		Point dimChar = dimTex * size * 8;
+		Point dim = {1 / 16.0f, 1 / 6.0f};
+		dim *= size * 6;
+
 		float spacing = 0;
 
 		size_t len = strlen(text);
@@ -146,7 +142,7 @@ namespace GFX {
 			unsigned int lines = 0;
 			size_t best = 0;
 
-			// get number of lines and max width
+			// get number of lines and max dimChar.x
 			for (;;) {
 
 				lines++;
@@ -172,10 +168,10 @@ namespace GFX {
 
 			}
 
-			dx = ((dimChar.x + spacing) * best) / 2;
+			dx = ((dim.x + spacing) * best) / 2;
 
 			pos.x -= dx;
-			pos.y -= ((lines * dimChar.y) / 2) - dimChar.y;
+			pos.y -= ((lines * dim.y) / 2) - dim.y;
 
 		}
 
@@ -183,46 +179,77 @@ namespace GFX {
 
 			if (text[i] == '\n') {
 
-				pos.y -= dimChar.y;
+				pos.y -= dim.y;
 				pos.x = point->x - dx;
 				continue;
 
 			}
 
-			Point offset;
-			offset.x = ((text[i] - 32) % width) * dimTex.x;
-			offset.y = -(((text[i] - 32) / width) * dimTex.y);
+			Point tpos = pos;
+			tpos.x += dim.x / 2;
+			tpos.y -= dim.y / 2;
 
-			glPushMatrix();
-			glTranslatef(pos.x, pos.y, 0);
-			glScalef(dimChar.x, dimChar.y, 1);
+			Point frame;
+			frame.x = (text[i] - 32) % (int) dimTex.x;
+			frame.y = dimTex.y - ((text[i] - 32) / (int) dimTex.x) - 1;
 
-			glMatrixMode(GL_TEXTURE);
-			glPushMatrix();
-			glTranslatef(offset.x, offset.y - dimTex.y, 0);
-			glScalef(dimTex.x, dimTex.y, 1);
+			drawSprite(font, &tpos, &dim, NULL, &dimTex, &frame);
 
-			glBindTexture(GL_TEXTURE_2D, font);
-			glBegin(GL_QUADS);
-
-			glTexCoord2f(1, 1);
-			glVertex2f(1, 0);
-			glTexCoord2f(0, 1);
-			glVertex2f(0, 0);
-			glTexCoord2f(0, 0);
-			glVertex2f(0, -1);
-			glTexCoord2f(1, 0);
-			glVertex2f(1, -1);
-
-			glEnd();
-			glPopMatrix();
-
-			glMatrixMode(GL_MODELVIEW);
-			glPopMatrix();
-
-			pos.x += dimChar.x + spacing;
+			pos.x += dim.x + spacing;
 
 		}
+
+	}
+
+	void drawSprite(GLuint tex, Point *pos, Point *dim, float rot, Point *tdim, Point *frame) {
+
+		glPushMatrix();
+
+		glTranslatef(pos->x, pos->y, 0);
+		glScalef(dim->x / 2, dim->y / 2, 1);
+
+		// opengl uses degrees ¯\_(ツ)_/¯
+		float deg = (rot * 360) / (M_PI * 2);
+		glRotatef(deg, 0, 0, 1);
+
+		glMatrixMode(GL_TEXTURE);
+		glPushMatrix();
+		glBindTexture(GL_TEXTURE_2D, tex);
+
+		if (tdim) {
+
+			// size of a single frame in texture coords
+			float width = 1 / tdim->x;
+			float height = 1 / tdim->y;
+
+			float xoff = width * frame->x;
+			float yoff = height * frame->y;
+
+			glTranslatef(xoff, yoff, 0);
+			glScalef(width, height, 1);
+
+		}
+
+		glBegin(GL_QUADS);
+
+		glTexCoord2f(0, 1);
+		glVertex2f(-1, 1);
+
+		glTexCoord2f(0, 0);
+		glVertex2f(-1, -1);
+
+		glTexCoord2f(1, 0);
+		glVertex2f(1, -1);
+
+		glTexCoord2f(1, 1);
+		glVertex2f(1, 1);
+
+		glEnd();
+
+		glPopMatrix();
+
+		glMatrixMode(GL_MODELVIEW);
+		glPopMatrix();
 
 	}
 

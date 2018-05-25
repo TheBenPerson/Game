@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "client.hh"
 #include "nodelist.hh"
+#include "packet.hh"
 #include "point.hh"
 
 class Entity {
@@ -26,8 +28,9 @@ class Entity {
 		static NodeList entities;
 
 		unsigned int id;
+		Client *client = NULL;
 
-		Point dim;
+		Point dim = {1, 1};
 		Point pos = {0, 0};
 		Point vel = {0, 0};
 
@@ -40,16 +43,19 @@ class Entity {
 		const char *type = "base";
 
 		static Entity* get(unsigned int id);
+		static Entity* get(Client *client);
 
+		Entity();
+		Entity(Client *client);
 		virtual ~Entity();
 
-		void add();
 		bool bound(Point *pos, Point *dim);
 		unsigned int boundWorld(Point **tiles);
 
 		virtual bool tick(timespec *time) = 0;
-		virtual void* toNet(unsigned int *size);
-		virtual void update(); // todo: remove virtual?
+		virtual void toNet(Packet *packet);
+		void send();
+		virtual void update();
 
 };
 

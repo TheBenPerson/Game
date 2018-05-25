@@ -1,5 +1,4 @@
-#include <GL/gl.h>
-#include <math.h> // for deg to rad
+#include <math.h>
 #include <stdint.h>
 
 #include "console.hh"
@@ -71,34 +70,10 @@ Fireball::Fireball(void *info): Entity(info) {
 
 void Fireball::draw() {
 
-	Point dpos = vel * (1 / 60.0f);
-	pos += dpos;
+	Entity::draw();
 
-	glPushMatrix();
-	glTranslatef(pos.x, pos.y, 0);
-	glRotatef(((rot + M_PI_2) * 360) / (M_PI * 2), 0, 0, 1);
-	glScalef(dim.x / 2, dim.y / 2, 1);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glTranslatef((GFX::frame / 5) / 8.0f, 0, 0);
-
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(0, 1);
-	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 8.0f, 1);
-	glVertex2f(1, 1);
-	glTexCoord2f(1 / 8.0f, 0);
-	glVertex2f(1, -1);
-	glTexCoord2f(0, 0);
-	glVertex2f(-1, -1);
-
-	glEnd();
-	glPopMatrix();
-
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	Point tdim = {8, 1};
+	Point frame = {(float) (GFX::frame / 5), 0};
+	GFX::drawSprite(tex, &pos, &dim, rot + M_PI_2, &tdim, &frame);
 
 }

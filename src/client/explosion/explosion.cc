@@ -59,33 +59,10 @@ Explosion::Explosion(void *info): Entity(info) {}
 
 void Explosion::draw() {
 
-	Point dpos = vel * (1 / 60.0f);
-	pos += dpos;
+	Entity::draw();
 
-	glPushMatrix();
-	glTranslatef(pos.x, pos.y, 0);
-	glScalef(dim.x / 2, dim.y / 2, 1);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glTranslatef((GFX::frame / 5) / 7.0f, 0, 0);
-
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(0, 1);
-	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 7.0f, 1);
-	glVertex2f(1, 1);
-	glTexCoord2f(1 / 7.0f, 0);
-	glVertex2f(1, -1);
-	glTexCoord2f(0, 0);
-	glVertex2f(-1, -1);
-
-	glEnd();
-	glPopMatrix();
-
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	Point tdim = {7, 1};
+	Point frame = {(float) (GFX::frame / 5), 0};
+	GFX::drawSprite(tex, &pos, &dim, 0, &tdim, &frame);
 
 }

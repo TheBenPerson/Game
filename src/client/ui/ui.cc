@@ -338,7 +338,7 @@ void draw() {
 		glPushMatrix();
 		glTranslatef(button->pos->x, button->pos->y, 0);
 
-			drawButton(button);
+		drawButton(button);
 
 		glPopMatrix();
 

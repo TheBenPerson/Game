@@ -1,12 +1,16 @@
 #ifndef GAME_CLIENT_ENTITY
 #define GAME_CLIENT_ENTITY
 
+#include <stdint.h>
+
 #include "nodelist.hh"
 #include "point.hh"
 
 class Entity {
 
 	public:
+
+		// base packet for updating entities
 
 		typedef struct {
 
@@ -35,7 +39,7 @@ class Entity {
 		virtual ~Entity();
 
 		virtual void draw() = 0;
-		virtual void update(void *info);
+		virtual void update(uint8_t *info);
 
 };
 

@@ -1,5 +1,5 @@
 # Game Development Build
-# https://github.com/TheBenPerson/Game
+# https://github.com/TheBenhuman/Game
 #
 # Copyright (C) 2016-2018 Ben Stockett <thebenstockett@gmail.com>
 #
@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: server
-server: server.so snet.so sclient.so sworld.so sentity.so seye.so sfireball.so ssign.so sperson.so
+server: server.so snet.so sclient.so sworld.so sentity.so seye.so sfireball.so ssign.so shuman.so splayer.so
 
 .PHONY: server.so
 server.so: $(SB)/server.so
@@ -70,11 +70,15 @@ ssign.so: $(SB)/sign.so
 $(SB)/sign.so: $(addprefix $(SB)/, client.so tile.so)
 $(SB)/sign.so: src/server/sign/sign.cc
 
-.PHONY: sperson.so
-sperson.so: $(SB)/person.so
-$(SB)/person.so: LFA := -lm
-$(SB)/person.so: $(addprefix $(SB)/, net.so client.so world.so entity.so fireball.so) # remove fireball
-$(SB)/person.so: src/server/person/person.cc
+.PHONY: shuman.so
+shuman.so: $(SB)/human.so
+$(SB)/human.so: $(addprefix $(SB)/, client.so world.so entity.so)
+$(SB)/human.so: src/server/human/human.cc
+
+.PHONY: splayer.so
+splayer.so: $(SB)/player.so
+$(SB)/player.so: $(addprefix $(SB)/, client.so net.so human.so entity.so)
+$(SB)/player.so: src/server/player/player.cc
 
 .PHONY: tile.so
 tile.so: $(SB)/tile.so

@@ -41,7 +41,7 @@ namespace World {
 	extern NodeList listeners;
 
 	extern float scale;
-	extern Point pos;
+	extern Point *pos;
 	extern float rot;
 
 	extern unsigned int getIndex(Point *pos);

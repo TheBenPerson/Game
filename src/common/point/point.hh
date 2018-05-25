@@ -51,7 +51,10 @@ typedef struct Point {
 	bool operator<(Point &point);
 	bool operator>(Point &point);
 
+	operator bool();
+
 	void rot(float theta);
+	void normalize();
 
 } Point;
 

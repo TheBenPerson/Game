@@ -52,6 +52,8 @@
 #define P_INTR 'i'
 #define P_SIGN 's'
 
+#define P_IDNT 'I'
+
 typedef struct {
 
 	unsigned int size;

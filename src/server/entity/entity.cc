@@ -11,6 +11,7 @@
 #include "entity.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "point.hh"
 #include "timing.hh"
 #include "world.hh"
 
@@ -110,7 +111,7 @@ bool tickNet(Packet *packet, Client *client) {
 				Entity *entity = (Entity*) Entity::entities[i];
 
 				Packet packet;
-				packet.raw = (uint8_t*) entity->toNet(&packet.size);
+				entity->toNet(&packet);
 				client->send(&packet);
 
 				free(packet.raw);
@@ -129,15 +130,17 @@ bool tickNet(Packet *packet, Client *client) {
 
 NodeList Entity::entities;
 
-void Entity::add() {
+void Entity::send() {
 
+	// get next available id
 	for (id = 0; get(id); id++) {}
 	entities.add((intptr_t) this);
 
 	Packet packet;
-	packet.raw = (uint8_t*) toNet(&packet.size);
+	toNet(&packet);
 
 	Client::broadcast(&packet);
+
 	free(packet.raw);
 
 }
@@ -145,7 +148,7 @@ void Entity::add() {
 bool Entity::bound(Point *pos, Point *dim) {
 
 	Point points[4];
-	Point ddim = *dim / 2;
+	Point ddim = *dim / 2.0f;
 
 	points[0] = {-ddim.x, -ddim.y};
 	points[0] += *pos;
@@ -153,7 +156,7 @@ bool Entity::bound(Point *pos, Point *dim) {
 	points[1] = {ddim.x, ddim.y};
 	points[1] += *pos;
 
-	ddim = this->pos / 2;
+	ddim = this->pos / 2.0f;
 
 	if (points[0].x > (this->pos.x + ddim.x)) return false;
 	if (points[1].x < (this->pos.x - ddim.x)) return false;
@@ -169,7 +172,7 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	int dwidth = World::width / 2;
 	int dheight = World::height / 2;
 
-	Point ddim = dim / 2;
+	Point ddim = dim / 2.0f;
 	bool evenW = !(World::width % 2);
 	bool evenH = !(World::height % 2);
 
@@ -204,7 +207,7 @@ unsigned int Entity::boundWorld(Point **tiles) {
 	for (int y = bottom; y < top + 1; y++) {
 	for (int x = left; x < right + 1; x++) {
 
-		(*tiles)[index++] = {(float) x, (float) y};
+		(*tiles)[index++] = {(float) x + (evenW * .5f), (float) y + (evenH * .5f)};
 
 	}}
 
@@ -234,6 +237,22 @@ Entity* Entity::get(unsigned int id) {
 
 }
 
+Entity* Entity::get(Client *client) {
+
+	for (unsigned int i = 0; i < entities.size; i++) {
+
+		Entity *entity = (Entity*) entities[i];
+		if (entity->client == client) return entity;
+
+	}
+
+	return NULL;
+
+}
+
+Entity::Entity() {}
+Entity::Entity(Client *client): client(client) {}
+
 Entity::~Entity() {
 
 	entities.rem((intptr_t) this);
@@ -256,27 +275,26 @@ Entity::~Entity() {
 
 }
 
-void* Entity::toNet(unsigned int *size) {
+void Entity::toNet(Packet *packet) {
 
-	typedef struct {
+	struct Data {
 
 		uint8_t pid;
 		UPacket packet;
 
-	} __attribute__((packed)) Data;
-
-	*size = sizeof(Data) + strlen(type) + 1;
-	Data *data = (Data*) malloc(*size);
+	} __attribute__((packed)) *data;
+	packet->size = sizeof(Data) + strlen(type) + 1;
+	data = (Data*) malloc(packet->size);
 
 	data->pid = P_GENT;
-	data->packet.id = id;
 
+	data->packet.id = id;
 	data->packet.dim = dim;
 	data->packet.pos = pos;
 	data->packet.vel = vel;
 	strcpy(data->packet.type, type);
 
-	return data;
+	packet->raw = (uint8_t*) data;
 
 }
 

@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
 
 	bool isServer = false;
 
-	char c;
+	int c;
 	option options[] = {
 
 		{"help", no_argument, NULL, 'h'},
@@ -146,8 +146,8 @@ int main(int argc, char* argv[]) {
 		Module *module = (Module *) modules[i];
 		if (!module->handle) {
 
-			char border[30 + strlen(module->group) + 1];
-			memset((void*) border, '=', sizeof(border));
+			char border[29 + strlen(module->group) + 1];
+			memset((void*) border, '=', sizeof(border) - 1);
 			border[sizeof(border) - 1] = '\0';
 
 			cputs(BLUE, border);
@@ -221,8 +221,8 @@ namespace Game {
 		len = strlen(base);
 
 		// todo: unsafe to use sizeof?
-		char border[28 + len + 1];
-		memset((void*) border, '=', sizeof(border));
+		char border[27 + len + 1];
+		memset((void*) border, '=', sizeof(border) - 1);
 		border[sizeof(border) - 1] = '\0';
 
 		cputs(BLUE, border);

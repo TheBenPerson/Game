@@ -41,6 +41,7 @@ namespace GFX {
 
 	void* call(void* (*function)(void*), void*);
 	void drawText(char *text, Point *point, float size = 1, bool center = false);
+	void drawSprite(GLuint tex, Point *pos, Point *dim, float rot = NULL, Point *tdim = NULL, Point *frame = NULL);
 	texture loadTexture(char *path);
 	void freeTexture(texture *tex);
 

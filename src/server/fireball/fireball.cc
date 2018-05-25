@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -29,8 +30,6 @@ extern "C" {
 Fireball::Fireball(Point *pos, float rot, Point *vel) {
 
 	type = "fireball";
-	dim = {1, 1};
-
 	this->pos = *pos;
 
 	if (vel) {
@@ -47,7 +46,7 @@ Fireball::Fireball(Point *pos, float rot, Point *vel) {
 
 	}
 
-	add();
+	send();
 
 }
 
@@ -81,23 +80,23 @@ bool Fireball::tick(timespec *time) {
 
 }
 
-void* Fireball::toNet(unsigned int *size) {
+void Fireball::toNet(Packet *packet) {
 
-	typedef struct {
+	struct Data {
 
 		uint8_t pid;
 
 		UPacket upacket;
 		float rot;
 
-	} __attribute__((packed)) Data;
+	} __attribute__((packed)) *data;
 
-	*size = sizeof(Data) + strlen(type) + 1;
-	Data *data = (Data*) malloc(*size);
+	packet->size = sizeof(Data) + strlen(type) + 1;
+	data = (Data*) malloc(packet->size);
 
 	data->pid = P_GENT;
-	data->upacket.id = id;
 
+	data->upacket.id = id;
 	data->upacket.dim = dim;
 	data->upacket.pos = pos;
 	data->upacket.vel = vel;
@@ -105,6 +104,6 @@ void* Fireball::toNet(unsigned int *size) {
 	data->rot = rot;
 	strcpy(data->upacket.type, type);
 
-	return data;
+	packet->raw = (uint8_t*) data;
 
 }

@@ -50,7 +50,7 @@ namespace World {
 
 	float scale = 2;
 	float rot;
-	Point pos = {0, 0};
+	Point *pos = NULL;
 
 }
 
@@ -151,12 +151,19 @@ void draw() {
 
 	if (Client::state != Client::IN_GAME) return;
 
+	if (Input::actions[Input::SECONDARY].state) {
+
+		if (World::scale < 4 && Input::actions[Input::UP].state) World::scale += .25f;
+		if (World::scale > .25f && Input::actions[Input::DOWN].state) World::scale -= .25f;
+
+	}
+
 	// draw background
 
 	glMatrixMode(GL_TEXTURE);
 	glPushMatrix();
-	glTranslatef(World::pos.x / 30, World::pos.y / 30, 0);
-	glScalef(1 / World::scale, 1 / World::scale, 1);
+	if (World::pos) glTranslatef(World::pos->x / 30, World::pos->y / 30, 0);
+	glScalef(2 / World::scale, 2 / World::scale, 1);
 	glRotatef(-(World::rot * 360) / (M_PI * 2) , 0, 0, 1);
 	glTranslatef(-.5f * WIN::aspect, -.5f, 0);
 
@@ -181,39 +188,20 @@ void draw() {
 	glPushMatrix();
 	glScalef(World::scale, World::scale, 1);
 	glRotatef((World::rot * 360) / (M_PI * 2) , 0, 0, 1);
-	glTranslatef(-World::pos.x, -World::pos.y, 0);
+	if (World::pos) glTranslatef(-World::pos->x, -World::pos->y, 0);
 
 	for (unsigned int i = 0; i < (World::width * World::height); i++) {
 
-		float x = (i % World::width) - (World::width / 2.0f);
-		float y = (i / World::width) - (World::height / 2.0f);
+		Point pos;
+		pos.x = (i % World::width) - (World::width / 2.0f) + .5f;
+		pos.y = (i / World::width) - (World::height / 2.0f) + .5f;
 
-		glPushMatrix();
-		glTranslatef(x, y, 0);
+		Point dim = {1, 1};
 
-		glMatrixMode(GL_TEXTURE);
-		glPushMatrix();
+		Point dimTex = {11, 1};
+		Point frame = {(float) World::tiles[i], 1};
 
-		glTranslatef(World::tiles[i] / 10.0f, 0, 0);
-
-		glBindTexture(GL_TEXTURE_2D, tex);
-		glBegin(GL_QUADS);
-
-		glTexCoord2f(0, 1);
-		glVertex2f(0, 1);
-		glTexCoord2f(.1f, 1);
-		glVertex2f(1, 1);
-		glTexCoord2f(.1f, 0);
-		glVertex2f(1, 0);
-		glTexCoord2f(0, 0);
-		glVertex2f(0, 0);
-
-		glEnd();
-
-		glPopMatrix();
-
-		glMatrixMode(GL_MODELVIEW);
-		glPopMatrix();
+		GFX::drawSprite(tex, &pos, &dim, NULL, &dimTex, &frame);
 
 	}
 
@@ -226,11 +214,11 @@ void draw() {
 
 	glPopMatrix();
 
-	char buffer[50];
-	sprintf(buffer, "Rot: %.2f\nPos: (%.2f, %.2f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
+	//char buffer[50];
+	//sprintf(buffer, "Rot: %.2f\nPos: (%.2f, %.2f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
 
-	Point pos = {(-10 * WIN::aspect) + 1, 9};
-	GFX::drawText(buffer, &pos);
+	//Point pos = {(-10 * WIN::aspect) + 1, 9};
+	//GFX::drawText(buffer, &pos);
 
 }
 

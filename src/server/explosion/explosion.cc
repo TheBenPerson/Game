@@ -36,7 +36,7 @@ Explosion::Explosion(Point *pos, float radius, float duration) {
 	// 10 ticks per sec
 	//interval = 100;
 
-	add();
+	send();
 
 }
 

@@ -17,11 +17,10 @@ extern "C" {
 
 	bool init() {
 
-		tex = GFX::loadTexture("eye.png");
+		tex = GFX::loadTexture("will.png");
 		Net::listeners.add((intptr_t) &tickNet);
 
 		cputs(GREEN, "Loaded module: 'eye.so'");
-
 		return true;
 
 	}
@@ -65,30 +64,8 @@ void Eye::draw() {
 	Point dpos = vel * (1 / 60.0f);
 	pos += dpos;
 
-	glPushMatrix();
-	glTranslatef(pos.x, pos.y, 0);
-	glScalef(dim.x / 2, dim.y / 2, 1);
-
-	glMatrixMode(GL_TEXTURE);
-	glPushMatrix();
-	glTranslatef((GFX::frame / 2) / 16.0f, 0, 0);
-
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glBegin(GL_QUADS);
-
-	glTexCoord2f(0, 1);
-	glVertex2f(-1, 1);
-	glTexCoord2f(1 / 16.0f, 1);
-	glVertex2f(1, 1);
-	glTexCoord2f(1 / 16.0f, 0);
-	glVertex2f(1, -1);
-	glTexCoord2f(0, 0);
-	glVertex2f(-1, -1);
-
-	glEnd();
-	glPopMatrix();
-
-	glMatrixMode(GL_MODELVIEW);
-	glPopMatrix();
+	Point tdim = {2, 1};
+	Point frame = {(float) (GFX::frame / 20), 0};
+	GFX::drawSprite(tex, &pos, &dim, GFX::frame / 20.0f, &tdim, &frame);
 
 }

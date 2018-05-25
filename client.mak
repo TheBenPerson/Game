@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 .PHONY: client
-client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so explosion.so sign.so person.so player.so
+client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so explosion.so sign.so human.so player.so
 
 .PHONY: client.so
 client.so: $(CB)/client.so
@@ -41,7 +41,7 @@ $(CB)/win.so: src/client/win/win.cc
 
 .PHONY: gfx.so
 gfx.so: $(CB)/gfx.so
-$(CB)/gfx.so: LFA := -lGL -lpng
+$(CB)/gfx.so: LFA := -lGL -lepoxy -lpng
 $(CB)/gfx.so: $(addprefix $(CB)/, client.so win.so)
 $(CB)/gfx.so: src/client/gfx/gfx.cc
 
@@ -95,15 +95,15 @@ sign.so: $(CB)/sign.so
 $(CB)/sign.so: $(addprefix $(CB)/, net.so gfx.so input.so)
 $(CB)/sign.so: src/client/sign/sign.cc
 
-.PHONY: person.so
-person.so: $(CB)/person.so
-$(CB)/person.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
-$(CB)/person.so: src/client/person/person.cc
+.PHONY: human.so
+human.so: $(CB)/human.so
+$(CB)/human.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
+$(CB)/human.so: src/client/human/human.cc
 
 .PHONY: player.so
 player.so: $(CB)/player.so
 $(CB)/player.so: LFA := -lm
-$(CB)/player.so: $(addprefix $(CB)/, client.so input.so net.so win.so world.so gfx.so)
+$(CB)/player.so: $(addprefix $(CB)/, client.so entity.so input.so net.so win.so world.so gfx.so)
 $(CB)/player.so: src/client/player/player.cc
 
 $(CB)/%.so: CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':')
