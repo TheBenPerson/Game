@@ -1,13 +1,16 @@
 #ifndef GAME_CLIENT_HUMAN
 #define GAME_CLIENT_HUMAN
 
+#include <stdint.h>
+
 #include "entity.hh"
 
 class Human: public Entity {
 
 	public:
 
-		Human(void *info);
+		Human(uint8_t *datat);
+		~Human();
 
 		void draw();
 
@@ -15,6 +18,8 @@ class Human: public Entity {
 
 		typedef enum {LEFT, DOWN, RIGHT, UP} direction;
 		direction lastDir = UP;
+
+		char *name;
 
 };
 

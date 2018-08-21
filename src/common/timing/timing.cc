@@ -93,41 +93,48 @@ namespace Timing {
 
 	}
 
-	void waitFor(condition *cond) {
+	unsigned int getTime() {
 
-		pthread_mutex_lock(&cond->m);
-		pthread_cond_wait(&cond->cond, &cond->m);
-		pthread_mutex_unlock(&cond->m);
+		timespec time;
+		clock_gettime(CLOCK_MONOTONIC, &time);
+
+		unsigned int now = time.tv_sec * 1000;
+		now += time.tv_nsec / 1000000;
+
+		return now;
 
 	}
 
-	bool waitFor(condition *cond, time_t secs) {
+	void waitFor(Condition *condition) {
+
+		pthread_mutex_lock(&condition->m);
+		pthread_cond_wait(&condition->condition, &condition->m);
+		pthread_mutex_unlock(&condition->m);
+
+	}
+
+	bool waitFor(Condition *condition, time_t msecs) {
 
 		timespec time;
 
 		// not CLOCK_MONOTONIC: specifing when to wake up
 		clock_gettime(CLOCK_REALTIME, &time);
-		time.tv_sec += secs;
+		time.tv_sec += msecs / 1000;
+		time.tv_nsec += (msecs % 1000) * 1000000;
 
-		pthread_mutex_lock(&cond->m);
-		bool result = pthread_cond_timedwait(&cond->cond, &cond->m, &time);
-		pthread_mutex_unlock(&cond->m);
+		pthread_mutex_lock(&condition->m);
+		bool result = pthread_cond_timedwait(&condition->condition, &condition->m, &time);
+		pthread_mutex_unlock(&condition->m);
 
 		return !result;
 
 	}
 
-	void waitStop(condition *cond) {
+	void signal(Condition *condition) {
 
-		pthread_mutex_unlock(&cond->m);
-
-	}
-
-	void signal(condition *cond) {
-
-		pthread_mutex_lock(&cond->m);
-		pthread_cond_signal(&cond->cond);
-		pthread_mutex_unlock(&cond->m);
+		pthread_mutex_lock(&condition->m);
+		pthread_cond_signal(&condition->condition);
+		pthread_mutex_unlock(&condition->m);
 
 	}
 

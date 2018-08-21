@@ -25,15 +25,23 @@
  *
  */
 
-#ifndef GAME_SERVER
+#ifndef GAME_CLIENT
 
+#include "button.hh"
 #include "config.hh"
 
-namespace Server {
+namespace Client {
 
-	extern Config config;
+	typedef enum { LOADING, IN_GAME, PAUSED } State;
+
+	extern Button::Menu *settings;
+
+	extern bool running;
+	extern State state;
+
+	void setState(State state);
 
 }
 
-#define GAME_SERVER
+#define GAME_CLIENT
 #endif

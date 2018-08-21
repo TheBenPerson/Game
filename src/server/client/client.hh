@@ -25,13 +25,14 @@
  *
  */
 
-#ifndef GAME_SERVER_PLAYER
+#ifndef GAME_SERVER_CLIENT
+#define GAME_SERVER_CLIENT
 
 #include <netinet/in.h>
 
-#include "nodelist/nodelist.hh"
-#include "packet/packet.hh"
-#include "timing/timing.hh"
+#include "nodelist.hh"
+#include "packet.hh"
+#include "timing.hh"
 
 class Client {
 
@@ -43,6 +44,7 @@ class Client {
 		static Client* get(sockaddr_in *addr);
 		static Client* get(char *name);
 		static void* entry(void*);
+		static void broadcast(Packet *packet, NodeList *clients);
 		static void broadcast(Packet *packet);
 
 		sockaddr_in addr;
@@ -61,11 +63,10 @@ class Client {
 
 		Packet *packet;
 		Timing::thread t;
-		Timing::condition cond;
+		Timing::Condition condition;
 
 		Packet* recv();
 
 };
 
-#define GAME_SERVER_PLAYER
 #endif

@@ -37,11 +37,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "client.hh"
 #include "config.hh"
-#include "console.hh"
 #include "gfx.hh"
 #include "point.hh"
+#include "string.hh"
 #include "timing.hh"
 #include "win.hh"
 
@@ -52,15 +51,18 @@ namespace GFX {
 
 }
 
-static 	Timing::thread t;
+static Config *config;
+
+static Timing::Condition condition;
+static Timing::thread t;
 static Timing::mutex m = MTX_DEFAULT;
-static void* (*callback)(void*) = NULL;
-static void* arg;
+static uintptr_t (*callback)(uintptr_t) = NULL;
+static uintptr_t arg;
 static bool running = true;
 static GLuint font;
 
 static void* threadMain(void*);
-static void glInit();
+static void initOGL();
 static GFX::texture loadTexture(char *name);
 static void freeTexture(GFX::texture *tex);
 static void draw();
@@ -69,23 +71,35 @@ extern "C" {
 
 	bool init() {
 
-		Client::config.set("gfx.fps", 60);
-		Client::config.set("gfx.res", (intptr_t) "default");
-		Client::config.load("gfx.cfg");
+		Config::Option options[] = {
 
-		volatile int8_t result = -1; //  volatile because reasons
-		t = Timing::createThread(threadMain, (void*) &result);
+			INT("fps", 60),
+			STRING("res", "default"),
+			END
 
-		while (result == -1) {}
+		};
 
-		if (!result) {
+		config = new Config("cfg/client/gfx.cfg", options);
+
+		struct {
+
+			Timing::Condition condition;
+			bool result = true;
+
+		} args;
+
+		// thread returns result in result
+		t = Timing::createThread(threadMain, (void*) &args);
+
+		Timing::waitFor(&args.condition);
+
+		if (!args.result) {
 
 			Timing::waitFor(t);
 			return false;
 
 		}
 
-		cputs(GREEN, "Loaded module: 'gfx.so'");
 		return true;
 
 	}
@@ -95,8 +109,6 @@ extern "C" {
 		running = false;
 		Timing::waitFor(t);
 
-		cputs(YELLOW, "Unloaded module: 'gfx.so'");
-
 	}
 
 }
@@ -105,22 +117,22 @@ extern "C" {
 
 namespace GFX {
 
-	void* call(void* (*function)(void*), void *arg) {
+	uintptr_t call(uintptr_t (*function)(uintptr_t), uintptr_t arg) {
 
+		// limit call to one thread at a time
 		Timing::lock(&m);
 
 		callback = function;
 		::arg = arg;
 
-		while (callback) {} // TODO: use condition?
-
+		Timing::waitFor(&condition);
 		Timing::unlock(&m);
 
 		return ::arg;
 
 	}
 
-	void drawText(char *text, Point *point, float size, bool center) {
+	void drawText(char *text, Point *point, float size, bool center, float rot) {
 
 		Point dimTex = {16, 6};
 
@@ -175,12 +187,29 @@ namespace GFX {
 
 		}
 
+		if (rot) {
+
+			// opengl uses degrees ¯\_(ツ)_/¯
+			float deg = (rot * 360) / (M_PI * 2);
+
+			glPushMatrix();
+			glTranslatef(point->x, point->y, 0);
+			glRotatef(deg, 0, 0, 1);
+			glTranslatef(-point->x, -point->y, 0);
+
+		}
+
 		for (unsigned int i = 0; i < len; i++) {
 
 			if (text[i] == '\n') {
 
 				pos.y -= dim.y;
 				pos.x = point->x - dx;
+				continue;
+
+			} else if (text[i] == '\t') {
+
+				pos.x += dim.x * 4;
 				continue;
 
 			}
@@ -199,6 +228,8 @@ namespace GFX {
 
 		}
 
+		if (rot) glPopMatrix();
+
 	}
 
 	void drawSprite(GLuint tex, Point *pos, Point *dim, float rot, Point *tdim, Point *frame) {
@@ -206,11 +237,16 @@ namespace GFX {
 		glPushMatrix();
 
 		glTranslatef(pos->x, pos->y, 0);
-		glScalef(dim->x / 2, dim->y / 2, 1);
 
-		// opengl uses degrees ¯\_(ツ)_/¯
-		float deg = (rot * 360) / (M_PI * 2);
-		glRotatef(deg, 0, 0, 1);
+		if (rot) {
+
+			// opengl uses degrees ¯\_(ツ)_/¯
+			float deg = (rot * 360) / (M_PI * 2);
+			glRotatef(deg, 0, 0, 1);
+
+		}
+
+		glScalef(dim->x / 2, dim->y / 2, 1);
 
 		glMatrixMode(GL_TEXTURE);
 		glPushMatrix();
@@ -255,13 +291,14 @@ namespace GFX {
 
 	texture loadTexture(char *name) {
 
-		return (uintptr_t) call((void* (*)(void*)) &::loadTexture, (void*) name);
+		// cryptic, right?
+		return call((uintptr_t (*)(uintptr_t)) &::loadTexture, (uintptr_t) name);
 
 	}
 
 	void freeTexture(texture *tex) {
 
-		call((void* (*)(void*)) &::freeTexture, (void*) tex);
+		call((uintptr_t (*)(uintptr_t)) &::freeTexture, (uintptr_t) tex);
 
 	}
 
@@ -271,21 +308,31 @@ namespace GFX {
 
 void* threadMain(void* result) {
 
+	struct Args {
+
+		Timing::Condition condition;
+		bool result;
+
+	} *args = (Args*) result;
+
 	if (!WIN::initContext()) {
 
-		*((int8_t *) result) = 0; // tell main thread init failed
+		 // tell main thread init failed
+		args->result = false;
+		Timing::signal(&args->condition);
+
 		return NULL;
 
 	}
 
 	font = loadTexture("font.png");
-	glInit(); // initialize OpenGL
+	initOGL(); // initialize OpenGL
 
 	WIN::showWindow(); // display window
-	*((int8_t *) result) = 1; // tell main thread init succeeded
+	Timing::signal(&args->condition);
 
 	if (WIN::vSync) while (running) draw();
-	else Timing::doInterval(&draw, (time_t) Client::config.get("gfx.fps")->val, false, &running);
+	else Timing::doInterval(&draw, (time_t) config->getInt("fps"), false, &running);
 
 	glDeleteTextures(1, &font);
 	WIN::cleanupContext();
@@ -295,7 +342,7 @@ void* threadMain(void* result) {
 }
 
 
-void glInit() {
+void initOGL() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -306,29 +353,20 @@ void glInit() {
 	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 }
 
 GFX::texture loadTexture(char *name) { // consider strlen instead of constants
 
-	char *res = (char*) Client::config.get("gfx.res")->val;
-	size_t len = strlen(name);
-
-	char *buf = (char*) malloc(12 + strlen(res) + 1 + len + 1);
-	sprintf(buf, "res/texture/%s/%s", res, name); // strcpy might be faster
+	char *res = config->getStr("res");
+	STRING_CAT4(buf, "res/texture/", res, "/", name);
 
 	FILE *file = fopen(buf, "r");
-	free(buf);
-
 	if (!file) {
 
-		buf = (char*) malloc(20 + len + 1);
-		sprintf(buf, "res/texture/default/%s", name);
+		STRING_CAT2(buf, "res/texture/default/", name);
 
 		file = fopen(buf, "r");
-		free(buf);
-
 		if (!file) {
 
 			fprintf(stderr, "Error loading texture: '%s' (%s)\n", name, strerror(errno));
@@ -409,7 +447,10 @@ void draw() {
 	if (callback) {
 
 		arg = callback(arg);
-		callback = NULL; // TODO: mutex?
+		callback = NULL;
+
+		// tell caller to return
+		Timing::signal(&condition);
 
 	}
 
@@ -425,8 +466,6 @@ void draw() {
 		WIN::resized = false;
 
 	}
-
-	glClear(GL_COLOR_BUFFER_BIT);
 
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();

@@ -9,3 +9,5 @@ Split makefile into 3 files
 Updated license to current year
 Fixed mysterious server leak
 Implemented entity colision detection
+Switched to GLFW for window creation
+Switched to OpenAL for audio

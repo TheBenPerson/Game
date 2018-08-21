@@ -26,6 +26,7 @@
  */
 
 #ifndef GAME_COMMON_TIMING
+#define GAME_COMMON_TIMING
 
 #include <pthread.h>
 #include <time.h>
@@ -40,10 +41,10 @@ namespace Timing {
 
 	typedef struct {
 
-		pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+		pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
 		pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
-	} condition;
+	} Condition;
 
 	thread createThread(void* (*callback)(void*), void* arg);
 	void waitFor(thread t);
@@ -53,11 +54,12 @@ namespace Timing {
 	void lock(mutex *m);
 	void unlock(mutex *m);
 
-	void waitFor(condition *cond);
-	bool waitFor(condition *cond, time_t secs);
-	void signal(condition *cond);
+	unsigned int getTime();
+
+	void waitFor(Condition *condition);
+	bool waitFor(Condition *condition, time_t milis);
+	void signal(Condition *condition);
 
 }
 
-#define GAME_COMMON_TIMING
 #endif

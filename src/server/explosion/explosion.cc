@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "console.hh"
 #include "entity.hh"
 #include "explosion.hh"
 #include "point.hh"
@@ -12,25 +11,21 @@ extern "C" {
 
 	bool init() {
 
-		cputs(GREEN, "Loaded module: 'explosion.so'");
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'explosion.so'");
-
-	}
+	void cleanup() {}
 
 }
 
-Explosion::Explosion(Point *pos, float radius, float duration) {
+Explosion::Explosion(World *world, Point *pos, float radius, float duration): Entity(world) {
 
 	type = "explosion";
 	dim = radius * 2;
-	this->duration = duration * 1000;
 
+	this->world = world;
+	this->duration = duration * 1000;
 	this->pos = *pos;
 
 	// 10 ticks per sec
@@ -40,7 +35,7 @@ Explosion::Explosion(Point *pos, float radius, float duration) {
 
 }
 
-bool Explosion::tick(timespec *time) {
+bool Explosion::tick(unsigned int time) {
 
 	if (timer >= duration) {
 
@@ -54,8 +49,8 @@ bool Explosion::tick(timespec *time) {
 
 	for (unsigned int i = 0; i < size; i++) {
 
-		Tile *tile = World::getTile(&tiles[i]);
-		if (tile->id == T_GRASS) World::setTile(&tiles[i], T_DIRT);
+		Tile *tile = world->getTile(&tiles[i]);
+		if (tile->id == Tiledef::GRASS) world->setTile(&tiles[i], Tiledef::DIRT);
 
 	}
 

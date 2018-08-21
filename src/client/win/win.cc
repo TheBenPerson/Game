@@ -33,9 +33,9 @@
 #include <unistd.h>
 
 #include "client.hh"
+#include "config.hh"
 #include "console.hh"
 #include "input.hh"
-#include "config.hh"
 #include "gfx.hh"
 #include "main.hh"
 #include "timing.hh"
@@ -55,11 +55,15 @@ namespace WIN {
 
 }
 
+static Config *config;
+
 static GLFWwindow* window;
 static int* keys[Input::NUM_ACTIONS];
 static Timing::thread t;
 static bool running = true;
 static char **text;
+
+static bool cursor = true;
 
 static bool createWindow();
 static void* threadMain(void*);
@@ -82,20 +86,25 @@ extern "C" {
 		glfwSetErrorCallback(errorHandler);
 		if (!glfwInit()) return false;
 
-		Client::config.set("win.fullscreen", true);
-		Client::config.set("win.vsync", true);
+		Config::Option options[] = {
 
-		Client::config.set("win.kbd.exit", (intptr_t) "ESC");
-		Client::config.set("win.kbd.fullscreen", (intptr_t) "F11");
-		Client::config.set("win.kbd.left", (intptr_t) "A");
-		Client::config.set("win.kbd.right", (intptr_t) "D");
-		Client::config.set("win.kbd.up", (intptr_t) "W");
-		Client::config.set("win.kbd.down", (intptr_t) "S");
-		Client::config.set("win.kbd.primary", (intptr_t) "LMOUSE,RETURN");
-		Client::config.set("win.kbd.secondary", (intptr_t) "SPACE");
-		Client::config.set("win.kbd.modifier", (intptr_t) "LSHIFT");
+			BOOL("fullscreen", true),
+			BOOL("vsync", true),
+			STRING("kbd.exit", "ESC"),
+			STRING("kbd.fullscreen", "F11"),
+			STRING("kbd.left", "A"),
+			STRING("kbd.right", "D"),
+			STRING("kbd.up", "W"),
+			STRING("kbd.down", "S"),
+			STRING("kbd.primary", "LMOUSE"),
+			STRING("kbd.secondary", "SPACE"),
+			STRING("kbd.modifier", "LSHIFT"),
+			END
 
-		Client::config.load("win.cfg");
+		};
+
+		config = new Config("cfg/client/win.cfg", options);
+
 		if (!createWindow()) return false;
 
 		Button::Action action;
@@ -112,9 +121,7 @@ extern "C" {
 		loadKeys();
 
 		t = Timing::createThread(threadMain, NULL);
-		Input::listeners.add((intptr_t) &fullscreenHandler);
-
-		cputs(GREEN, "Loaded module: 'win.so'");
+		Input::listeners.add((uintptr_t) &fullscreenHandler);
 
 		return true;
 
@@ -122,16 +129,16 @@ extern "C" {
 
 	void cleanup() {
 
-		Input::listeners.rem((intptr_t) &fullscreenHandler);
+		Input::listeners.rem((uintptr_t) &fullscreenHandler);
 
 		if (running) {
 
 			running = false;
 			glfwPostEmptyEvent();
 
-			Timing::waitFor(t);
-
 		}
+
+		Timing::waitFor(t);
 
 		glfwDestroyWindow(window);
 		glfwTerminate();
@@ -139,9 +146,7 @@ extern "C" {
 		for (unsigned int i = 0; i < Input::NUM_ACTIONS; i++)
 			delete[] keys[i];
 
-		Client::config.del("win");
-
-		cputs(YELLOW, "Unloaded module: 'win.so'");
+		delete config;
 
 	}
 
@@ -153,7 +158,7 @@ namespace WIN {
 
 		glfwShowWindow(window);
 
-		WIN::fullscreen = (bool) Client::config.get("win.fullscreen")->val;
+		WIN::fullscreen = config->getBool("fullscreen");
 		if (WIN::fullscreen) WIN::setFullscreen(true);
 
 	}
@@ -181,13 +186,14 @@ namespace WIN {
 
 	void setCursor(bool mode) {
 
-		glfwSetInputMode(window, GLFW_CURSOR, mode ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+		glfwSetInputMode(window, GLFW_CURSOR, mode ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_HIDDEN);
+		cursor = mode;
 
 	}
 
 	bool initContext() {
 
-		vSync = (bool) Client::config.get("win.vsync")->val;
+		vSync = config->getBool("vsync");
 		if (!vSync) puts("Warning: VSync is disabled");
 
 		glfwMakeContextCurrent(window);
@@ -221,14 +227,25 @@ static void resizeHandler(GLFWwindow* window, int width, int height) {
 
 }
 
-static void cursorHandler(GLFWwindow* window, double posX, double posY) {
+static void cursorHandler(GLFWwindow *window, double posX, double posY) {
 
-	float x = posX;
-	float y = posY;
-	y = WIN::height - y;
+	posY = WIN::height - posY;
 
-	Input::cursor.x = (((x / WIN::width) * 20) - 10) * WIN::aspect;
-	Input::cursor.y = ((y / WIN::height) * 20) - 10;
+	float dx = (((posX / WIN::width) * 20) - 10) * WIN::aspect;
+	float dy = ((posY / WIN::height) * 20) - 10;
+
+	if (cursor) {
+
+		Input::cursor.x = dx;
+		Input::cursor.y = dy;
+
+	} else {
+
+		Input::cursor.x += dx;
+		Input::cursor.y += dy;
+		glfwSetCursorPos(window, WIN::width / 2.0, WIN::height / 2.0);
+
+	}
 
 	Input::wasCursor = true;
 	Input::notify();
@@ -272,7 +289,7 @@ bool createWindow() {
 
 void* threadMain(void*) {
 
-	for (; running;) {
+	while (running) {
 
 		bool result = glfwWindowShouldClose(window);
 		if (result) {
@@ -297,7 +314,7 @@ static void loadKey(Input::Action action, char *key) {
 
 	// todo: needs work
 
-	char *string = strdup((char*) Client::config.get(key)->val);
+	char *string = strdup(config->getStr(key));
 	// don't need to if only one binding: might want to redesign this
 
 	char *c = string;
@@ -345,8 +362,8 @@ void eventHandler(GLFWwindow* window, int key, int scancode, int action, int mod
 
 				Input::wasCursor = false;
 				Input::notify();
-
 				Input::actions[i].changed = false;
+
 				return;
 
 			}
@@ -359,15 +376,15 @@ void eventHandler(GLFWwindow* window, int key, int scancode, int action, int mod
 
 void loadKeys() {
 
-	loadKey(Input::EXIT, "win.kbd.exit");
-	loadKey(Input::FULLSCREEN, "win.kbd.fullscreen");
-	loadKey(Input::LEFT, "win.kbd.left");
-	loadKey(Input::RIGHT, "win.kbd.right");
-	loadKey(Input::UP, "win.kbd.up");
-	loadKey(Input::DOWN, "win.kbd.down");
-	loadKey(Input::PRIMARY, "win.kbd.primary");
-	loadKey(Input::SECONDARY, "win.kbd.secondary");
-	loadKey(Input::MODIFIER, "win.kbd.modifier");
+	loadKey(Input::EXIT, "kbd.exit");
+	loadKey(Input::FULLSCREEN, "kbd.fullscreen");
+	loadKey(Input::LEFT, "kbd.left");
+	loadKey(Input::RIGHT, "kbd.right");
+	loadKey(Input::UP, "kbd.up");
+	loadKey(Input::DOWN, "kbd.down");
+	loadKey(Input::PRIMARY, "kbd.primary");
+	loadKey(Input::SECONDARY, "kbd.secondary");
+	loadKey(Input::MODIFIER, "kbd.modifier");
 
 	glfwSetKeyCallback(window, &eventHandler);
 

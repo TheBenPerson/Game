@@ -37,28 +37,26 @@
 #include <string.h>
 
 #include "console.hh"
+#include "config.hh"
 #include "data.hh"
 #include "main.hh"
 #include "nodelist.hh"
+#include "string.hh"
 #include "timing.hh"
 
 typedef struct {
 
 	void *handle;
+	char *name;
 
-	union {
-
-		void (*cleanup)();
-		char *group;
-
-	};
+	void (*cleanup)();
 
 } Module;
 
 static NodeList modules;
-static Timing::condition cond;
+static Timing::Condition condition;
 
-void sigHandler(int signal) {
+static void sigHandler(int signal) {
 
 	// I know it's not reentrant, but it's worked so far.
 	cprintf(WHITE, "%s - exiting...\n", strsignal(signal));
@@ -68,7 +66,7 @@ void sigHandler(int signal) {
 
 int main(int argc, char* argv[]) {
 
-	signal(SIGSEGV, &sigHandler);
+	signal(SIGTERM, &sigHandler);
 	signal(SIGHUP, &sigHandler);
 	signal(SIGINT, &sigHandler);
 
@@ -139,25 +137,29 @@ int main(int argc, char* argv[]) {
 	}
 
 	bool result = Game::loadModules(isServer, "main.cfg");
-	if (result) Timing::waitFor(&cond);
+	if (result) Timing::waitFor(&condition);
 
 	for (int i = modules.size - 1; i >= 0; i--) {
 
 		Module *module = (Module *) modules[i];
 		if (!module->handle) {
 
-			char border[29 + strlen(module->group) + 1];
+			char border[29 + strlen(module->name) + 1];
 			memset((void*) border, '=', sizeof(border) - 1);
 			border[sizeof(border) - 1] = '\0';
 
 			cputs(BLUE, border);
-			cprintf(YELLOW, "Unloading module group: '%s'...\n", module->group);
+			cprintf(YELLOW, "Unloading module group: '%s'...\n", module->name);
 			cputs(BLUE, border);
 
-			free(module->group);
+		} else {
 
-		} else module->cleanup();
+			module->cleanup();
+			cprintf(YELLOW, "Unloaded module: '%s'\n", module->name);
 
+		}
+
+		free(module->name);
 		delete module;
 
 	}
@@ -172,11 +174,8 @@ namespace Game {
 
 	bool loadModule(bool isServer, char *path) {
 
-		char *name = (char*) malloc(11 + strlen(path) + 1);
-		sprintf(name, "bin/%s/%s", isServer ? "server" : "client", path);
-
+		STRING_CAT3(name, "bin/", isServer ? "server/" : "client/", path);
 		void *handle = dlopen(name, RTLD_LAZY);
-		free(name);
 
 		if (!handle) {
 
@@ -187,6 +186,7 @@ namespace Game {
 
 		Module *mod = new Module();
 		mod->handle = handle;
+		mod->name = strdup(path);
 
 		bool (*init)() = (bool (*)()) dlsym(handle, "init");
 
@@ -199,13 +199,15 @@ namespace Game {
 			delete mod;
 			dlclose(handle);
 
+			ceprintf(RED, "Error loading module: '%s'\n", path);
 			return false;
 
 		}
 
 		mod->cleanup = (void (*)()) dlsym(handle, "cleanup");
-		modules.add((intptr_t) mod);
+		modules.add((uintptr_t) mod);
 
+		cprintf(GREEN, "Loaded module: '%s'\n", path);
 		return true;
 
 	}
@@ -215,8 +217,7 @@ namespace Game {
 		// determine full file name
 		unsigned int len = strlen(name);
 
-		char base[7 + len + 1];
-		sprintf(base, "%s/%s", isServer ? "server" : "client", name);
+		STRING_CAT2(base, isServer ? "server/" : "client/", name);
 
 		len = strlen(base);
 
@@ -229,52 +230,38 @@ namespace Game {
 		cprintf(GREEN, "Loading module group: '%s'...\n", base);
 		cputs(BLUE, border);
 
-		char path[4 + len + 1];
-		sprintf(path, "cfg/%s", base);
+		Config::Option options[] = {
 
-		FILE *file = fopen(path, "r");
-		if (!file) {
+			STRING_LIST("modules", NULL),
+			END
 
-			ceprintf(RED, "Error opening '%s': %s -- exiting...\n", name, strerror(errno));
-			return false;
+		};
 
-		}
+		STRING_CAT2(path, "cfg/", base);
+		Config config(path, options);
 
-		for (;;) {
+		unsigned int size = config.getSize("modules");
+		if (!size) return false;
 
-			char *name = NULL;
-			size_t n = NULL;
+		for (unsigned int i = 0; i < size; i++) {
 
-			if (getline(&name, &n, file) == -1) {
-
-				free(name);
-				break;
-
-			}
-
-			if (name[strlen(name) - 1] == '\n') name[strlen(name) - 1] = '\0';
-
-			bool result = Game::loadModule(isServer, name);
-			free(name);
-
+			bool result = loadModule(isServer, config.getStr("modules", i));
 			if (!result) return false;
 
 		}
 
-		fclose(file);
-
 		Module *module = new Module;
 		module->handle = NULL;
-		module->group = strdup(base);
+		module->name = strdup(base);
 
-		modules.add((intptr_t) module);
+		modules.add((uintptr_t) module);
 		return true;
 
 	}
 
 	void stop() {
 
-		Timing::signal(&cond);
+		Timing::signal(&condition);
 
 	}
 

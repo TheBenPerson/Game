@@ -34,7 +34,7 @@
 
 #define P_ACCEPT 'a'
 #define P_DENY 'd'
-#define P_KICK 'k'
+#define P_SIGN 's'
 
 // requests
 #define P_GMAP 'g'
@@ -43,16 +43,13 @@
 #define P_POKE 'p'
 
 #define P_GENT 'e'
-#define P_UENT 'u'
 #define P_DENT '~'
 
-#define P_NEWP 'P'
+#define P_AUTH 'A'
+#define P_IDNT 'I'
 #define P_UPDP 'U'
 
 #define P_INTR 'i'
-#define P_SIGN 's'
-
-#define P_IDNT 'I'
 
 typedef struct {
 
@@ -62,5 +59,7 @@ typedef struct {
 	uint8_t *data;
 
 } Packet;
+
+// size is without the packet id
 
 #endif

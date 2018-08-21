@@ -28,7 +28,6 @@
 #include <stdint.h>
 
 #include "button.hh"
-#include "console.hh"
 #include "win.hh"
 
 Button::Menu *Button::root;
@@ -57,8 +56,6 @@ extern "C" {
 		Button::root = new Button::Menu;
 		Button::root->parent = NULL;
 
-		cputs(GREEN, "Loaded module: 'button.so'");
-
 		return true;
 
 	}
@@ -66,7 +63,6 @@ extern "C" {
 	void cleanup() {
 
 		del(Button::root);
-		cputs(YELLOW, "Unloaded module: 'button.so'");
 
 	}
 
@@ -92,14 +88,14 @@ Button::Button(char *name, Action *action, Menu *parent, Point *pos): name(name)
 	if (pos) {
 
 		this->pos = new Point(*pos);
-		parent->lists[1].add((intptr_t) this);
+		parent->lists[1].add((uintptr_t) this);
 
 	} else {
 
 		this->pos = NULL;
 
-		if (parent == root) parent->lists[0].add((intptr_t) this);
-		else parent->lists[0].add((intptr_t) this, parent->lists[0].size - 1);
+		if (parent == root) parent->lists[0].add((uintptr_t) this);
+		else parent->lists[0].add((uintptr_t) this, parent->lists[0].size - 1);
 
 	}
 

@@ -22,94 +22,85 @@
 # SOFTWARE.
 
 .PHONY: client
-client: client.so input.so win.so gfx.so ui.so net.so world.so entity.so eye.so fireball.so explosion.so sign.so human.so player.so
-
-.PHONY: client.so
-client.so: $(CB)/client.so
-$(CB)/client.so: $(addprefix $(CB)/, button.so)
-$(CB)/client.so: src/client/client.cc
-
-.PHONY: input.so
-input.so: $(CB)/input.so
-$(CB)/input.so: src/client/input/input.cc
-
-.PHONY: win.so
-win.so: $(CB)/win.so
-$(CB)/win.so: LFA := -lglfw -lGL
-$(CB)/win.so: $(addprefix $(CB)/, client.so input.so)
-$(CB)/win.so: src/client/win/win.cc
-
-.PHONY: gfx.so
-gfx.so: $(CB)/gfx.so
-$(CB)/gfx.so: LFA := -lGL -lepoxy -lpng
-$(CB)/gfx.so: $(addprefix $(CB)/, client.so win.so)
-$(CB)/gfx.so: src/client/gfx/gfx.cc
-
-.PHONY: audio.so
-audio.so: $(CB)/audio.so
-$(CB)/audio.so: LFA := -lvorbisfile -lasound
-$(CB)/audio.so: $(addprefix $(CB)/, client.so button.so)
-$(CB)/audio.so: src/client/audio/audio.cc
+client: button.so client.so input.so win.so gfx.so audio.so ui.so \
+        net.so auth.so world.so entity.so explosion.so fireball.so eye.so human.so sign.so player.so
 
 .PHONY: button.so
 button.so: $(CB)/button.so
-$(CB)/button.so: $(shell find src/client/button/ -name "*.cc")
+
+.PHONY: client.so
+client.so: LF += $(CB)/button.so
+client.so: $(CB)/client.so
+
+.PHONY: input.so
+input.so: $(CB)/input.so
+
+.PHONY: win.so
+win.so: $(CB)/win.so
+$(CB)/win.so: LF += $(CB)/client.so $(CB)/input.so
+$(CB)/win.so: LF += -lglfw -lGL
+
+.PHONY: gfx.so
+gfx.so: $(CB)/gfx.so
+$(CB)/gfx.so: LF += $(CB)/win.so
+$(CB)/gfx.so: LF += -lGL -lepoxy -lpng
+
+.PHONY: audio.so
+audio.so: $(CB)/audio.so
+$(CB)/audio.so: LF += $(CB)/client.so
+$(CB)/audio.so: LF += -lopenal -lvorbisfile -lm
 
 .PHONY: ui.so
 ui.so: $(CB)/ui.so
-$(CB)/ui.so: $(addprefix $(CB)/, client.so input.so win.so gfx.so button.so audio.so)
-$(CB)/ui.so: $(shell find src/client/ui/ -name "*.cc")
+$(CB)/ui.so: LF := $(CB)/gfx.so $(CB)/audio.so
+
+########################################################################
 
 .PHONY: net.so
 net.so: $(CB)/net.so
-$(CB)/net.so: $(addprefix $(CB)/, client.so)
-$(CB)/net.so: src/client/net/net.cc
+
+.PHONY: auth.so
+auth.so: $(CB)/auth.so
+$(CB)/auth.so: $(CB)/net.so
 
 .PHONY: world.so
 world.so: $(CB)/world.so
-$(CB)/world.so: $(addprefix $(CB)/, net.so input.so gfx.so)
-$(CB)/world.so: src/client/world/world.cc
+$(CB)/world.so: $(CB)/gfx.so $(CB)/net.so
 
 .PHONY: entity.so
 entity.so: $(CB)/entity.so
-$(CB)/entity.so: $(addprefix $(CB)/, client.so net.so world.so)
-$(CB)/entity.so: src/client/entity/entity.cc
-
-.PHONY: eye.so
-eye.so: $(CB)/eye.so
-$(CB)/eye.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
-$(CB)/eye.so: src/client/eye/eye.cc
-
-.PHONY: fireball.so
-fireball.so: $(CB)/fireball.so
-$(CB)/fireball.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
-$(CB)/fireball.so: src/client/fireball/fireball.cc
+$(CB)/entity.so: $(CB)/net.so $(CB)/world.so
 
 .PHONY: explosion.so
 explosion.so: $(CB)/explosion.so
-$(CB)/explosion.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
-$(CB)/explosion.so: src/client/explosion/explosion.cc
+$(CB)/explosion.so: LF += $(CB)/audio.so
+$(CB)/explosion.so: $(CB)/entity.so
 
-.PHONY: sign.so
-sign.so: $(CB)/sign.so
-$(CB)/sign.so: $(addprefix $(CB)/, net.so gfx.so input.so)
-$(CB)/sign.so: src/client/sign/sign.cc
+.PHONY: fireball.so
+fireball.so: $(CB)/fireball.so
+$(CB)/fireball.so: $(CB)/entity.so
+
+.PHONY: eye.so
+eye.so: $(CB)/eye.so
+$(CB)/eye.so: $(CB)/entity.so
 
 .PHONY: human.so
 human.so: $(CB)/human.so
-$(CB)/human.so: $(addprefix $(CB)/, net.so world.so entity.so gfx.so)
-$(CB)/human.so: src/client/human/human.cc
+$(CB)/human.so: $(CB)/entity.so
+
+.PHONY: sign.so
+sign.so: $(CB)/sign.so
+$(CB)/sign.so: $(CB)/gfx.so $(CB)/net.so
 
 .PHONY: player.so
 player.so: $(CB)/player.so
-$(CB)/player.so: LFA := -lm
-$(CB)/player.so: $(addprefix $(CB)/, client.so entity.so input.so net.so win.so world.so gfx.so)
-$(CB)/player.so: src/client/player/player.cc
+$(CB)/player.so: $(addprefix $(CB)/, gfx.so world.so entity.so audio.so)
+$(CB)/player.so: LF += -lm
 
 $(CB)/%.so: CPATH := $(CPATH)$(shell find src/client -type d | tr '\n' ':')
-$(CB)/%.so:
+$(CB)/%.so: src/client/%/*.cc
 	@setterm --foreground green
 	# Compiling client module: '$(shell basename $@)'...
 	@setterm --default
 
-	$(CC) $(CF) -Isrc/client -shared -fpic $^ $(LF) $(LFA) -o $@
+	$(CC) $(CF) -shared -fpic $^ $(LF) -o $@

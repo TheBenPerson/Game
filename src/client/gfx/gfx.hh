@@ -26,8 +26,10 @@
  */
 
 #ifndef GAME_CLIENT_GFX
+#define GAME_CLIENT_GFX
 
 #include <GL/gl.h>
+#include <stdint.h>
 
 #include "nodelist.hh"
 #include "point.hh"
@@ -39,13 +41,12 @@ namespace GFX {
 	extern NodeList listeners;
 	extern unsigned int frame;
 
-	void* call(void* (*function)(void*), void*);
-	void drawText(char *text, Point *point, float size = 1, bool center = false);
+	uintptr_t call(uintptr_t (*function)(uintptr_t), uintptr_t);
+	void drawText(char *text, Point *point, float size = 1, bool center = false, float rot = NULL);
 	void drawSprite(GLuint tex, Point *pos, Point *dim, float rot = NULL, Point *tdim = NULL, Point *frame = NULL);
 	texture loadTexture(char *path);
 	void freeTexture(texture *tex);
 
 }
 
-#define GAME_CLIENT_GFX
 #endif

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "nodelist.hh"
 #include "tile.hh"
 
@@ -20,7 +19,6 @@ extern "C" {
 
 	bool init() {
 
-		cputs(GREEN, "Loaded module: 'tile.so'");
 		return true;
 
 	}
@@ -29,8 +27,6 @@ extern "C" {
 
 		for (unsigned int i = 0; i < assocs.size; i++)
 			free((void*) assocs[i]);
-
-		cputs(YELLOW, "Unloaded module: 'tile.so'");
 
 	}
 
@@ -42,7 +38,7 @@ void Tile::regTile(uint8_t id, Tile* (*create)(void*, bool)) {
 	assoc->id = id;
 	assoc->create = create;
 
-	assocs.add((intptr_t) assoc);
+	assocs.add((uintptr_t) assoc);
 
 }
 

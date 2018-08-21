@@ -26,8 +26,7 @@
  */
 
 #ifndef GAME_CLIENT_BUTTON
-
-#include <GL/gl.h>
+#define GAME_CLIENT_BUTTON
 
 #include "nodelist.hh"
 #include "point.hh"
@@ -67,5 +66,4 @@ class Button {
 
 };
 
-#define GAME_CLIENT_BUTTON
 #endif

@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "console.hh"
 #include "gfx.hh"
 #include "input.hh"
 #include "net.hh"
@@ -13,6 +12,7 @@ static char *text = NULL;
 
 static bool tickNet(Packet *packet);
 static void draw();
+static void tickInput();
 
 extern "C" {
 
@@ -20,22 +20,21 @@ extern "C" {
 
 		tex = GFX::loadTexture("sign.png");
 
-		Net::listeners.add((intptr_t) &tickNet);
-		GFX::listeners.add((intptr_t) &draw);
+		Net::listeners.add((uintptr_t) &tickNet);
+		GFX::listeners.add((uintptr_t) &draw);
+		Input::listeners.add((intptr_t) &tickInput);
 
-		cputs(GREEN, "Loaded module: 'sign.so'");
 		return true;
 
 	}
 
 	void cleanup() {
 
-		GFX::listeners.rem((intptr_t) &draw);
-		Net::listeners.rem((intptr_t) &tickNet);
+		Input::listeners.add((intptr_t) &tickInput);
+		GFX::listeners.rem((uintptr_t) &draw);
+		Net::listeners.rem((uintptr_t) &tickNet);
 
 		GFX::freeTexture(&tex);
-
-		cputs(YELLOW, "Unloaded module: 'sign.so'");
 
 	}
 
@@ -45,9 +44,8 @@ bool tickNet(Packet *packet) {
 
 	if (packet->id != P_SIGN) return false;
 
-	char *old = text;
+	if (text) free(text);
 	text = strdup((char*) packet->data);
-	if (old) free(old);
 
 	return true;
 
@@ -57,19 +55,27 @@ void draw() {
 
 	if (!text) return;
 
-	if (Input::actions[Input::PRIMARY].state) {
-
-		free(text);
-		text = NULL;
-		return;
-
-	}
-
 	Point pos = {0, 0};
 	Point dim = {16, 16};
 	GFX::drawSprite(tex, &pos, &dim);
 
 	pos = {-7, 5};
 	GFX::drawText(text, &pos);
+
+}
+
+void tickInput() {
+
+	if (Input::wasCursor) return;
+
+	// todo: mutex!!
+
+	if (!Input::actions[Input::PRIMARY].state && Input::actions[Input::PRIMARY].changed && text) {
+
+		free(text);
+		text = NULL;
+		return;
+
+	}
 
 }

@@ -26,23 +26,41 @@
  */
 
 #ifndef GAME_SERVER_WORLD
+#define GAME_SERVER_WORLD
 
 #include <stdint.h>
 
+#include "client.hh"
+#include "nodelist.hh"
 #include "point.hh"
 #include "tile.hh"
 
-namespace World {
+class World {
 
-	extern Tile **tiles;
-	extern unsigned int width;
-	extern unsigned int height;
+	public:
 
-	bool loadMap(char *name);
-	Tile* getTile(Point *pos);
-	void setTile(Point *pos, uint8_t id);
+		static World *defaultWorld;
+		static NodeList worlds;
 
-}
+		static World* get(char *name);
+		static World* newWorld(char *name);
+		static void sendWorld(Client *client);
 
-#define GAME_SERVER_WORLD
+		Tile **tiles;
+		unsigned int width;
+		unsigned int height;
+		NodeList clients;
+		NodeList entities;
+
+		~World();
+
+		Tile* getTile(Point *pos);
+		void setTile(Point *pos, uint8_t id);
+
+	private:
+
+		char *name;
+
+};
+
 #endif

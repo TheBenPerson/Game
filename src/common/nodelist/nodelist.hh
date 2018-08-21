@@ -26,9 +26,14 @@
  */
 
 #ifndef GAME_COMMON_NODELIST
+#define GAME_COMMON_NODELIST
 
 #include <stdint.h>
 #include <limits.h>
+
+#ifdef NODELIST_VECTOR
+#include <vector>
+#endif
 
 #include "timing.hh"
 
@@ -36,30 +41,38 @@ class NodeList {
 
 	public:
 
+		#ifndef NODELIST_VECTOR
 		typedef struct Node {
 
 			Node *prev;
 			Node *next;
 
-			intptr_t val;
+			uintptr_t val;
 
 		} Node;
+		#endif
 
 		unsigned int size = 0;
 
 		NodeList();
 		~NodeList();
 
-		intptr_t operator[](unsigned int index);
+		uintptr_t operator[](unsigned int index);
+		Node* find(uintptr_t item); // inspect me
 
-		void add(intptr_t item, unsigned int index = UINT_MAX);
-		Node* find(intptr_t item); // inspect me
+		void add(uintptr_t item, unsigned int index = UINT_MAX);
 		void rem(unsigned int index);
-		void rem(intptr_t item);
+		void rem(uintptr_t item);
 
 	private:
 
 		Timing::mutex m = MTX_DEFAULT;
+
+		#ifdef NODELIST_VECTOR
+
+		std::vector<uintptr_t> vector;
+
+		#else
 
 		Node *last = NULL;
 		Node *root = NULL;
@@ -67,7 +80,8 @@ class NodeList {
 		Node* find(unsigned int index);
 		void del(Node* node);
 
+		#endif
+
 };
 
-#define GAME_COMMON_NODELIST
 #endif

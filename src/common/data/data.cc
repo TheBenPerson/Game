@@ -28,10 +28,6 @@
 namespace Data {
 
 	const char *versionString =
-	"Game\n"
-	"Development Build";
-
-	const char *aboutString =
 	"Game Development Build\n"
 	"https://github.com/TheBenPerson/Game\n\n"
 

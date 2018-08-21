@@ -1,8 +1,10 @@
-Improve and fix audio (opens file and new thread for every sound)
 Trim audio
 Inspect memory increase when scrolling through buttons
-Decide max size of NodeList
 Fix crash on fullscreen toggle
 Inspect what happens when listeners removed while looping through them
 Even though client looses connection, client w/ username still exists
-When server has no entities it cannot quit successfuly
+Give players their actual names
+Add life
+Fix multi worlds
+Change packet size so that size reflects the size of data minus packet id
+Fix client timeout

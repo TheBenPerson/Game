@@ -26,13 +26,12 @@
  */
 
 #ifndef GAME_COMMON_DATA
+#define GAME_COMMON_DATA
 
 namespace Data {
 
 	extern char *versionString;
-	extern char *aboutString;
 
 }
 
-#define GAME_COMMON_DATA
 #endif

@@ -1,44 +1,50 @@
-#include <math.h>
-#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "entity.hh"
 #include "point.hh"
 #include "human.hh"
-#include "tile.hh"
-#include "world.hh"
 
 extern "C" {
 
 	bool init() {
 
-		cputs(GREEN, "Loaded module: 'human.so'");
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'human.so'");
-
-	}
+	void cleanup() {}
 
 }
 
-Human::Human(Client *client): Entity(client) {
+Human::Human(World *world, bool send): Entity(world) {
 
-	type = "Human";
-	dim = {1, 1};
+	name = "Wild Human";
+
+	type = "human";
+	dim = {13, 17};
+	dim /= dim.y;
 
 	interval = 1000;
-	send();
+	if (send) this->send();
 
 }
 
-bool Human::tick(timespec *time) {
+bool Human::tick(unsigned int time) {
 
 	return false;
+
+}
+
+void Human::toNet(Packet *packet) {
+
+	packet->size = 1 + SIZE_TENTITY + strlen(name) + 1;
+	packet->raw = (uint8_t*) malloc(packet->size);
+
+	packet->raw[0] = P_GENT;
+	pack(packet->raw + 1);
+
+	strcpy((char*) packet->raw + 1 + SIZE_TENTITY, name);
 
 }

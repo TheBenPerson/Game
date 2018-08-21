@@ -13,7 +13,7 @@ class Sign: public Tile {
 
 		Sign(char *text = NULL, bool freeStr = false);
 
-		void interact(Client *client);
+		virtual void interact(Client *client);
 
 };
 

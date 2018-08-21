@@ -33,9 +33,9 @@
 #include <string.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "gfx.hh"
 #include "net.hh"
+#include "timing.hh"
 #include "win.hh"
 #include "world.hh"
 
@@ -54,6 +54,7 @@ namespace World {
 
 }
 
+static Timing::Condition condition;
 static GFX::texture tex;
 static GFX::texture texBG;
 
@@ -64,14 +65,19 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((intptr_t) tickNet);
-		Net::send(P_GMAP);
+		Net::listeners.add((uintptr_t) &tickNet);
+
+		for (;;) {// todo: what if lost connection right before here?
+
+			Net::send(P_GMAP);
+			bool result = Timing::waitFor(&condition, 1000);
+			if (result) break;
+
+		}
 
 		tex = GFX::loadTexture("world.png");
 		texBG = GFX::loadTexture("menu.png");
-		GFX::listeners.add((intptr_t) &draw);
-
-		cputs(GREEN, "Loaded module: 'world.so'");
+		GFX::listeners.add((uintptr_t) &draw);
 
 		return true;
 
@@ -79,12 +85,13 @@ extern "C" {
 
 	void cleanup() {
 
-		GFX::listeners.rem((intptr_t) &draw);
+		GFX::listeners.rem((uintptr_t) &draw);
 		GFX::freeTexture(&texBG);
 		GFX::freeTexture(&tex);
 
+		Net::listeners.rem((uintptr_t) &tickNet);
+
 		free(World::tiles);
-		cputs(YELLOW, "Unloaded module: 'world.so'");
 
 	}
 
@@ -107,35 +114,27 @@ static bool tickNet(Packet *packet) {
 
 			// todo: check sizes
 
-			struct Data {
-
-				uint8_t width;
-				uint8_t height;
-				uint8_t tiles[];
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			World::width = data->width;
-			World::height = data->height;
+			World::width = packet->data[0];
+			World::height = packet->data[1];
 
 			unsigned int size = World::width * World::height;
 
-			World::tiles = (uint8_t*) malloc(size);
-			memcpy(World::tiles, data->tiles, size);
+			if (World::tiles) free(World::tiles);
 
+			World::tiles = (uint8_t*) malloc(size);
+			memcpy(World::tiles, packet->data + 2, size);
+
+			Timing::signal(&condition);
 			printf("Recieved map (%ix%i)\n", World::width, World::height);
 
 		} break;
 
 		case P_SBLK: {
 
-			struct Data {
+			if (!World::tiles) break;
 
-				uint16_t index;
-				uint8_t id;
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-			World::tiles[data->index] = data->id;
+			unsigned int index = *((uint16_t*) packet->data);
+			World::tiles[index] = packet->data[2];
 
 		} break;
 
@@ -214,11 +213,15 @@ void draw() {
 
 	glPopMatrix();
 
-	//char buffer[50];
-	//sprintf(buffer, "Rot: %.2f\nPos: (%.2f, %.2f)", (World::rot * 360) / (M_PI * 2), World::pos.x, World::pos.y);
+	if (World::pos) {
 
-	//Point pos = {(-10 * WIN::aspect) + 1, 9};
-	//GFX::drawText(buffer, &pos);
+		char buffer[50];
+		sprintf(buffer, "Rot: %.2f\nPos: (%.2f, %.2f)", (World::rot * 360) / (M_PI * 2), World::pos->x, World::pos->y);
+
+		Point pos = {(-10 * WIN::aspect) + 1, 9};
+		GFX::drawText(buffer, &pos);
+
+	}
 
 }
 

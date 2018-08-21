@@ -28,13 +28,13 @@
 #include <GL/gl.h>
 #include <math.h>
 
-#include "audio.hh"
+#include "audio_source.hh"
 #include "button.hh"
 #include "client.hh"
-#include "console.hh"
 #include "data.hh"
 #include "gfx.hh"
 #include "input.hh"
+#include "sound.hh"
 #include "win.hh"
 
 static float width = 10;
@@ -50,6 +50,10 @@ static Button::Menu *menu;
 static Button *selected;
 static enum { NORMAL, SELECTED, CLICKED } state = NORMAL;
 
+static Sound *soundMenu;
+static Sound *soundClick;
+static Sound *soundTick;
+
 static void tick();
 static void draw();
 
@@ -59,27 +63,33 @@ extern "C" {
 
 		menu = Button::root;
 
-		Input::listeners.add((intptr_t) &tick);
+		Input::listeners.add((uintptr_t) &tick);
 
 		texBG = GFX::loadTexture("menu.png");
 		texButton = GFX::loadTexture("button.png");
-		GFX::listeners.add((intptr_t) &draw);
+		GFX::listeners.add((uintptr_t) &draw);
 
-		Audio::play("menu.ogg", true);
+		soundMenu = new Sound("menu.ogg");
+		soundTick = new Sound("tick.ogg");
+		soundClick = new Sound("click.ogg");
 
-		cputs(GREEN, "Loaded module: 'ui.so'");
+		soundMenu->play(true);
+
 		return true;
 
 	}
 
 	void cleanup() {
 
-		GFX::listeners.rem((intptr_t) &draw);
+		delete soundClick;
+		delete soundTick;
+		delete soundMenu;
+
+		GFX::listeners.rem((uintptr_t) &draw);
 		GFX::freeTexture(&texButton);
 		GFX::freeTexture(&texBG);
 
-		Input::listeners.rem((intptr_t) &tick);
-		cputs(YELLOW, "Unloaded module: 'ui.so'");
+		Input::listeners.rem((uintptr_t) &tick);
 
 	}
 
@@ -88,38 +98,35 @@ extern "C" {
 static bool dologic(Button *button, Point *lower, Point *upper) {
 
 	if (button == selected) {
+	if (state == SELECTED && Input::actions[Input::PRIMARY].state) state = CLICKED;
+	else {
 
-		if (state == SELECTED && Input::actions[Input::PRIMARY].state) state = CLICKED;
-		else {
+		if (state == CLICKED) {
 
-			if (state == CLICKED) {
+			if (button->action.isMenu) {
 
-				if (button->action.isMenu) {
+				if (button->action.menu == (Button::Menu*) -1) menu = menu->parent;
+				else menu = button->action.menu;
 
-					if (button->action.menu == (Button::Menu*) -1) menu = menu->parent;
-					else menu = button->action.menu;
+				selected = NULL;
 
-					selected = NULL;
+			} else button->action.callback(button);
 
-				} else button->action.callback(button);
+			soundClick->play();
 
-				Audio::play("click.ogg");
-
-				state = SELECTED;
-				return true;
-
-			}
+			state = SELECTED;
+			return true;
 
 		}
 
-	}
+	}}
 
 	if (!(Input::cursor > *lower)) return false;
 	if (!(Input::cursor < *upper)) return false;
 
 	if (state != CLICKED) {
 
-		if (selected != button) Audio::play("tick.ogg");
+		if (selected != button) soundTick->play();
 		state = SELECTED;
 
 	}
@@ -144,7 +151,7 @@ void tick() {
 
 		if (Input::actions[Input::UP].state || Input::actions[Input::DOWN].state) {
 
-			Audio::play("tick.ogg");
+			soundTick->play();
 
 			if (!selected) {
 
@@ -172,10 +179,10 @@ void tick() {
 
 			bool list = false;
 
-			NodeList::Node *node = menu->lists[0].find((intptr_t) selected);
+			NodeList::Node *node = menu->lists[0].find((uintptr_t) selected);
 			if (!node) {
 
-				node = menu->lists[1].find((intptr_t) selected);
+				node = menu->lists[1].find((uintptr_t) selected);
 				list = true;
 
 			}
@@ -284,8 +291,21 @@ static void drawButton(Button *button) {
 
 void draw() {
 
-	if (Client::state == Client::IN_GAME) return;
 	// fix this section w/ better logic
+
+	if (Client::state == Client::IN_GAME) {
+
+		static bool stopped = false;
+		if (!stopped) {
+
+			soundMenu->stop();
+			stopped = true;
+
+		}
+
+		return;
+
+	}
 
 	static float i = 0;
 	i += 0.005f;

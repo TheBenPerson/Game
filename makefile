@@ -24,13 +24,9 @@
 # always include files in src/common
 export CPATH := src/:$(shell find src/common -type d | tr '\n' ':')
 
-# compiler
-CC := gcc
-
-# compiler flags
-CF := -Wall -Wextra -Wpedantic
-
-# linker flags
+# flags
+CC := g++
+CF := -O0 -Wall -Wextra -Wpedantic -Wno-write-strings -Wno-conversion-null -Wno-vla -D NULL=0
 LF := -g -fsanitize=address
 
 # build directories
@@ -39,6 +35,7 @@ CB := $(BIN)/client
 SB := $(BIN)/server
 OBJ := $(BIN)/obj
 
+.PHONY: all
 all:
 	@setterm --foreground green
 	# Starting make with parallel jobs enabled...
@@ -46,16 +43,18 @@ all:
 	@setterm --default
 	make -j $(shell nproc) _all
 
+.PHONY: _all
 _all: launcher client server
 	@setterm --foreground green
 	# Done
 	@setterm --default
 
+.PHONY: release
 release: LF := -O3 -s
 release: all
 
 # launcher
-# -rdynamic flag for modules referencing things defined in
+# -rdynamic flag for modules referencing things defined in main
 
 .PHONY: launcher
 launcher: $(BIN)/game
@@ -63,7 +62,7 @@ $(BIN)/game: $(OBJ)/main.o $(BIN)/common.so
 	@setterm --foreground green
 	# Compiling launcher: 'game'...
 	@setterm --default
-	$(CC) $(CF) $^ $(LF) -ldl -lstdc++ -rdynamic -o $@
+	$(CC) $(CF) $^ $(LF) -ldl -rdynamic -o $@
 
 $(OBJ)/main.o: src/main.cc
 	@setterm --foreground green
@@ -79,23 +78,13 @@ $(BIN)/common.so: $(shell find src/common -name "*.cc")
 	@setterm --foreground green
 	# Compiling library: 'common.so'...
 	@setterm --default
-	$(CC) $(CF) -shared -fpic $^ $(LF) -lpthread -lm -o $@
+	$(CC) $(CF) -shared -fpic $^ $(LF) -lpthread -lm -lconfuse -o $@
 
 # client modules
 
 include client.mak
 include server.mak
 
-tmp/client.cc.tags: DIRS := $(shell find src/common src/client -type d)
-tmp/client.cc.tags: FILES := $(shell find src/common src/client -type f)
-tmp/client.cc.tags: CFLAGS := "-Isrc/ $(shell echo $(DIRS) | sed 's/src/-Isrc/g')"
-tmp/client.cc.tags:
-	CFLAGS=$(CFLAGS) geany -g $@ $(FILES)
-
-.PHONY:clean
+.PHONY: clean
 clean:
-	-rm $(CB)/*.so 2> /dev/null
-	-rm $(SB)/*.so 2> /dev/null
-	-rm $(BIN)/common.so 2> /dev/null
-	-rm $(BIN)/game 2> /dev/null
-	-rm $(OBJ)/*.o 2> /dev/null
+	-find bin -type f -name "[^.]*" | xargs rm 2> /dev/null

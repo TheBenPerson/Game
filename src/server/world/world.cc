@@ -31,186 +31,249 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "auth.hh"
 #include "client.hh"
 #include "console.hh"
+#include "config.hh"
+#include "entity.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "player.hh"
 #include "point.hh"
-#include "server.hh"
+#include "sign.hh"
+#include "string.hh"
 #include "tiledef.hh"
 #include "world.hh"
 
+World *World::defaultWorld = NULL;
+NodeList World::worlds;
+
+static int parseWorld(void *, void *, const char *value, void *result);
 static bool tickNet(Packet *packet, Client *client);
 
 extern "C" {
 
 	bool init() {
 
-		Server::config.set("world.map", (intptr_t) "default.map");
-		Server::config.load("world.cfg");
-
-		char *map = (char*) Server::config.get("world.map")->val;
-
 		// todo: if failed call cleanup
-		bool result = World::loadMap(map);
-		if (!result) return false;
+		World::defaultWorld = World::newWorld("main.map");
+		if (!World::defaultWorld) return false;
 
-		Net::listeners.add((intptr_t) &tickNet);
-
-		cputs(GREEN, "Loaded module: 'world.so'");
+		Net::listeners.add((uintptr_t) &tickNet);
 		return true;
 
 	}
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
+		Net::listeners.rem((uintptr_t) &tickNet);
 
-		for (unsigned int i = 0; i < (World::width * World::height); i++)
-			delete World::tiles[i];
-
-		free(World::tiles);
-
-		cputs(YELLOW, "Unloaded module: 'world.so'");
+		while (World::worlds.size)
+			delete (World*) World::worlds[0];
 
 	}
 
 }
 
-namespace World {
+World* World::get(char *name) {
 
-	Tile **tiles = NULL; // should be mutex locked...
-	unsigned int width;
-	unsigned int height;
+	for (unsigned int i = 0; i < worlds.size; i++) {
 
-	bool loadMap(char *name) {
-
-		char *path = (char*) malloc(8 + strlen(name) + 1);
-		sprintf(path, "res/map/%s", name);
-
-		FILE *file = fopen(path, "r");
-		free(path);
-
-		if (!file) {
-
-			ceprintf(RED, "Error opening file '%s': %s\n", name, strerror(errno));
-			return false;
-
-		}
-
-		int result = fscanf(file, "%ix%i\n", &width, &height);
-		if (result < 1 || result == EOF) {
-
-			fclose(file);
-
-			ceputs(RED, "Error loading world");
-			return false;
-
-		}
-
-		unsigned int size = width * height;
-
-		if (tiles) {
-
-			for (unsigned int i = 0; i < size; i++)
-				delete tiles[i];
-
-			free(tiles);
-
-		}
-
-		tiles = (Tile**) malloc(sizeof(Tile*) * size);
-
-		for (int row = height - 1; row != -1; row--) {
-		for (unsigned int col = 0; col < width; col++) {
-
-			unsigned int id;
-			int result = fscanf(file, "%i,", &id);
-			if (result == EOF) {
-
-				fclose(file);
-
-				ceputs(RED, "Error loading world");
-				return false;
-
-			}
-
-			tiles[(row * width) + col] = Tile::newTile(id);
-
-		}}
-
-		// dummy to read newline
-		fgetc(file);
-
-		for (unsigned int i = 0; i < size; i++) {
-
-			if (tiles[i]->id == T_SIGN) {
-
-				size_t dummy = NULL;
-				ssize_t result = getline((char**) &tiles[i]->special, &dummy, file);
-				if (result == -1) {
-
-					fclose(file);
-
-					ceputs(RED, "Error loading world");
-					return false;
-
-				}
-
-				tiles[i]->freeSpecial = true;
-
-			}
-
-		}
-
-		fclose(file);
-
-		printf("Loaded map '%s' (%ix%i)\n", name, width, height);
-		return true;
+		World *world = (World*) worlds[i];
+		if (!strcmp(world->name, name)) return world;
 
 	}
 
-	Tile* getTile(Point *pos) {
-
-		unsigned int x = pos->x + (width / 2);
-		unsigned int y = pos->y + (height / 2);
-
-		return tiles[(y * width) + x];
-
-	}
-
-	void setTile(Point *pos, uint8_t id) {
-
-		unsigned int x = pos->x + (width / 2);
-		unsigned int y = pos->y + (height / 2);
-
-		unsigned int index = (y * width) + x;
-
-		if (tiles[index]->id == id) return;
-		tiles[index]->id = id;
-
-		struct {
-
-			uint8_t id = P_SBLK;
-			uint16_t index;
-			uint8_t type;
-
-		} __attribute__((packed)) data;
-
-		// workaround for same name glitch thingy
-		data.index = index;
-		data.type = id;
-
-		Packet packet;
-		packet.raw = (uint8_t*) &data;
-		packet.size = sizeof(data);
-
-		Client::broadcast(&packet);
-
-	}
+	return NULL;
 
 }
 
+World* World::newWorld(char *name) {
+
+	STRING_CAT2(path, "res/map/", name);
+
+	Config::Option options[] = {
+
+		INT("width", NULL),
+		INT("height", NULL),
+		CUSTOM("tiles", NULL, &parseWorld),
+		STRING_LIST("specials", NULL),
+		END
+
+	};
+
+	bool result;
+	Config config(path, options, &result);
+
+	if (!result) {
+
+		ceprintf(RED, "Error loading world '%s': could not parse file\n", name);
+		return NULL;
+
+	}
+
+	unsigned int width = config.getInt("width");
+	unsigned int height = config.getInt("height");
+
+	unsigned int size = width * height;
+
+	if (size != config.getSize("tiles")) {
+
+		ceprintf(RED, "Error loading world '%s': invalid dimensions\n", name);
+		return NULL;
+
+	}
+
+	Tile **tiles = (Tile**) malloc(sizeof(Tile*) * size);
+
+	unsigned int index = 0;
+	unsigned int sindex = 0;
+
+	for (int row = height - 1; row != -1; row--) {
+	for (unsigned int col = 0; col < width; col++) {
+
+		int id = config.getInt("tiles", index++);
+
+		unsigned int i = (row * width) + col;
+		tiles[i] = Tile::newTile(id);
+
+		if (tiles[i]->id == Tiledef::SIGN || tiles[i]->id == Tiledef::DOOR) {
+
+			size_t dummy = NULL;
+			tiles[i]->special = strdup(config.getStr("specials", sindex++));
+			tiles[i]->freeSpecial = true;
+
+		}
+
+	}}
+
+	World *world = new World;
+	world->name = name;
+	world->width = width;
+	world->height = height;
+	world->tiles = tiles;
+
+	worlds.add((uintptr_t) world);
+
+	printf("Loaded map '%s' (%ix%i)\n", name, width, height);
+	return world;
+
+}
+
+void World::sendWorld(Client *client) {
+
+	printf("Sending map to %s...\n", client->name);
+
+	World *world = Auth::get(client)->world;
+
+	Packet packet;
+	packet.size = 3 + (world->width * world->height);
+	packet.raw = (uint8_t*) malloc(packet.size);
+
+	packet.raw[0] = P_GMAP;
+	packet.raw[1] = world->width;
+	packet.raw[2] = world->height;
+
+	for (unsigned int i = 3; i < packet.size; i++)
+		packet.raw[i] = world->tiles[i - 3]->id;
+
+	client->send(&packet);
+	free(packet.raw);
+
+}
+
+World::~World() {
+
+	// todo: MUTEXES!!
+	// and kick players
+
+	worlds.rem((uintptr_t) this);
+
+	while (entities.size)
+		delete (Entity*) entities[0];
+
+	for (unsigned int i = 0; i < (width * height); i++)
+		delete tiles[i];
+
+	free(tiles);
+
+}
+
+Tile* World::getTile(Point *pos) {
+
+	unsigned int x = pos->x + (width / 2);
+	unsigned int y = pos->y + (height / 2);
+
+	return tiles[(y * width) + x];
+
+}
+
+void World::setTile(Point *pos, uint8_t id) {
+
+	unsigned int x = pos->x + (width / 2);
+	unsigned int y = pos->y + (height / 2);
+
+	unsigned int index = (y * width) + x;
+
+	if (tiles[index]->id == id) return;
+	tiles[index]->id = id;
+
+	uint8_t data[4];
+
+	data[0] = P_SBLK;
+	*((uint16_t*) (data + 1)) = index;
+	data[3] = id;
+
+	Packet packet;
+	packet.size = 4;
+	packet.raw = data;
+
+	Client::broadcast(&packet);
+
+}
+
+int parseWorld(void *, void *, const char *value, void *result) {
+
+	switch (*value) {
+
+		case 'R': *((int*) result) = Tiledef::ROCK;
+		break;
+
+		case 'G': *((int*) result) = Tiledef::GRASS;
+		break;
+
+		case 'D': *((int*) result) = Tiledef::DIRT;
+		break;
+
+		case 'S': *((int*) result) = Tiledef::SAND;
+		break;
+
+		case 'W': *((int*) result) = Tiledef::WATER;
+		break;
+
+		case 'I': *((int*) result) = Tiledef::ICE;
+		break;
+
+		case 'L': *((int*) result) = Tiledef::LAVA;
+		break;
+
+		case 'd': *((int*) result) = Tiledef::DOOR;
+		break;
+
+		case 's': *((int*) result) = Tiledef::SIGN;
+		break;
+
+		case 'C': *((int*) result) = Tiledef::CACTUS;
+		break;
+
+		// to indicate error
+		default: return 1;
+
+	}
+
+	return NULL;
+
+}
 
 bool tickNet(Packet *packet, Client *client) {
 
@@ -218,42 +281,26 @@ bool tickNet(Packet *packet, Client *client) {
 
 		case P_INTR: {
 
-			Tile *tile = World::tiles[*((uint16_t*) packet->data)];
+			Auth *auth = Auth::get(client);
+			if (!auth->player) break;
+
+			Tile *tile = auth->world->tiles[*((uint16_t*) packet->data)];
 			tile->interact(client);
 
 		} break;
 
-		case P_GMAP: {
-
-			printf("Sending map to %s...\n", client->name);
-
-			Packet packet;
-			packet.size = 3 + (World::width * World::height);
-			packet.raw = (uint8_t*) malloc(packet.size);
-
-			packet.raw[0] = P_GMAP;
-			packet.raw[1] = World::width;
-			packet.raw[2] = World::height;
-
-			for (unsigned int i = 3; i < packet.size; i++)
-				packet.raw[i] = World::tiles[i - 3]->id;
-
-			client->send(&packet);
-			free(packet.raw);
-
-		} break;
+		case P_GMAP: World::sendWorld(client);
+		break;
 
 		case P_SBLK: {
 
-			struct Data {
+			Auth *auth = Auth::get(client);
+			if (!auth->player) break;
 
-				uint16_t index;
-				uint8_t id;
+			World *world = auth->world;
 
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			unsigned int index = data->index;
-			World::tiles[index]->id = data->id;
+			unsigned int index = *((uint16_t*) packet->data);
+			world->tiles[index]->id = packet->data[2];
 
 			for (unsigned int i = 0; i < Client::clients.size; i++) {
 

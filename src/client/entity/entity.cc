@@ -1,9 +1,7 @@
-#include <GL/gl.h>
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
 
-#include "console.hh"
 #include "entity.hh"
 #include "gfx.hh"
 #include "net.hh"
@@ -12,6 +10,15 @@
 #include "tiledef.hh"
 #include "world.hh"
 
+typedef struct {
+
+	const char *name;
+	void (*create)(uint8_t*);
+
+} Entry;
+
+static NodeList entries;
+
 static bool tickNet(Packet *packet);
 static void draw();
 
@@ -19,12 +26,10 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((intptr_t) &tickNet);
-		World::listeners.add((intptr_t) &draw);
+		Net::listeners.add((uintptr_t) &tickNet);
+		World::listeners.add((uintptr_t) &draw);
 
 		Net::send(P_GENT);
-
-		cputs(GREEN, "Loaded module: 'entity.so'");
 		return true;
 
 	}
@@ -34,38 +39,74 @@ extern "C" {
 		while (Entity::entities.size) {
 
 			Entity *entity = (Entity*) Entity::entities[0];
+
+			// destructor removes entity from list
 			delete entity;
 
 		}
 
-		World::listeners.rem((intptr_t) &draw);
-		Net::listeners.rem((intptr_t) &tickNet);
+		while (entries.size) {
 
-		cputs(YELLOW, "Unloaded module: 'entity.so'");
+			Entry *entry = (Entry*) entries[0];
+			entries.rem((uintptr_t) entry);
+
+			delete entry;
+
+		}
+
+		World::listeners.rem((uintptr_t) &draw);
+		Net::listeners.rem((uintptr_t) &tickNet);
 
 	}
 
 }
 
+// id
+// type
+// pos
+// extra
+
 bool tickNet(Packet *packet) {
 
 	switch (packet->id) {
 
-		case P_UENT: {
+		case P_GENT: {
 
-			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
+			if (packet->size < SIZE_TENTITY) break;
 
-			Entity *entity = Entity::get(upacket->id); // todo: investicate crash here
-			entity->update((uint8_t*) upacket);
+			unsigned int id = *((uint16_t*) packet->data);
+
+			Entity *entity = Entity::get(id);
+			if (entity)	{
+
+				entity->unpack(packet->data + 12);
+				break;
+
+			}
+
+			char type[11] = {0};
+			strncpy(type, (char*) packet->data + 2, 10);
+
+			for (unsigned int i = 0; i < entries.size; i++) {
+
+				Entry *entry = (Entry*) entries[i];
+				if (!strcmp(type, entry->name)) {
+
+					entry->create(packet->data);
+					break;
+
+				}
+
+			}
 
 		} break;
 
 		case P_DENT: {
 
-			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
+			if (packet->size != 2) break;
 
-			Entity *entity = Entity::get(upacket->id);
-			delete entity;
+			unsigned int id = *((uint16_t*) packet->data);
+			delete Entity::get(id);
 
 		} break;
 
@@ -103,26 +144,40 @@ Entity* Entity::get(unsigned int id) {
 
 }
 
-bool Entity::verify(UPacket *packet, char *type) {
+void Entity::regEnt(const char *name, void (*create)(uint8_t*)) {
 
-	return !strcmp(packet->type, type);
+	Entry *entry = new Entry;
+	entry->name = name;
+	entry->create = create;
+
+	entries.add((uintptr_t) entry);
 
 }
 
-Entity::Entity(void *info) {
+Entity::Entity(uint8_t *data) {
 
-	UPacket *upacket = (UPacket*) info;
+	id = *((uint16_t*) data);
+	unpack(data + 12);
 
-	id = upacket->id;
-	update((uint8_t*) upacket);
-
-	entities.add((intptr_t) this);
+	entities.add((uintptr_t) this);
 
 }
 
 Entity::~Entity() {
 
-	entities.rem((intptr_t) this);
+	entities.rem((uintptr_t) this);
+
+}
+
+void Entity::unpack(uint8_t *buff) {
+
+	dim = Point(buff);
+	buff += SIZE_TPOINT;
+
+	pos = Point(buff);
+	buff += SIZE_TPOINT;
+
+	vel = Point(buff);
 
 }
 
@@ -166,22 +221,30 @@ void Entity::draw() {
 	if (right < -dwidth) return;
 	if (right > (dwidth - evenW)) right = dwidth - evenW;
 
-	bool colX = false;
-	bool colY = false;
-
 	// the +1 is to include the heighest value itself
 	for (int y = bottom; y < top + 1; y++) {
 	for (int x = left; x < right + 1; x++) {
 
-		Point point = {(float) x, (float) y};
-		unsigned int index = World::getIndex(&point);
+		// exact center of tile
+		Point tilePos = {x + (evenW * .5f), y + (evenH * .5f)};
+		unsigned int index = World::getIndex(&tilePos);
 
 		// don't collide with grass, etc.
-		if (World::tiles[index] != T_ROCK) continue;
+		switch (World::tiles[index]) {
 
-		// convert block coords to world coords
-		float dx = pos.x - (x + (evenW * .5f));
-		float dy = pos.y - (y + (evenH * .5f));
+			case Tiledef::ROCK:
+			case Tiledef::SIGN:
+			break;
+
+			default: continue;
+
+		}
+
+		float dx = pos.x - tilePos.x;
+		float dy = pos.y - tilePos.y;
+
+		bool colX = false;
+		bool colY = false;
 
 		// if collision on X axis
 		if (fabsf(dx) > fabsf(dy)) {
@@ -189,11 +252,13 @@ void Entity::draw() {
 			// check if the side of collision
 			// is covered by a neighboring block
 
+			Point point = tilePos;
+
 			if (dx > 0) point.x++;
 			else point.x--;
 
 			index = World::getIndex(&point);
-			if (World::tiles[index] != T_ROCK) colX = true;
+			if (World::tiles[index] != Tiledef::ROCK) colX = true;
 
 		// if collision on Y axis
 		} else if (fabsf(dx) < fabsf(dy)) {
@@ -201,31 +266,42 @@ void Entity::draw() {
 			// check if the side of collision
 			// is covered by a neighboring block
 
+			Point point = tilePos;
+
 			if (dy > 0) point.y++;
 			else point.y--;
 
 			index = World::getIndex(&point);
-			if (World::tiles[index] != T_ROCK) colY = true;
+			if (World::tiles[index] != Tiledef::ROCK) colY = true;
 
 		} else {
 
-			// on corner
+			// corner collision
+			colX = true;
+			colY = true;
+
+		}
+
+		// fix collision
+
+		if (colX) {
+
+			pos.x = tilePos.x;
+
+			if (dx > 0) pos.x += .5f + ddim.x;
+			else pos.x -= .5f + ddim.x;
+
+		}
+
+		if (colY) {
+
+			pos.y = tilePos.y;
+
+			if (dy > 0) pos.y += .5f + ddim.y;
+			else pos.y -= .5f + ddim.y;
 
 		}
 
 	}}
-
-	if (colX) pos.x -= dpos.x;
-	if (colY) pos.y -= dpos.y;
-
-}
-
-void Entity::update(uint8_t *info) {
-
-	UPacket *upacket = (UPacket*) info;
-
-	dim = upacket->dim;
-	pos = upacket->pos;
-	vel = upacket->vel;
 
 }

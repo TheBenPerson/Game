@@ -26,22 +26,46 @@
  */
 
 #ifndef GAME_CLIENT_CONFIG
+#define GAME_CLIENT_CONFIG
 
-#include "nodetree.hh"
+#include <confuse.h>
 
-class Config: public NodeTree {
+#define BOOL(item, val) CFG_BOOL(item, (cfg_bool_t) val, CFGF_NONE)
+#define INT(item, val) CFG_INT(item, val, CFGF_NONE)
+#define INT_LIST(item, val) CFG_INT_LIST(item, val, CFGF_NONE)
+#define FLOAT(item, val) CFG_FLOAT(item, val, CFGF_NONE)
+#define STRING(item, val) CFG_STR(item, val, CFGF_NONE)
+#define STRING_LIST(item, val) CFG_STR_LIST(item, val, CFGF_NONE)
+#define FUNCTION(item, val) CFG_FUNC(item, val)
+#define CUSTOM(item, val, callback) CFG_INT_LIST_CB(item, val, CFGF_NONE, (cfg_callback_t) callback)
+#define END CFG_END()
+
+class Config {
 
 	public:
 
-		Config(char *dir);
+		typedef cfg_opt_t Option;
 
-		void load(char *path);
+		Config(char *path, Option *options, bool *result = NULL);
+		~Config();
+
+		bool getBool(char *item, unsigned int idex = 0);
+		int getInt(char *item, unsigned int idex = 0);
+		float getFloat(char *item, unsigned int idex = 0);
+		char* getStr(char *item, unsigned int idex = 0);
+
+		unsigned int getSize(char *item);
+
+		void setBool(char *item, bool val);
+		void setInt(char *item, int val);
+		void setFloat(char *item, float val);
+		void setStr(char *item, char *val);
 
 	private:
 
-		char *dir;
+		cfg_t *cfg;
+		char *path;
 
 };
 
-#define GAME_CLIENT_CONFIG
 #endif

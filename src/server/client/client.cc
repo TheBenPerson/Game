@@ -35,9 +35,9 @@
 #include <string.h>
 
 #include "client.hh"
-#include "console.hh"
+#include "config.hh"
 #include "net.hh"
-#include "server.hh"
+#include "nodelist.hh"
 #include "timing.hh"
 
 static Timing::thread t;
@@ -48,14 +48,21 @@ extern "C" {
 
 	bool init() {
 
-		Server::config.set("client.timeout", 30);
-		Server::config.load("client.cfg");
-		dtimeout = (unsigned int) Server::config.get("client.timeout")->val;
+		Config::Option options[] = {
+
+			INT("timeout", 30),
+			END
+
+		};
+
+		Config config("cfg/server/client.cfg", options);
+
+		dtimeout = config.getInt("timeout");
+		dtimeout *= 1000; // to ms
 		dtimeout /= 2; // could be zero - tell user
 
 		t = Timing::createThread(spawn, NULL);
 
-		cputs(GREEN, "Loaded module: 'client.so'");
 		return true;
 
 	}
@@ -71,8 +78,6 @@ extern "C" {
 
 		Net::stop();
 		Timing::waitFor(t);
-
-		cputs(YELLOW, "Unloaded module: 'client.so'");
 
 	}
 
@@ -191,8 +196,11 @@ void* Client::entry(void* arg) {
 			case P_POKE: client->send(P_ACCEPT);
 			break;
 
-			case P_DENY: printf("%s disconnected\n", client->name);
-			case P_KICK: client->running = false;
+			case P_DENY:
+
+				printf("%s disconnected\n", client->name);
+				client->running = false;
+
 			default:
 
 				for (unsigned int i = 0; i < Net::listeners.size; i++) {
@@ -205,13 +213,24 @@ void* Client::entry(void* arg) {
 
 		}
 
-		// todo: don't free dummy packet
-		free(packet->raw);
+		// don't free dummy packet
+		if (client->running) free(packet->raw);
 
 	}
 
 	delete client;
 	return NULL;
+
+}
+
+void Client::broadcast(Packet *packet, NodeList *clients) {
+
+	for (unsigned int i = 0; i < clients->size; i++) {
+
+		Client *client = (Client*) (*clients)[i];
+		client->send(packet);
+
+	}
 
 }
 
@@ -232,14 +251,14 @@ Client::Client(sockaddr_in *addr, char *name) {
 
 	this->name = name;
 
-	clients.add((intptr_t) this);
+	clients.add((uintptr_t) this);
 	t = Timing::createThread(&Client::entry, (void*) this);
 
 }
 
 Client::~Client() {
 
-	clients.rem((intptr_t) this);
+	clients.rem((uintptr_t) this);
 	free(name);
 
 }
@@ -265,18 +284,18 @@ void Client::recv(Packet *packet) {
 	// todo: if busy put on a fifo?
 
 	this->packet = packet;
-	Timing::signal(&cond);
+	Timing::signal(&condition);
 
 }
 
 Packet* Client::recv() {
 
 	// returns false if time ran out
-	bool result = Timing::waitFor(&cond, dtimeout);
+	bool result = Timing::waitFor(&condition, dtimeout);
 	if (result) return packet;
 
 	send(P_POKE);
-	result = Timing::waitFor(&cond, dtimeout);
+	result = Timing::waitFor(&condition, dtimeout);
 
 	if (result) {
 
@@ -292,17 +311,22 @@ void Client::kick(char *reason) {
 	running = false;
 
 	Packet packet;
-	packet.size = strlen(reason) + 2;
-	packet.raw = (uint8_t*) malloc(packet.size);
-	packet.raw[0] = P_KICK;
-	strcpy((char*) packet.raw + 1, reason);
+	packet.size = 1 + strlen(reason) + 1;
 
-	send(&packet);
-	free(packet.raw);
+	{ // saves stack space
+
+		uint8_t data[packet.size];
+		data[0] = P_DENY;
+		strcpy((char*) data + 1, reason);
+
+		packet.raw = data;
+		send(&packet);
+
+	}
 
 	printf("Kicked %s (%s)\n", name, reason);
 
-	uint8_t id = P_KICK;
+	uint8_t id = P_DENY;
 	packet.raw = &id;
 	packet.size = 1;
 	recv(&packet); // send dummy packet to exit recv

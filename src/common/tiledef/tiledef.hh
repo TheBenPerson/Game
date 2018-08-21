@@ -28,15 +28,17 @@
 #ifndef GAME_COMMON_TILEDEF
 #define GAME_COMMON_TILEDEF
 
-// todo: namespace?
+namespace Tiledef {
 
-enum {
+	enum {
 
-	T_NULL, T_ROCK, T_GRASS, T_DIRT, T_SAND, T_WATER, T_ICE, T_LAVA,
-	T_PORTAL, T_SIGN, T_CACTUS,
+		NONE, ROCK, GRASS, DIRT, SAND, WATER, ICE, LAVA,
+		DOOR, SIGN, CACTUS,
 
-	T_NUM_TYPES
+		NUM_TYPES
 
-};
+	};
+
+}
 
 #endif

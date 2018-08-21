@@ -26,6 +26,7 @@
  */
 
 #ifndef GAME_COMMON_CONSOLE
+#define GAME_COMMON_CONSOLE
 
 #include <stdio.h>
 
@@ -44,5 +45,4 @@ void cprintf(char *color, char *format ...);
 void ceputs(char *color, char *string);
 void ceprintf(char *color, char *format ...);
 
-#define GAME_COMMON_CONSOLE
 #endif

@@ -40,10 +40,13 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "client.hh"
+#include "config.hh"
 #include "console.hh"
+#include "main.hh"
 #include "net.hh"
 #include "timing.hh"
+
+static Config *config;
 
 static Timing::thread t;
 static bool running = false;
@@ -87,6 +90,7 @@ static bool recv(Packet *packet) {
 	recv(sock, packet->raw, packet->size, NULL);
 
 	packet->id = packet->raw[0];
+	packet->size--;
 	packet->data = packet->raw + 1;
 
 	timed = false;
@@ -123,11 +127,12 @@ static void* tmain(void*) {
 
 			case P_DENY:
 
-				packet.raw[packet.size - 1] = '\0';
-				printf("Disconnected (%s)\n", packet.raw + 1);
+				packet.data[packet.size - 1] = '\0';
+				printf("Disconnected (%s)\n", packet.data);
 
-				close(sock);
+				// in case cleanup isn't called in time to set running to false
 				running = false;
+				Game::stop();
 
 			break;
 
@@ -155,19 +160,26 @@ extern "C" {
 
 	bool init() {
 
-		Client::config.set("net.name", (intptr_t) "John_Doe");
-		Client::config.set("net.host", (intptr_t) "localhost");
-		Client::config.set("net.timeout", 30);
-		Client::config.set("net.port", 1270);
-		Client::config.load("net.cfg");
+		Config::Option options[] = {
 
-		name = (char*) Client::config.get("net.name")->val;
-		host = (char*) Client::config.get("net.host")->val;
-		port = (uint16_t) Client::config.get("net.port")->val;
+			STRING("name", "John_Doe"),
+			STRING("host", "localhost"),
+			INT("timeout", 30),
+			INT("port", 1270),
+			END
 
-		dtimeout = (int) Client::config.get("net.timeout")->val;
+		};
+
+		config = new Config("cfg/client/net.cfg", options);
+
+		name = config->getStr("name");
+		host = config->getStr("host");
+
+		dtimeout = config->getInt("timeout");
 		dtimeout *= 1000;
 		dtimeout /= 2; // todo: might be zero - tell user
+
+		port = config->getInt("port");
 
 		sock = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -250,7 +262,6 @@ extern "C" {
 		t = Timing::createThread(&tmain, NULL);
 
 		printf("Connected to %s:%i\n", host, port);
-		cputs(GREEN, "Loaded module: 'net.so'");
 		return true;
 
 	}
@@ -264,7 +275,7 @@ extern "C" {
 		Timing::waitFor(t);
 
 		close(sock);
-		cputs(YELLOW, "Unloaded module: 'net.so'");
+		delete config;
 
 	}
 

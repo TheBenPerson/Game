@@ -28,11 +28,17 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef NODELIST_VECTOR
+#include <vector>
+#endif
+
 #include "nodelist.hh"
 
 NodeList::NodeList() {}
 
 NodeList::~NodeList() {
+
+	#ifndef NODELIST_VECTOR
 
 	Node* node;
 
@@ -45,20 +51,60 @@ NodeList::~NodeList() {
 
 	}
 
+	#endif
+
 }
 
-intptr_t NodeList::operator[](unsigned int index) {
+uintptr_t NodeList::operator[](unsigned int index) {
+
+	#ifdef NODELIST_VECTOR
+
+	return vector[index];
+
+	#else
 
 	return find(index)->val;
 
+	#endif
+
 }
 
-void NodeList::add(intptr_t item, unsigned int index) {
+#ifndef NODELIST_VECTOR
+
+NodeList::Node* NodeList::find(uintptr_t item) {
+
+	Node* node = root;
+
+	while (node) {
+
+		if (node->val == item)
+			return node;
+
+		node = node->next;
+
+	}
+
+	return NULL;
+
+}
+
+#endif
+
+void NodeList::add(uintptr_t item, unsigned int index) {
+
+	#ifdef NODELIST_VECTOR
+	if (index == UINT_MAX) vector.push_back(item);
+	else vector.insert(vector.begin() + index, item);
+	#else
 
 	Node *node = new Node();
 	node->val = item;
 
+	#endif
+
 	Timing::lock(&m);
+
+	#ifndef NODELIST_VECTOR
 
 	if (index == UINT_MAX) index = size;
 
@@ -91,10 +137,14 @@ void NodeList::add(intptr_t item, unsigned int index) {
 	if (node->next) node->next->prev = node;
 	else last = node;
 
+	#endif
+
 	size++;
 	Timing::unlock(&m);
 
 }
+
+#ifndef NODELIST_VECTOR
 
 NodeList::Node* NodeList::find(unsigned int index) {
 
@@ -125,23 +175,6 @@ NodeList::Node* NodeList::find(unsigned int index) {
 
 }
 
-NodeList::Node* NodeList::find(intptr_t item) {
-
-	Node* node = root;
-
-	while (node) {
-
-		if (node->val == item)
-			return node;
-
-		node = node->next;
-
-	}
-
-	return NULL;
-
-}
-
 void NodeList::del(Node* node) {
 
 	Timing::lock(&m);
@@ -159,14 +192,33 @@ void NodeList::del(Node* node) {
 
 }
 
+#endif
+
 void NodeList::rem(unsigned int index) {
 
+	#ifdef NODELIST_VECTOR
+	vector.erase(vector.begin() + index);
+	#else
 	del(find(index));
+	#endif
 
 }
 
-void NodeList::rem(intptr_t item) {
+void NodeList::rem(uintptr_t item) {
 
+	#ifdef NODELIST_VECTOR
+	for (unsigned int i = 0; i < vector.size(); i++) {
+
+		if (vector[i] == item) {
+
+			vector.erase(vector.begin() + i);
+			break;
+
+		}
+
+	}
+	#else
 	del(find(item));
+	#endif
 
 }

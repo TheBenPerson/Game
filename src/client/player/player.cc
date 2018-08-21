@@ -2,18 +2,21 @@
 #include <stdint.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "entity.hh"
 #include "gfx.hh"
 #include "input.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "sound.hh"
+#include "timing.hh"
 #include "win.hh"
 #include "world.hh"
 
+static GFX::texture tex;
 static Point lastVel = {0, 0};
-static float speed = 2;
+static float speed = 2.3f;
 
+static Timing::Condition condition;
 static Entity *target = NULL;
 
 static void draw();
@@ -24,14 +27,22 @@ extern "C" {
 
 	bool init() {
 
-		GFX::listeners.add((intptr_t) &draw);
+		tex = GFX::loadTexture("health.png");
+		GFX::listeners.add((uintptr_t) &draw);
 
-		Net::listeners.add((intptr_t) &tickNet);
-		Net::send(P_NEWP);
+		Net::listeners.add((uintptr_t) &tickNet);
 
-		Input::listeners.add((intptr_t) &handlerInput);
+		// await immediate response
 
-		cputs(GREEN, "Loaded module: 'player.so'");
+		for (;;) {
+
+			Net::send(P_IDNT);
+			bool result = Timing::waitFor(&condition, 1000);
+			if (result) break;
+
+		}
+
+		Input::listeners.add((uintptr_t) &handlerInput);
 
 		return true;
 
@@ -41,12 +52,11 @@ extern "C" {
 
 		World::pos = NULL;
 
-		Input::listeners.rem((intptr_t) &handlerInput);
-		Net::listeners.rem((intptr_t) &tickNet);
+		Input::listeners.rem((uintptr_t) &handlerInput);
+		Net::listeners.rem((uintptr_t) &tickNet);
 
-		GFX::listeners.rem((intptr_t) &draw);
-
-		cputs(YELLOW, "Unloaded module: 'player.so'");
+		GFX::listeners.rem((uintptr_t) &draw);
+		GFX::freeTexture(&tex);
 
 	}
 
@@ -54,13 +64,30 @@ extern "C" {
 
 void draw() {
 
-	/* TODO: put this back in world.cc
+	Point dim = {54, 17};
+	dim /= dim.y;
 
-	// TODO: move me
+	Point pos = {WIN::aspect * -10, -10};
+	Point ddim = dim / 2.0f;
+	pos += ddim;
+
+	Point tdim = {1, 7};
+	Point frame = {1, (float) (GFX::frame / 7)};
+
+	GFX::drawSprite(tex, &pos, &dim, NULL, &tdim, &frame);
+
+	/* TODO: put this back in world.cc
 	if (Input::actions[Input::EXIT]) Client::state = Client::PAUSED;*/
 
-	if (!Input::actions[Input::MODIFIER].state)
+	if (!Input::actions[Input::MODIFIER].state) {
+
 		World::rot = (Input::cursor.x / (10 * WIN::aspect)) * 2 * M_PI;
+		Sound::setRot(-World::rot);
+
+	}
+
+	// todo: consider moving?
+	Sound::setPos(&target->pos);
 
 	Point vel = {0, 0};
 
@@ -98,21 +125,19 @@ void draw() {
 	if (vel == lastVel) return;
 	lastVel = vel;
 
+	// set player entity vel
 	target->vel = vel;
 
-	struct {
+	// tell server
 
-		uint8_t id = P_UPDP;
-		__attribute__((packed)) Point pos;
-		__attribute__((packed)) Point vel;
+	uint8_t data[1 + (SIZE_TPOINT * 2)];
 
-	} __attribute__((packed)) data;
-
-	data.pos = *World::pos;
-	data.vel = vel;
+	data[0] = P_UPDP;
+	World::pos->pack(data + 1);
+	vel.pack(data + 1 + SIZE_TPOINT);
 
 	Packet packet;
-	packet.raw = (uint8_t*) &data;
+	packet.raw = data;
 	packet.size = sizeof(data);
 
 	Net::send(&packet);
@@ -132,20 +157,14 @@ void handlerInput() {
 		pos.rot(-World::rot);
 		pos += *World::pos;
 
-		unsigned int index = World::getIndex(&pos);
+		uint8_t data[3];
 
-		struct {
-
-			uint8_t id = P_INTR;
-			uint16_t index;
-
-		} __attribute__((packed)) data;
-
-		data.index = index;
+		data[0] = P_INTR;
+		*((uint16_t*) (data + 1)) = World::getIndex(&pos);
 
 		Packet packet;
-		packet.raw = (uint8_t*) &data;
-		packet.size = sizeof(data);
+		packet.raw = data;
+		packet.size = 3;
 
 		Net::send(&packet);
 
@@ -160,9 +179,12 @@ bool tickNet(Packet *packet) {
 	unsigned int id = *((uint16_t*) packet->data);
 	target = Entity::get(id);
 
-	// todo: seems a little redundant
-	if (target) World::pos = &target->pos;
-	else Net::send(P_NEWP);
+	if (target) {
+
+		World::pos = &target->pos;
+		Timing::signal(&condition);
+
+	}
 
 	return true;
 

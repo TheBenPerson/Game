@@ -28,7 +28,6 @@
 #include <stdio.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "main.hh"
 #include "win.hh"
 
@@ -79,23 +78,16 @@ extern "C" {
 		new Button("Quit", &action);
 
 		// default client values
-		cputs(GREEN, "Loaded module: 'client.so'");
-
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'client.so'");
-
-	}
+	void cleanup() {}
 
 }
 
 namespace Client {
 
-	Config config("cfg/client/");
 	Button::Menu *settings;
 
 	bool running = true;

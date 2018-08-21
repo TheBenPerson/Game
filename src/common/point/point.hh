@@ -28,10 +28,19 @@
 #ifndef GAME_COMMON_POINT
 #define GAME_COMMON_POINT
 
+#include <stdint.h>
+
+#define SIZE_TPOINT (sizeof(float) * 2)
+
 typedef struct Point {
 
 	float x;
 	float y;
+
+	Point();
+	Point(float x, float y);
+	Point(uint8_t *buff);
+	void pack(uint8_t *buf);
 
 	void operator=(float val);
 
@@ -41,6 +50,7 @@ typedef struct Point {
 
 	void operator+=(float val);
 
+	Point operator-(Point &point);
 	Point operator*(float val);
 	Point operator/(float val);
 

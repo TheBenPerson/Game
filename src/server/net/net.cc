@@ -37,9 +37,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "config.hh"
 #include "console.hh"
 #include "main.hh"
-#include "server.hh"
 #include "net.hh"
 
 static int sock;
@@ -50,10 +50,15 @@ extern "C" {
 
 		if (!Game::port) {
 
-			Server::config.set("net.port", 1270);
-			Server::config.load("net.cfg");
+			Config::Option options[] = {
 
-			Game::port = Server::config.get("net.port")->val;
+				INT("port", 1270),
+				END
+
+			};
+
+			Config config("cfg/server/net.cfg", options);
+			Game::port = config.getInt("port");
 
 		}
 
@@ -61,7 +66,7 @@ extern "C" {
 
 		if (sock == -1) {
 
-			ceprintf(RED, "Error loading module 'net.so': error creating socket: %s - exiting...\n", strerror(errno));
+			ceprintf(RED, "Error creating socket: %s - exiting...\n", strerror(errno));
 			return false;
 
 		}
@@ -75,14 +80,13 @@ extern "C" {
 
 		if (bind(sock, (sockaddr*) &addr, sizeof(sockaddr_in)) == -1) {
 
-			ceprintf(RED, "Error loading module 'net.so': error binding socket: %s - exiting...\n", strerror(errno));
+			ceprintf(RED, "Error binding socket: %s - exiting...\n", strerror(errno));
 			close(sock);
 
 			return false;
 
 		}
 
-		cputs(GREEN, "Loaded module: 'net.so'");
 		return true;
 
 	}
@@ -91,8 +95,6 @@ extern "C" {
 
 		Net::stop(); // in case client.so doesn't
 		close(sock);
-
-		cputs(YELLOW, "Unloaded module: 'net.so'");
 
 	}
 

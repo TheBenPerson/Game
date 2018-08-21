@@ -3,15 +3,21 @@
 
 #include "client.hh"
 #include "entity.hh"
-#include "nodelist.hh"
+#include "packet.hh"
+#include "world.hh"
 
 class Human: public Entity {
 
 	public:
 
-		Human(Client *client);
+		Human(World *world, bool send = true);
 
-		bool tick(timespec *time);
+		virtual bool tick(unsigned int time);
+		virtual void toNet(Packet *packet);
+
+	protected:
+
+		char *name = NULL;
 
 };
 

@@ -1,0 +1,34 @@
+width = 20
+height = 20
+
+tiles = {
+
+	R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,s,G,G,G,G,G,G,G,G,G,G,G,G,G,G,d,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,
+
+}
+
+specials = {
+
+	"I am a sign :)",
+	"old.map",
+
+}

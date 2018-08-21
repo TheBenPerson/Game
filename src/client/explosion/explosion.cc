@@ -1,23 +1,23 @@
-#include <GL/gl.h>
 #include <stdint.h>
 
-#include "console.hh"
+#include "audio_source.hh"
 #include "explosion.hh"
 #include "gfx.hh"
-#include "net.hh"
+#include "sound.hh"
+#include "world.hh"
 
 static GFX::texture tex;
+static Sound *sound;
 
-static bool tickNet(Packet *packet);
+static void create(uint8_t *data);
 
 extern "C" {
 
 	bool init() {
 
+		Entity::regEnt("explosion", &create);
 		tex = GFX::loadTexture("explosion.png");
-		Net::listeners.add((intptr_t) &tickNet);
-
-		cputs(GREEN, "Loaded module: 'explosion.so'");
+		sound = new Sound("explosion.ogg");
 
 		return true;
 
@@ -25,37 +25,28 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
+		delete sound;
+
+		// todo: unreg ent?
 		GFX::freeTexture(&tex);
 
-		cputs(YELLOW, "Unloaded module: 'explosion.so'");
-
 	}
 
 }
 
-bool tickNet(Packet *packet) {
+Explosion::Explosion(uint8_t *data): Entity(data) {
 
-	switch (packet->id) {
-
-		case P_GENT: {
-
-			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
-
-			if (!Entity::verify(upacket, "explosion")) return false;
-			new Explosion((void*) upacket);
-
-		} break;
-
-		default: return false;
-
-	}
-
-	return true;
+	source = new AudioSource(sound);
+	source->setPos(&pos);
+	source->play();
 
 }
 
-Explosion::Explosion(void *info): Entity(info) {}
+Explosion::~Explosion() {
+
+	delete source;
+
+}
 
 void Explosion::draw() {
 
@@ -64,5 +55,11 @@ void Explosion::draw() {
 	Point tdim = {7, 1};
 	Point frame = {(float) (GFX::frame / 5), 0};
 	GFX::drawSprite(tex, &pos, &dim, 0, &tdim, &frame);
+
+}
+
+void create(uint8_t *data) {
+
+	new Explosion(data);
 
 }

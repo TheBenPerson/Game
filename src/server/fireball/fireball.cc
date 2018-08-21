@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "explosion.hh"
 #include "fireball.hh"
 #include "tiledef.hh"
@@ -14,20 +13,15 @@ extern "C" {
 
 	bool init() {
 
-		cputs(GREEN, "Loaded module: 'fireball.so'");
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'fireball.so'");
-
-	}
+	void cleanup() {}
 
 }
 
-Fireball::Fireball(Point *pos, float rot, Point *vel) {
+Fireball::Fireball(World *world, Point *pos, float rot, Point *vel): Entity(world) {
 
 	type = "fireball";
 	this->pos = *pos;
@@ -50,7 +44,7 @@ Fireball::Fireball(Point *pos, float rot, Point *vel) {
 
 }
 
-bool Fireball::tick(timespec *time) {
+bool Fireball::tick(unsigned int time) {
 
 	bool hit = false;
 
@@ -59,8 +53,8 @@ bool Fireball::tick(timespec *time) {
 
 	for (unsigned int i = 0; i < size; i++) {
 
-		Tile *tile = World::getTile(&tiles[i]);
-		if (tile->id == T_ROCK) hit = true;
+		Tile *tile = world->getTile(&tiles[i]);
+		if (tile->id == Tiledef::ROCK) hit = true;
 
 	}
 
@@ -68,7 +62,7 @@ bool Fireball::tick(timespec *time) {
 
 	if (hit) {
 
-		new Explosion(&pos);
+		new Explosion(world, &pos);
 
 		delete this;
 		return true;
@@ -82,28 +76,11 @@ bool Fireball::tick(timespec *time) {
 
 void Fireball::toNet(Packet *packet) {
 
-	struct Data {
+	packet->size = 1 + SIZE_TENTITY + sizeof(float);
+	packet->raw = (uint8_t*) malloc(packet->size);
+	packet->raw[0] = P_GENT;
+	pack(packet->raw + 1);
 
-		uint8_t pid;
-
-		UPacket upacket;
-		float rot;
-
-	} __attribute__((packed)) *data;
-
-	packet->size = sizeof(Data) + strlen(type) + 1;
-	data = (Data*) malloc(packet->size);
-
-	data->pid = P_GENT;
-
-	data->upacket.id = id;
-	data->upacket.dim = dim;
-	data->upacket.pos = pos;
-	data->upacket.vel = vel;
-
-	data->rot = rot;
-	strcpy(data->upacket.type, type);
-
-	packet->raw = (uint8_t*) data;
+	*((float*) (packet->raw + 1 + SIZE_TENTITY)) = rot;
 
 }

@@ -25,15 +25,35 @@
  *
  */
 
-#ifndef GAME_CLIENT_AUDIO
+#ifndef GAME_CLIENT_AUDIO_SOUND
+#define GAME_CLIENT_AUDIO_SOUND
 
-namespace Audio {
+#include <AL/al.h>
 
-	extern bool enabled;
+#include "point.hh"
 
-	void play(char *path, bool loop = false);
+class Sound {
 
-}
+	friend class AudioSource;
 
-#define GAME_CLIENT_AUDIO
+	public:
+
+		static bool enabled;
+
+		static void setPos(Point *pos);
+		static void setRot(float rot);
+
+		Sound(char *file);
+		~Sound();
+
+		void play(bool loop = false);
+		void stop();
+
+	private:
+
+		ALuint sound;
+		ALuint source = NULL;
+
+};
+
 #endif

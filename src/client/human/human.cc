@@ -1,62 +1,48 @@
-#include <GL/gl.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "console.hh"
 #include "gfx.hh"
-#include "net.hh"
 #include "human.hh"
 #include "world.hh"
 
 GFX::texture tex;
 
-static bool tickNet(Packet *packet);
+static void create(uint8_t *data);
 
 extern "C" {
 
 	bool init() {
 
-		tex = GFX::loadTexture("villager_f.png");
-		Net::listeners.add((intptr_t) &tickNet);
+		Entity::regEnt("human", &create);
 
-		cputs(GREEN, "Loaded module: 'human.so'");
+		tex = GFX::loadTexture("villager_f.png");
 		return true;
 
 	}
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
+		// todo: unreg ent?
 		GFX::freeTexture(&tex);
 
-		cputs(YELLOW, "Unloaded module: 'human.so'");
-
 	}
 
 }
 
-bool tickNet(Packet *packet) {
+Human::Human(uint8_t *data): Entity(data) {
 
-	switch (packet->id) {
-
-		case P_GENT: {
-
-			Entity::UPacket *upacket = (Entity::UPacket *) packet->data;
-
-			if (!Entity::verify(upacket, "Human")) return false;
-			new Human((void*) upacket);
-
-		} break;
-
-		default: return false;
-
-	}
-
-	return true;
+	// todo: unsafe?
+	name = strdup((char*) data + SIZE_TENTITY);
 
 }
 
-Human::Human(void *info): Entity(info) {}
+Human::~Human() {
+
+	free(name);
+
+}
 
 void Human::draw() {
 
@@ -86,13 +72,27 @@ void Human::draw() {
 	Point tdim = {3, 4};
 	Point frame;
 
-	if (vel) frame.x = GFX::frame / 20;
+	if (vel) frame.x = GFX::frame / 10;
 	else frame.x = 1;
 
 	frame.y = dir;
 
 	GFX::drawSprite(tex, &pos, &dim, -World::rot, &tdim, &frame);
 
+	Point text = {0, dim.y / 2};
+	text.y += .2f;
+
+	text.rot(-World::rot);
+	text += pos;
+
+	GFX::drawText(name, &text, .4f, true, -World::rot);
+
 	lastDir = dir;
+
+}
+
+void create(uint8_t *data) {
+
+	new Human(data);
 
 }

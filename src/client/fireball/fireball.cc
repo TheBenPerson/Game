@@ -1,23 +1,18 @@
 #include <math.h>
-#include <stdint.h>
 
-#include "console.hh"
 #include "fireball.hh"
 #include "gfx.hh"
-#include "net.hh"
 
 static GFX::texture tex;
 
-static bool tickNet(Packet *packet);
+static void create(uint8_t *data);
 
 extern "C" {
 
 	bool init() {
 
+		Entity::regEnt("fireball", &create);
 		tex = GFX::loadTexture("fireball.png");
-		Net::listeners.add((intptr_t) &tickNet);
-
-		cputs(GREEN, "Loaded module: 'fireball.so'");
 
 		return true;
 
@@ -25,46 +20,19 @@ extern "C" {
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
+		// todo: unreg ent?
 		GFX::freeTexture(&tex);
 
-		cputs(YELLOW, "Unloaded module: 'fireball.so'");
-
 	}
 
 }
 
-bool tickNet(Packet *packet) {
+Fireball::Fireball(uint8_t *data): Entity(data) {
 
-	switch (packet->id) {
+	// todo: check if there is an extra
+	// if (extrasize != sizeof(float)) error();
 
-		case P_GENT: {
-
-			Entity::UPacket *upacket = (Entity::UPacket*) packet->data;
-
-			if (!Entity::verify(upacket, "fireball")) return false;
-			new Fireball((void*) upacket);
-
-		} break;
-
-		default: return false;
-
-	}
-
-	return true;
-
-}
-
-Fireball::Fireball(void *info): Entity(info) {
-
-	struct Data {
-
-		Entity::UPacket packet;
-		float rot;
-
-	} __attribute__((packed)) *data = (Data*) info;
-
-	rot = data->rot;
+	rot = *((float*) (data + SIZE_TENTITY));
 
 }
 
@@ -75,5 +43,11 @@ void Fireball::draw() {
 	Point tdim = {8, 1};
 	Point frame = {(float) (GFX::frame / 5), 0};
 	GFX::drawSprite(tex, &pos, &dim, rot + M_PI_2, &tdim, &frame);
+
+}
+
+void create(uint8_t *data) {
+
+	new Fireball(data);
 
 }

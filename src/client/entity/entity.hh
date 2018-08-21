@@ -6,23 +6,12 @@
 #include "nodelist.hh"
 #include "point.hh"
 
+// todo: const int inside Entity class?
+#define SIZE_TENTITY (2 + 10 + (SIZE_TPOINT * 3))
+
 class Entity {
 
 	public:
-
-		// base packet for updating entities
-
-		typedef struct {
-
-			uint16_t id;
-
-			__attribute__((packed)) Point dim;
-			__attribute__((packed)) Point pos;
-			__attribute__((packed)) Point vel;
-
-			char type[10];
-
-		} __attribute__((packed)) UPacket;
 
 		static NodeList entities;
 
@@ -33,13 +22,13 @@ class Entity {
 		Point vel;
 
 		static Entity* get(unsigned int id);
-		static bool verify(UPacket *packet, char *type);
+		static void regEnt(const char *name, void (*create)(uint8_t*));
 
-		Entity(void *info);
+		Entity(uint8_t *buff);
 		virtual ~Entity();
 
+		void unpack(uint8_t *buff);
 		virtual void draw() = 0;
-		virtual void update(uint8_t *info);
 
 };
 

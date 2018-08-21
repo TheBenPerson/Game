@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "packet.hh"
 #include "sign.hh"
 #include "tile.hh"
@@ -15,9 +14,7 @@ extern "C" {
 
 	bool init() {
 
-		Tile::regTile(T_SIGN, &newSign);
-
-		cputs(GREEN, "Loaded module: 'sign.so'");
+		Tile::regTile(Tiledef::SIGN, &newSign);
 		return true;
 
 	}
@@ -26,20 +23,18 @@ extern "C" {
 
 		// todo: unregister?
 
-		cputs(YELLOW, "Unloaded module: 'sign.so'");
-
 	}
 
 }
 
-Sign::Sign(char *text, bool freeStr): Tile(T_SIGN, text, freeStr) {}
+Sign::Sign(char *text, bool freeStr): Tile(Tiledef::SIGN, text, freeStr) {}
 
 void Sign::send(Client *client, char *str) {
 
 	Packet packet;
 
 	packet.size = strlen(str) + 2;
-	packet.raw = (uint8_t*) malloc(packet.size + 1);
+	packet.raw = (uint8_t*) malloc(packet.size);
 
 	packet.raw[0] = P_SIGN;
 	strcpy((char*) packet.raw + 1, str);

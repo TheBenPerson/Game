@@ -1,9 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
-#include <time.h>
 
 #include "client.hh"
-#include "console.hh"
 #include "eye.hh"
 #include "fireball.hh"
 #include "packet.hh"
@@ -14,23 +12,18 @@ extern "C" {
 
 	bool init() {
 
-		Point pos = {0, 0};
-		new Eye(&pos);
+		Point point = {1, 0};
+		new Eye(World::defaultWorld, &point, &point);
 
-		cputs(GREEN, "Loaded module: 'eye.so'");
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'eye.so'");
-
-	}
+	void cleanup() {}
 
 }
 
-Eye::Eye(Point *pos, Point *vel) {
+Eye::Eye(World *world, Point *pos, Point *vel): Entity(world) {
 
 	type = "eye";
 	dim = {1, 1};
@@ -44,16 +37,16 @@ Eye::Eye(Point *pos, Point *vel) {
 
 }
 
-bool Eye::tick(timespec *time) {
+bool Eye::tick(unsigned int time) {
 
 	bool change = false;
 
 	if (timer >= 3000) {
 
 		float angle = (rand() / (float) RAND_MAX) * M_PI * 2;
-		new Fireball(&pos, angle - (M_PI / 9));
-		new Fireball(&pos, angle);
-		new Fireball(&pos, angle + (M_PI / 9));
+		new Fireball(world, &pos, angle - (M_PI / 9));
+		new Fireball(world, &pos, angle);
+		new Fireball(world, &pos, angle + (M_PI / 9));
 
 		Point dvel = {cosf(angle), sinf(angle)};
 		dvel /= 3;
@@ -72,17 +65,19 @@ bool Eye::tick(timespec *time) {
 	unsigned int size = boundWorld(&tiles);
 	for (unsigned int i = 0; i < size; i++) {
 
-		Tile *tile = World::getTile(&tiles[i]);
+		Tile *tile = world->getTile(&tiles[i]);
 		switch (tile->id) {
 
-			case T_ROCK:
+			case Tiledef::ROCK:
+			case Tiledef::SIGN:
+			case Tiledef::CACTUS:
 			// other solids
 			bounce = true;
 			bp = &tiles[i];
 
 			break;
 
-			default: World::setTile(&tiles[i], T_ICE);
+			default: world->setTile(&tiles[i], Tiledef::ICE);
 			break;
 
 		}

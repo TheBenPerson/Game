@@ -6,12 +6,13 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "auth.hh"
 #include "client.hh"
-#include "console.hh"
 #include "entity.hh"
-#include "human.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "player.hh"
+#include "sign.hh"
 #include "timing.hh"
 #include "world.hh"
 
@@ -21,19 +22,23 @@ extern "C" {
 
 	bool init() {
 
-		Net::listeners.add((intptr_t) &tickNet);
-
-		cputs(GREEN, "Loaded module: 'player.so'");
+		Net::listeners.add((uintptr_t) &tickNet);
 		return true;
 
 	}
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
-		cputs(YELLOW, "Unloaded module: 'player.so'");
+		Net::listeners.rem((uintptr_t) &tickNet);
 
 	}
+
+}
+
+Player::Player(char *name): Human(World::defaultWorld, false) {
+
+	this->name = name;
+	send();
 
 }
 
@@ -41,78 +46,72 @@ bool tickNet(Packet *packet, Client *client) {
 
 	switch (packet->id) {
 
-		case P_NEWP: {
+		// todo: perhaps Entity should handle this?
+		case P_IDNT: {
 
-			struct {
+			Auth *auth = Auth::get(client);
+			if (!auth) {
 
-				uint8_t pid = P_IDNT;
-				uint16_t id;
+				client->send(P_DENY);
+				break;
 
-			} __attribute__((packed)) data;
+			}
 
-			Entity *entity = Entity::get(client);
+			if (!auth->player) auth->player = new Player(client->name);
 
-			if (entity) data.id = entity->id;
-			else data.id = (new Human(client))->id;
+			uint8_t data[3];
+
+			data[0] = P_IDNT;
+			*((uint16_t*) (data + 1)) = auth->player->id;
 
 			Packet packet;
-			packet.size = sizeof(data);
-			packet.raw = (uint8_t*) &data;
+			packet.size = 3;
+			packet.raw = data;
 			client->send(&packet);
+
+			char *text =
+			"Welcome to GAME: a game about nothing\n\n"
+
+				"Press WASD to move around\n"
+				"Hold [SECONDARY] to click on signs\n\n\n\n\n\n\t"
+
+				"Press [PRIMARY] to continue...";
+
+			Sign::send(client, text);
 
 		} return true;
 
 		case P_UPDP: {
 
-			struct Data {
+			Player *player = Auth::get(client)->player;
+			if (!player) return true;
 
-				__attribute__((packed)) Point pos;
-				__attribute__((packed)) Point vel;
-
-			} __attribute__((packed)) *data = (Data*) packet->data;
-
-			Entity *entity = Entity::get(client);
-			if (!entity) return true;
-
-			entity->pos = data->pos;
-			entity->vel = data->vel;
-
-			// replaces entity update
-			struct {
-
-				uint8_t pid;
-				Entity::UPacket packet;
-
-			} __attribute__((packed)) dat;
-
-			dat.pid = P_UENT;
-			dat.packet.id = entity->id;
-
-			dat.packet.dim = entity->dim;
-			dat.packet.pos = entity->pos;
-			dat.packet.vel = entity->vel;
+			player->pos = Point(packet->data);
+			player->vel = Point(packet->data + SIZE_TPOINT);
 
 			Packet packet;
-			packet.raw = (uint8_t*) &dat;
-			packet.size = sizeof(dat);
+			player->toNet(&packet);
 
 			for (unsigned int i = 0; i < Client::clients.size; i++) {
 
-				Client *client = (Client*) Client::clients[i];
-				if (client == entity->client) continue;
+				Client *dest = (Client*) Client::clients[i];
+				if (dest == client) continue;
 
-				client->send(&packet);
+				dest->send(&packet);
 
 			}
 
+			free(packet.raw);
 
 		} break;
 
 		case P_KICK:
 		case P_DENY: {
 
-			Entity *entity = Entity::get(client);
-			if (entity) delete entity;
+			// todo: auth?
+
+			Player *player = Auth::get(client)->player;
+			if (player) delete player;
 
 		} break;
 

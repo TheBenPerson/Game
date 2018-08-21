@@ -8,9 +8,9 @@ class Fireball: public Entity {
 
 	public:
 
-		Fireball(Point *pos, float rot, Point *vel = NULL);
+		Fireball(World *world, Point *pos, float rot, Point *vel = NULL);
 
-		bool tick(timespec *time);
+		bool tick(unsigned int time);
 		void toNet(Packet *packet);
 
 	private:

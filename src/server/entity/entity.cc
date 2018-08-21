@@ -6,15 +6,17 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "auth.hh"
 #include "client.hh"
-#include "console.hh"
 #include "entity.hh"
 #include "net.hh"
 #include "packet.hh"
+#include "player.hh"
 #include "point.hh"
 #include "timing.hh"
 #include "world.hh"
 
+static Timing::Condition condition;
 static Timing::thread t;
 static bool running = true;
 
@@ -26,28 +28,19 @@ extern "C" {
 	bool init() {
 
 		t = Timing::createThread(&tmain, NULL);
-		Net::listeners.add((intptr_t) &tickNet);
+		Net::listeners.add((uintptr_t) &tickNet);
 
-		cputs(GREEN, "Loaded module: 'entity.so'");
 		return true;
 
 	}
 
 	void cleanup() {
 
-		Net::listeners.rem((intptr_t) &tickNet);
+		Net::listeners.rem((uintptr_t) &tickNet);
 
 		running = false;
+		Timing::signal(&condition);
 		Timing::waitFor(t);
-
-		while (Entity::entities.size) {
-
-			Entity *entity = (Entity*) Entity::entities[0];
-			delete entity;
-
-		}
-
-		cputs(YELLOW, "Unloaded module: 'entity.so'");
 
 	}
 
@@ -57,42 +50,40 @@ void* tmain(void*) {
 
 	while (running) {
 
-		unsigned int toSleep = UINT_MAX;
+		volatile unsigned int toSleep = UINT_MAX;
 
-		for (unsigned int i = 0; i < Entity::entities.size; i++) {
+		for (unsigned int w = 0; w < World::worlds.size; w++) {
 
-			Entity *entity = (Entity*) Entity::entities[i];
+			World *world = (World*) World::worlds[w];
 
-			timespec time;
-			clock_gettime(CLOCK_MONOTONIC, &time);
+			for (unsigned int i = 0; i < world->entities.size; i++) {
 
-			long dtime = time.tv_nsec - entity->time;
+				Entity *entity = (Entity*) world->entities[i];
 
-			// account for wraparound
-			if (dtime < 0) dtime += 1000000000;
+				unsigned int now = Timing::getTime();
+				long dtime = now - entity->time;
 
-			// convert ns to ms
-			dtime /= 1000000;
+				if (dtime < entity->interval) dtime = entity->interval - dtime;
+				else {
 
-			if (dtime < entity->interval) dtime = entity->interval - dtime;
-			else {
+					bool killed = entity->tick(now);
+					if (killed) continue;
 
-				bool killed = entity->tick(&time);
-				if (killed) continue;
+					entity->time = now;
+					entity->timer += entity->interval;
 
-				entity->time = time.tv_nsec;
-				entity->timer += entity->interval;
+					dtime = 0;
 
-				dtime = 0;
+				}
+
+				if (dtime < toSleep) toSleep = dtime;
 
 			}
-
-			if (dtime < toSleep) toSleep = dtime;
 
 		}
 
 		// TODO: account for time ticking other entities
-		usleep(toSleep * 1000);
+		Timing::waitFor(&condition, toSleep);
 
 	}
 
@@ -104,11 +95,13 @@ bool tickNet(Packet *packet, Client *client) {
 
 	switch (packet->id) {
 
-		case P_GENT:
+		case P_GENT: {
 
-			for (unsigned int i = 0; i < Entity::entities.size; i++) {
+			NodeList *entities = &Auth::get(client)->world->entities;
 
-				Entity *entity = (Entity*) Entity::entities[i];
+			for (unsigned int i = 0; i < entities->size; i++) {
+
+				Entity *entity = (Entity*) (*entities)[i];
 
 				Packet packet;
 				entity->toNet(&packet);
@@ -118,30 +111,13 @@ bool tickNet(Packet *packet, Client *client) {
 
 			}
 
-		break;
+		} break;
 
 		default: return false;
 
 	}
 
 	return true;
-
-}
-
-NodeList Entity::entities;
-
-void Entity::send() {
-
-	// get next available id
-	for (id = 0; get(id); id++) {}
-	entities.add((intptr_t) this);
-
-	Packet packet;
-	toNet(&packet);
-
-	Client::broadcast(&packet);
-
-	free(packet.raw);
 
 }
 
@@ -169,12 +145,12 @@ bool Entity::bound(Point *pos, Point *dim) {
 
 unsigned int Entity::boundWorld(Point **tiles) {
 
-	int dwidth = World::width / 2;
-	int dheight = World::height / 2;
+	int dwidth = world->width / 2;
+	int dheight = world->height / 2;
 
 	Point ddim = dim / 2.0f;
-	bool evenW = !(World::width % 2);
-	bool evenH = !(World::height % 2);
+	bool evenW = !(world->width % 2);
+	bool evenH = !(world->height % 2);
 
 	// if dimensions odd align to even ones
 	int top = floor(pos.y + ddim.y + (!evenH * .5f));
@@ -215,7 +191,57 @@ unsigned int Entity::boundWorld(Point **tiles) {
 
 }
 
-bool Entity::tick(timespec *time) {
+void Entity::pack(uint8_t *buff) {
+
+	*((uint16_t*) buff) = id;
+	buff += 2;
+
+	strcpy((char*) buff, type);
+	buff += 10;
+
+	dim.pack(buff);
+	buff += SIZE_TPOINT;
+
+	pos.pack(buff);
+	buff += SIZE_TPOINT;
+
+	vel.pack(buff);
+
+}
+
+void Entity::send() {
+
+	Packet packet;
+	toNet(&packet);
+
+	Client::broadcast(&packet, &world->clients);
+
+	free(packet.raw);
+
+}
+
+void Entity::transfer(World *world) {
+
+	this->world->entities.rem((uintptr_t) this);
+
+	uint8_t data[3];
+	data[0] = P_DENT;
+	*((uint16_t*) (data + 1)) = id;
+
+	Packet packet;
+	packet.size = 3;
+	packet.raw = data;
+
+	Client::broadcast(&packet, &this->world->clients);
+
+	world->entities.add((uintptr_t) this);
+	this->world = world;
+
+	send();
+
+}
+
+bool Entity::tick(unsigned int time) {
 
 	Point dpos = vel * (interval / 1000.0f);
 	pos += dpos;
@@ -226,9 +252,9 @@ bool Entity::tick(timespec *time) {
 
 Entity* Entity::get(unsigned int id) {
 
-	for (unsigned int i = 0; i < entities.size; i++) {
+	for (unsigned int i = 0; i < World::defaultWorld->entities.size; i++) {
 
-		Entity *entity = (Entity*) entities[i];
+		Entity *entity = (Entity*) World::defaultWorld->entities[i];
 		if (entity->id == id) return entity;
 
 	}
@@ -237,87 +263,48 @@ Entity* Entity::get(unsigned int id) {
 
 }
 
-Entity* Entity::get(Client *client) {
+Entity::Entity(World *world): world(world) {
 
-	for (unsigned int i = 0; i < entities.size; i++) {
-
-		Entity *entity = (Entity*) entities[i];
-		if (entity->client == client) return entity;
-
-	}
-
-	return NULL;
+	// get next available id
+	for (id = 0; get(id); id++) {}
+	world->entities.add((uintptr_t) this);
 
 }
 
-Entity::Entity() {}
-Entity::Entity(Client *client): client(client) {}
-
 Entity::~Entity() {
 
-	entities.rem((intptr_t) this);
+	world->entities.rem((uintptr_t) this);
 
-	struct {
+	uint8_t data[3];
 
-		uint8_t pid;
-		uint16_t id;
-
-	} __attribute__((packed)) data;
-
-	data.pid = P_DENT;
-	data.id = id;
+	data[0] = P_DENT;
+	*((uint16_t*)(data + 1)) = id;
 
 	Packet packet;
-	packet.raw = (uint8_t*) &data;
-	packet.size = sizeof(data);
+	packet.raw = data;
+	packet.size = 3;
 
-	Client::broadcast(&packet);
+	Client::broadcast(&packet, &world->clients);
 
 }
 
 void Entity::toNet(Packet *packet) {
 
-	struct Data {
+	packet->size = SIZE_TENTITY + 1;
+	packet->raw = (uint8_t*) malloc(SIZE_TENTITY + 1);
 
-		uint8_t pid;
-		UPacket packet;
-
-	} __attribute__((packed)) *data;
-	packet->size = sizeof(Data) + strlen(type) + 1;
-	data = (Data*) malloc(packet->size);
-
-	data->pid = P_GENT;
-
-	data->packet.id = id;
-	data->packet.dim = dim;
-	data->packet.pos = pos;
-	data->packet.vel = vel;
-	strcpy(data->packet.type, type);
-
-	packet->raw = (uint8_t*) data;
+	packet->raw[0] = P_GENT;
+	pack(packet->raw + 1);
 
 }
 
 void Entity::update() {
 
-	struct {
-
-		uint8_t pid;
-		UPacket packet;
-
-	} __attribute__((packed)) data;
-
-	data.pid = P_UENT;
-	data.packet.id = id;
-
-	data.packet.dim = dim;
-	data.packet.pos = pos;
-	data.packet.vel = vel;
-
 	Packet packet;
-	packet.raw = (uint8_t*) &data;
-	packet.size = sizeof(data);
+	toNet(&packet);
 
-	Client::broadcast(&packet);
+	Client::broadcast(&packet, &world->clients);
+
+	free(packet.raw);
 
 }

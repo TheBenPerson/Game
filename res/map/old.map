@@ -1,0 +1,33 @@
+height = 20
+width = 20
+
+tiles = {
+
+	R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,
+	R,R,R,R,G,G,R,R,R,R,R,R,R,R,G,G,R,R,R,R,
+	R,R,G,G,G,G,G,G,R,R,R,R,G,G,G,G,G,G,R,R,
+	R,R,G,G,G,G,G,G,R,R,R,R,G,G,G,G,G,G,R,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,d,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,R,
+	R,R,G,G,G,G,G,R,R,I,I,R,R,G,G,G,G,G,R,R,
+	R,R,R,R,G,G,G,R,L,L,L,L,R,G,G,G,R,R,R,R,
+	R,R,R,R,G,G,G,R,L,L,L,L,R,G,G,G,R,R,R,R,
+	R,R,R,R,G,G,G,R,L,L,L,L,R,G,G,G,R,R,R,R,
+	R,R,R,R,G,G,G,R,L,L,L,L,R,G,G,G,R,R,R,R,
+	R,R,G,G,G,G,G,R,R,R,R,R,R,G,G,G,G,G,R,R,
+	R,R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,R,
+	R,R,G,G,G,G,G,G,R,R,R,R,G,G,G,G,G,G,R,R,
+	R,R,G,G,G,G,G,G,R,R,R,R,G,G,G,G,G,G,R,R,
+	R,R,R,R,G,G,R,R,R,R,R,R,R,R,G,G,R,R,R,R,
+	R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,
+
+}
+
+specials = {
+
+	"main.map",
+
+}

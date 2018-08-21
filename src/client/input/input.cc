@@ -25,23 +25,17 @@
  *
  */
 
-#include "console.hh"
 #include "input.hh"
 
 extern "C" {
 
 	bool init() {
 
-		cputs(GREEN, "Loaded module: 'input.so'");
 		return true;
 
 	}
 
-	void cleanup() {
-
-		cputs(YELLOW, "Unloaded module: 'input.so'");
-
-	}
+	void cleanup() {}
 
 }
 

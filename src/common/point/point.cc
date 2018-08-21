@@ -26,8 +26,27 @@
  */
 
 #include <math.h>
+#include <stdint.h>
 
 #include "point.hh"
+
+Point::Point() {}
+
+Point::Point(float x, float y): x(x), y(y) {}
+
+Point::Point(uint8_t *buff) {
+
+	x = *((float*) buff);
+	y = *((float*) (buff + sizeof(float)));
+
+}
+
+void Point::pack(uint8_t *buff) {
+
+	*((float*) buff) = x;
+	*((float*) (buff + sizeof(float))) = y;
+
+}
 
 void Point::operator=(float val) {
 
@@ -61,6 +80,17 @@ void Point::operator+=(float val) {
 
 	x += val;
 	y += val;
+
+}
+
+Point Point::operator-(Point &point) {
+
+	Point temp = *this;
+
+	temp.x -= point.x;
+	temp.y -= point.y;
+
+	return temp;
 
 }
 
