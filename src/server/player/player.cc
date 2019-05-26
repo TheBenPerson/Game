@@ -105,7 +105,7 @@ bool tickNet(Packet *packet, Client *client) {
 
 		} break;
 
-		case P_KICK:
+		//case P_KICK:
 		case P_DENY: {
 
 			// todo: auth?
